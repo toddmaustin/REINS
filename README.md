@@ -210,6 +210,10 @@ docs/validation/                  Public fixtures and Python review model
 Keep baseline fixtures intact; generated binary inputs belong in the build tree.
 Test keys and signatures must never be provisioned in equipment.
 
+Use `.cc` for first-party C++ source files and `.h` for headers. Keep includes,
+build references and documentation aligned with that convention. See
+[repository conventions](AGENTS.md) for guidance for future changes.
+
 ## Troubleshooting
 
 | Symptom | Action |

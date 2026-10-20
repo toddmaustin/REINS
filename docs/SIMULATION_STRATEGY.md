@@ -18,7 +18,7 @@ flowchart LR
     R --> C[Future RTL live context and deadline gates]
 ```
 
-`sim/include/reins/simulation.hpp` declares the supported software boundary:
+`sim/include/reins/simulation.h` declares the supported software boundary:
 
 - `TestAuthority` generates an ephemeral host key and signs `REINS-BATCH-v2`
   roots using pure SLH-DSA-SHA2-128s with empty context. Private keys stay in host
