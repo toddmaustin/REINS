@@ -3,285 +3,223 @@
 **Revocable Execution through Independent Networked Supervision**
 
 REINS permits protected execution while a current lease has approval from two of
-three independent authorities. Authorities withdraw approval by withholding new
-grants. Two withholding authorities prevent renewal even if the third keeps
-signing; the local hardware enforcement path stops execution when the committed
-lease expires. The v0.3 protocol has no immediate remote KILL command.
+three independent authorities. Withholding new grants at two authorities prevents
+renewal even if the third keeps signing; local enforcement stops execution at the
+committed lease's expiry. The v0.3 protocol has no immediate remote KILL command.
 
-The implementation target is **SystemVerilog RTL**, an independent **C++ reference
-simulator**, and **Verilator** directed, fuzz, and fault tests. The supported
-configuration is fixed at **N=3, Q=2**, using **SLH-DSA-SHA2-128s, pure mode, empty
-context**, with wire/SPI/OTP schema/profile identifiers 2.
+Scope is fixed at **N=3, Q=2**, **SLH-DSA-SHA2-128s, pure mode, empty context**, and
+wire/SPI/schema/profile 2. The target is SystemVerilog RTL, an independent C++ model
+and Verilator directed/fuzz/fault tests.
 
-## Current status
+## Current status and sources
 
-This repository currently provides the specification and review fixtures, the
-fixed implementation scope, a pinned source manifest, and read-only validation
-tooling with executable profile/header checks and negative tests. The RTL, C++
-simulator, CMake build, and Verilator test targets are not
-implemented yet. There is currently no hardware or C++ executable to build.
+Available now: pinned specification/fixture checks, a C++ host signer/verifier,
+an event-driven two-pass verification service with immutable inputs, latency,
+cancellation and stale-result testing, CMake/Ninja builds, directed tests,
+sanitizer configuration, and JSON reference-mode reports.
 
-The commands in **Validate the current repository** below work with this change.
-The C++/Verilator commands later in this README describe the planned build
-interface and become available through the build-foundation milestone.
+There is **no RTL or complete device/lease simulator yet**. A verified software
+signature does not authorize execution. Controller, SPI, guards, full behavioral
+model, real-RTL tests, FST traces and fault campaigns remain later milestones.
+Unsupported simulation modes fail instead of falling back to software.
 
-Start with:
-
-- [Normative REINS specification, v0.3 PDF](docs/REINS-Hardware-Specification-v0.3.pdf).
-- [Fixed implementation scope and source-of-truth rules](docs/IMPLEMENTATION_SCOPE.md).
-- [Ordered development plan and PR completion criteria](docs/IMPLEMENTATION_PLAN.md).
-- [Readable Markdown specification](docs/REINS_Hardware_Specification.md) and
-  [design review notes](docs/REINS_design_review_notes.md).
+Read the [normative v0.3 PDF](docs/REINS-Hardware-Specification-v0.3.pdf),
+[fixed scope/source rules](docs/IMPLEMENTATION_SCOPE.md),
+[development plan](docs/IMPLEMENTATION_PLAN.md), and
+[executable simulation strategy](docs/SIMULATION_STRATEGY.md).
+The [Markdown companion](docs/REINS_Hardware_Specification.md) and
+[review notes](docs/REINS_design_review_notes.md) assist implementation.
 
 ## Prerequisites
 
-### Required for the current checks
-
 | Tool | Requirement |
 |---|---|
-| Git | To clone or check out the PR branch |
-| Python | Python 3.10 or newer; only the standard library is used |
+| Git | Checkout and PR branches |
+| Python | 3.10+, standard library for source/fixture checks |
+| C++ compiler | C++20; tested with GCC 14.2 |
+| OpenSSL development library | **3.5.0+**, default provider with `SLH-DSA-SHA2-128s`; tested with 3.5.7 |
+| CMake | 3.25+; tested with 3.31.6 |
+| Ninja | Tested with 1.11.1 |
 
-No `pip` packages, virtual environment, C++ compiler, Verilator installation,
-network service, credentials, or signing keys are required for these checks.
-They run offline after checkout. Python 3.12 was used to validate this change.
+Verilator is not required for the current software mode. It will be pinned/tested
+when the first RTL component is introduced. No credentials or private signing
+keys are needed. Test authorities generate ephemeral keys in host memory.
 
-Check the Python interpreter:
+The tested host is Debian 13, x86-64, GCC 14.2, OpenSSL 3.5.7, Python 3.12.14,
+CMake 3.31.6 and Ninja 1.11.1. Linux/WSL2 is the initial development path; macOS
+portability has not yet been validated here.
+
+### Install/select tools
+
+Install your system's C++ compiler, Python, and **OpenSSL 3.5+ development package**.
+You need headers and `libcrypto`, not just the `openssl` command. Older stock
+OpenSSL 3.0/3.4 packages are insufficient. Use a supported newer package or the
+official OpenSSL release/build instructions.
+
+On macOS, Homebrew provides candidate tools:
 
 ```sh
-python3 --version
+brew install cmake ninja openssl@3 python
 ```
 
-On Windows, use `py -3` in place of `python3` if that is your Python launcher.
-A PDF viewer is useful for reading the normative specification. Poppler's
-`pdftotext` and `pdfinfo` are optional document-review tools.
+Select its library with `-DOPENSSL_ROOT_DIR="$(brew --prefix openssl@3)"` during
+configuration if CMake otherwise chooses an older library. A custom Linux prefix
+is selected the same way. CMake must find matching 3.5+ headers and libraries.
+`openssl version` and `openssl list -signature-algorithms` inspect the command-line
+provider; simulation reports identify the actual linked runtime library.
 
-### Planned C++/Verilator development prerequisites
+If system CMake/Ninja are missing or too old, install the tested driver pins:
 
-The build-foundation PR will pin tested versions and document platform setup.
-The intended tools are:
+```sh
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install -r tools/build-requirements.txt
+```
 
-| Tool | Purpose |
-|---|---|
-| C++20 compiler | C++ reference simulator, drivers, tests, and Verilator-generated model |
-| CMake and Ninja | Configure and build the project through presets |
-| Verilator 5.x | Compile SystemVerilog, run assertions, and generate optional traces |
-| Clang with libFuzzer and sanitizers | Fuzzing and C++ memory/undefined-behavior checks |
-| Python 3.10+ | Source/fixture checks, generation, replay and reports |
+This optional environment supplies build drivers, not OpenSSL or the C++ compiler.
 
-Linux is the intended initial development platform; WSL2 provides a Linux
-environment on Windows. macOS portability and the tested platform/version matrix
-will be established by the build-foundation PR. The repository does not yet have
-a tested installation recipe for that future toolchain. Installing these tools
-alone does not create the missing build targets.
-
-## Get the repository
+## Checkout and build
 
 ```sh
 git clone https://github.com/toddmaustin/REINS.git
 cd REINS
 ```
 
-When reviewing a PR, check out its branch before following its build instructions.
-Run the commands below from the repository root. The baseline checker also locates
-the repository from its own script path, so it can be called from another working
-directory using an absolute path.
-
-## Validate the current repository
-
-### 1. Check specification and fixture pins
-
-```sh
-python3 tools/check_baseline.py
-```
-
-This checks SHA-256 hashes for ten source/review files against
-[implementation_baseline.json](docs/implementation_baseline.json). It exits with
-status 0 on success and a nonzero status on a missing or changed source. It does
-not write files, access the network, or update pins. It also enforces the exact
-fixed profile declaration, required source roles, and the signed fixture's OTP
-profile header. Unsupported N/Q combinations, profiles, and size/pass declarations
-are rejected even when source hashes match. This is development-time validation;
-it is not the future runtime RTL configuration checker.
-
-Expected success message:
-
-```text
-PASS: 10 pinned baseline files match SHA-256.
-PASS: fixed 3/2 implementation declaration and fixture OTP profile.
-```
-
-### 2. Run the existing algorithm, fixture, and abstract-model checks
-
-```sh
-python3 tools/check_baseline.py --validate-fixtures
-```
-
-The wrapper first checks the pins, copies the review package into a temporary
-directory, and runs the supplied validator there. It preserves the validator's
-failure status, keeps its assertions enabled even when `PYTHONOPTIMIZE` is set,
-removes temporary outputs, and checks that the original baseline still matches.
-
-The current validator checks:
-
-- All 28 selected official NIST ACVP SHA2-128s cases against expected results;
-  four cases are valid signatures and the remainder are expected rejections.
-- Both signed REINS batch replies in two verification passes, with wrong-key,
-  label, context, proof, signature-region, and pending-context mutations.
-- Abstract acceptance predicates, deadline equality, hold/stale conditions,
-  duplicate voting, and repeated forced lane conditions.
-- Merkle construction, reply/chunk/traffic arithmetic, and withdrawal-bound
-  arithmetic.
-- Abstract receive/seal, cold-only entropy-hold clearing, and rolling admission.
-
-On success, the final line is:
-
-```text
-PASS: review fixture validation; checkout baseline unchanged.
-```
-
-These are software/review checks. They do not execute SystemVerilog, prove the
-future C++ reference simulator, inject faults into RTL, or qualify physical
-entropy, clocks, memory, guards, or final isolation. The validator's arithmetic
-for other N/Q combinations does not expand the implementation's fixed 3/2 scope.
-
-Do not invoke `docs/validation/validate.py` directly for routine testing: it
-rewrites the validation record, vector summary, and Markdown specification. Use
-the wrapper to preserve the pinned source files.
-
-### 3. Run fixed-scope and source-check regression tests
-
-```sh
-python3 -B -m unittest discover -s tools/tests -v
-```
-
-These standard-library tests cover every encoded 8-bit N/Q pair, schema/wire/profile
-mutations, malformed OTP lengths and reserved bytes, unsupported signature modes
-and contexts, and changes to the memory/proof/pass declarations. They also verify
-that matching hashes cannot conceal an unsupported declaration, a repinned
-unsupported OTP header, omission/reclassification of the normative PDF, or another
-artifact claiming normative authority. Failure tests use disposable copies.
-
-`-B` prevents Python bytecode caches in the checkout. These tests validate the
-development contract and source tooling; they do not exercise RTL provisioning,
-verify the rest of the OTP policy, or execute the future C++ simulator.
-
-### 4. Confirm the checkout remains unchanged
-
-```sh
-git status --short
-```
-
-Running the checks should introduce no changes. Pre-existing local edits remain
-your own. Baseline mismatches must be investigated before updating any hashes;
-see the [source-change procedure](docs/IMPLEMENTATION_SCOPE.md).
-
-## Building the future C++/SystemVerilog implementation
-
-**Planned interface — these commands are not available in the current tree.**
-The build-foundation PR will introduce `CMakeLists.txt`, `CMakePresets.json`,
-dependency setup, and the first executable simulation test. Later PRs add the
-reference simulator and hardware components in dependency order.
-
-The intended configure/build sequence is:
+Check out the PR branch when reviewing changes before merge. From the repo root,
+with the tools above on your path:
 
 ```sh
 cmake --preset dev
 cmake --build --preset dev
 ```
 
-The build should pin its dependencies, keep generated files outside source
-directories, and support offline regression after setup. There is no `pip install`,
-`make`, or standalone Verilator command for building the complete design today.
+For a custom OpenSSL installation, replace the configure command with:
 
-## Running the future RTL/C++ tests
+```sh
+cmake --preset dev -DOPENSSL_ROOT_DIR=/your/openssl-3.5-prefix
+```
 
-**Planned interface — presets arrive with their implementation milestones.**
+Generated objects, derived binary fixtures and dependencies stay in `build/dev/`.
+First test-enabled configuration downloads pinned doctest v2.4.12 with HTTPS TLS
+and SHA-256 verification. See [dependency provenance/licenses](third_party/README.md).
+After the first configuration, offline reconfiguration can reuse that cache:
 
-After configuring and building the development preset:
+```sh
+cmake --preset dev -DFETCHCONTENT_FULLY_DISCONNECTED=ON
+cmake --build --preset dev
+```
+
+Do not select disconnected mode before the dependency exists. Built tests and
+source/fixture checks run offline.
+
+## Run tests
 
 ```sh
 ctest --preset quick
 ctest --preset full
 ```
 
-| Suite | Planned contents |
-|---|---|
-| `quick` | Source/fixture checks, component tests, fast controller tests, then a small real-crypto smoke suite |
-| `full` | Complete deterministic directed/component/integration corpus, including selected complete RTL scenarios |
-| `fuzz-smoke` | Bounded repeatable parser and stateful fuzz campaigns with saved seeds/corpora |
-| `fault` | Declared controller, verifier, datapath and guard injection campaigns |
-| `nightly` | Longer campaigns and selected production-timing runs |
+Both currently select the same four CTest entries; future components will extend
+the labels. They include 13 C++ doctest cases, all 28 selected NIST outcomes, both
+supplied signed RENEW fixtures, fresh host-signed ARM replies for all three slots
+at depths 0/20, scheduling/cancellation/immutability/error scenarios, 12 Python
+baseline regressions and CLI-report checks. Failure returns a nonzero status.
+Presets also fail on an empty CTest selection.
 
-Fuzzing will have a separate Clang/sanitizer configuration:
+For detailed C++ output or an existing case filter:
 
 ```sh
-cmake --preset fuzz
-cmake --build --preset fuzz
-ctest --preset fuzz-smoke
+build/dev/reins-sim-tests --success
+build/dev/reins-sim-tests --test-case="*cancellation*"
 ```
 
-The build-foundation instructions will specify which configuration builds the
-instrumented targets before `ctest --preset fault` and `ctest --preset nightly`
-are introduced. Empty or unavailable test selections must not be reported as
-successful validation.
+### Sanitizers
 
-### Simulation modes and expected runtime
+```sh
+cmake --preset sanitize
+cmake --build --preset sanitize
+ctest --preset sanitize
+```
 
-Signing will execute in host software representing the authorities. Verilator
-simulates the device's verification hardware. Most control fuzzing will use a
-software-backed verifier while keeping final context/deadline/vote checks in RTL.
-Selected vectors and integration scenarios will exercise the complete RTL crypto
-path; datapath fault claims require that real path.
+This instruments project C++ with ASan/UBSan. System OpenSSL is uninstrumented.
+The separate sanitizer build may download doctest on first configure. To reuse a
+verified source, configure with
+`-DFETCHCONTENT_SOURCE_DIR_DOCTEST=/absolute/path/to/build/dev/_deps/doctest-src`.
 
-The specification estimates about 524,800 SHA-core cycles per complete two-pass
-vote at 64 cycles/compression, before other overhead. This is not a measured
-simulation runtime. Each future PR should report simulation mode, cycle count,
-wall time, executed checks and limitations. Quick tests can use explicit shorter
-legal timing profiles; selected regressions must exercise production timings.
+### Source/fixture checks without a C++ build
 
-Waveform generation should be opt-in, with an FST debug configuration and bounded
-trace windows. Each fuzz/fault failure should save a replay command and minimized
-inputs. Exact executable names and replay flags will be documented when added.
+Only Python 3.10+ is required:
 
-## Repository layout
+```sh
+python3 tools/check_baseline.py
+python3 tools/check_baseline.py --validate-fixtures
+python3 -B -m unittest discover -s tools/tests -v
+```
+
+These enforce fixed profile/source roles/SHA-256 pins and the supplied OTP profile
+header; they do not authorize a device or validate every OTP policy field. The
+review validator runs on temporary copies because it rewrites records and Markdown
+when invoked directly. Assertions stay enabled even with `PYTHONOPTIMIZE` set.
+The original baseline files remain unchanged.
+
+## Reference simulation and reports
+
+```sh
+build/dev/reins-sim --fixtures build/dev/fixtures --mode reference \
+  --first-pass-ticks 7 --second-pass-ticks 11 \
+  --output build/dev/reference-report.json
+```
+
+This replays the supplied **RENEW round-3** replies for slots 0 and 1 and prints
+JSON, optionally saving the same JSON. Completion ticks are `[7, 18, 25, 36]`, with
+four independent verification calls. Host times vary. Exit 1 indicates invalid
+cryptographic evidence; exit 2 indicates invalid options or an unavailable mode.
+The CLI never grants a vote, lease or permit.
+
+Reports identify mode, scenario, actual OpenSSL backend, host wall/verification
+time and simulated ticks. Configured delays are not hardware cycles. Unmeasured
+RTL cycle count/rate and peak memory are `null`; `authorization_checked` is false.
+Do not interpret host timings as RTL performance or physical safety evidence.
+
+Host signing executes once per approved test root. Verification executes once per
+pass at scheduled events, not every idle tick. Cancellation drops work by default;
+a stale-testing policy can return old tags for future RTL generation-gate tests.
+See [simulation APIs and evidence limits](docs/SIMULATION_STRATEGY.md).
+
+Software SHA acceleration, the fast-control Verilator wrapper, full-RTL mode,
+FST debugging, fuzz presets and RTL fault campaigns remain pending their hardware
+and measurement prerequisites. Requesting unavailable modes fails.
+
+## Layout
 
 ```text
-README.md
-LICENSE
-docs/
-  IMPLEMENTATION_SCOPE.md          Fixed scope and discrepancy/change procedure
-  IMPLEMENTATION_PLAN.md           Development order and completion criteria
-  implementation_baseline.json    Profile declaration and SHA-256 source pins
-  REINS-Hardware-Specification-v0.3.pdf
-  REINS_Hardware_Specification.md
-  REINS_Hardware_Specification.docx
-  REINS_design_review_notes.md
-  figures/                        Supporting diagrams
-  validation/                     Supplied public fixtures and review verifier
-tools/
-  check_baseline.py               Read-only source and isolated fixture checks
-  tests/                          Fixed-profile and source-check regressions
+CMakeLists.txt / CMakePresets.json  C++ build and CTest/sanitizer entry points
+sim/include/reins/                 Crypto/event/fixture interfaces
+sim/src/                          Host crypto, event service and CLI
+sim/tests/                        Directed C++ doctest cases
+tools/                            Baseline checks, derived fixtures and CLI tests
+tools/tests/                      Fixed-profile/source-check regressions
+third_party/README.md             Dependency versions, hashes, sources and licenses
+docs/IMPLEMENTATION_SCOPE.md       Fixed 3/2 contract and source-change procedure
+docs/IMPLEMENTATION_PLAN.md        Development order and completion criteria
+docs/SIMULATION_STRATEGY.md        APIs, modes, evidence and future RTL boundary
+docs/implementation_baseline.json  Source/profile pins
+docs/validation/                  Public fixtures and Python review model
 ```
 
-The development plan introduces `rtl/`, `sim/`, build presets, and further tools
-when their implementation PRs land. Keep baseline fixtures intact; new ARM,
-slot-2, alternate-quorum and successive-round fixtures will carry their own
-generation metadata. All supplied test keys and signatures are public test
-material and must never be provisioned in deployed equipment.
+Keep baseline fixtures intact; generated binary inputs belong in the build tree.
+Test keys and signatures must never be provisioned in equipment.
 
 ## Troubleshooting
 
 | Symptom | Action |
 |---|---|
-| `python3` is not found or is older than 3.10 | Install/select Python 3.10+; on Windows try `py -3 --version` |
-| Checker script is missing | Confirm you checked out the branch containing this change |
-| Missing baseline file | Confirm the checkout includes the full review package and inspect local deletions |
-| SHA-256 mismatch | Inspect the named file's diff and its provenance; do not regenerate pins to conceal a mismatch |
-| Validator fails | Preserve its output; the wrapper returns failure and leaves source files unchanged |
-| CMake cannot find a project or preset | The build foundation has not landed; use the current Python validation commands |
-| A passing test appears to prove hardware safety | Check its mode and evidence limits; software fixture checks establish software results only |
-
-## License
+| Suitable OpenSSL not found | Install 3.5+ development headers/library; select `OPENSSL_ROOT_DIR` |
+| Provider/signature initialization fails | Check actual runtime library and SLH-DSA default-provider support |
+| doctest download fails | Check network/trust settings; retain TLS/hash verification; reuse a verified cache when available |
+| Baseline pin mismatch | Inspect the named source and provenance before changing pins |
+| Missing fixtures/executables | Configure and build before running CTest/CLI |
+| Full-RTL or fast-control unavailable | Components are pending; reference results do not substitute for them |
+| Test fails | Preserve output, mode and tool versions; baseline sources stay unchanged |
 
 The repository uses the [PolyForm Noncommercial License 1.0.0](LICENSE).

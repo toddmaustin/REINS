@@ -14,6 +14,12 @@ checks in the [README](../README.md). This completes the scope/source-of-truth
 preparation; the PR 01 build foundation and later implementation milestones remain
 open.
 
+Section 2 now has [executable software infrastructure](SIMULATION_STRATEGY.md):
+C++ host signing/verification, immutable asynchronous verification jobs, event
+latency/cancellation, reference-mode reporting, and local build/test presets.
+RTL modes, controller authorization, real-cycle/FST/SPI benchmarks, and the full
+PR 02 behavioral model remain with their dependent development milestones.
+
 ## 1. Fixed scope and source of truth
 
 - Target **N=3, Q=2**. Validate and reject other provisioned configurations. Broader
