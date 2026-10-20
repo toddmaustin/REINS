@@ -1,0 +1,144 @@
+{
+  "protocol": 2,
+  "signature_profile": "SLH-DSA-SHA2-128s",
+  "configuration_digest": "a5930a66da931b6dfc3b6a77f9de7dd7b0e5166a256d442eeb705c65c16269c1",
+  "request": "5245494e02030000101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f00000000000000000000000000000000000000000000000000000000000000000000000000000003808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f00000000000000000000000000000000",
+  "nonce": "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f",
+  "slot0_leaf": "b6ef8ac89a3b0dc3a2029585b3341ecaef384fe2dc4c3086e81e326f264da0bf",
+  "slot0_root": "f466482e198360bf28f88dd9514c8f062f732adf361f0f62cefbf7147849893c",
+  "traffic": {
+    "0": {
+      "total_reply": 7860,
+      "chunks": 123,
+      "last_count": 52,
+      "spi_bytes_three": 32586
+    },
+    "1": {
+      "total_reply": 7892,
+      "chunks": 124,
+      "last_count": 20,
+      "spi_bytes_three": 32847
+    },
+    "2": {
+      "total_reply": 7924,
+      "chunks": 124,
+      "last_count": 52,
+      "spi_bytes_three": 32847
+    },
+    "3": {
+      "total_reply": 7956,
+      "chunks": 125,
+      "last_count": 20,
+      "spi_bytes_three": 33108
+    },
+    "4": {
+      "total_reply": 7988,
+      "chunks": 125,
+      "last_count": 52,
+      "spi_bytes_three": 33108
+    },
+    "5": {
+      "total_reply": 8020,
+      "chunks": 126,
+      "last_count": 20,
+      "spi_bytes_three": 33369
+    },
+    "6": {
+      "total_reply": 8052,
+      "chunks": 126,
+      "last_count": 52,
+      "spi_bytes_three": 33369
+    },
+    "7": {
+      "total_reply": 8084,
+      "chunks": 127,
+      "last_count": 20,
+      "spi_bytes_three": 33630
+    },
+    "8": {
+      "total_reply": 8116,
+      "chunks": 127,
+      "last_count": 52,
+      "spi_bytes_three": 33630
+    },
+    "9": {
+      "total_reply": 8148,
+      "chunks": 128,
+      "last_count": 20,
+      "spi_bytes_three": 33891
+    },
+    "10": {
+      "total_reply": 8180,
+      "chunks": 128,
+      "last_count": 52,
+      "spi_bytes_three": 33891
+    },
+    "11": {
+      "total_reply": 8212,
+      "chunks": 129,
+      "last_count": 20,
+      "spi_bytes_three": 34152
+    },
+    "12": {
+      "total_reply": 8244,
+      "chunks": 129,
+      "last_count": 52,
+      "spi_bytes_three": 34152
+    },
+    "13": {
+      "total_reply": 8276,
+      "chunks": 130,
+      "last_count": 20,
+      "spi_bytes_three": 34413
+    },
+    "14": {
+      "total_reply": 8308,
+      "chunks": 130,
+      "last_count": 52,
+      "spi_bytes_three": 34413
+    },
+    "15": {
+      "total_reply": 8340,
+      "chunks": 131,
+      "last_count": 20,
+      "spi_bytes_three": 34674
+    },
+    "16": {
+      "total_reply": 8372,
+      "chunks": 131,
+      "last_count": 52,
+      "spi_bytes_three": 34674
+    },
+    "17": {
+      "total_reply": 8404,
+      "chunks": 132,
+      "last_count": 20,
+      "spi_bytes_three": 34935
+    },
+    "18": {
+      "total_reply": 8436,
+      "chunks": 132,
+      "last_count": 52,
+      "spi_bytes_three": 34935
+    },
+    "19": {
+      "total_reply": 8468,
+      "chunks": 133,
+      "last_count": 20,
+      "spi_bytes_three": 35196
+    },
+    "20": {
+      "total_reply": 8500,
+      "chunks": 133,
+      "last_count": 52,
+      "spi_bytes_three": 35196
+    }
+  },
+  "results": [
+    "All 28 selected official NIST ACVP SHA2-128s cases matched expected outcomes (4 valid), with R/FORS/seven-layer mutations rejected. Internal/nonempty-context algorithm tests remain separate from the production pure/empty-context interface.",
+    "Two regenerated body-free REINS replies verified in two passes and form a distinct 2-of-3 quorum. Wrong signature layers, path/index, key, label, context and protected pending nonce/slot/round/configuration were rejected. Window/expiry equality, hold, stale generation, malformed sizes and duplicate voting were checked.",
+    "Abstract acceptance gates reject one forced comparator/accept code or late/stale/count/completion/hold predicate in either lane across 100 consecutive rounds. This does not inject faults into a SHA datapath, RTL sequencer, shared hand-off, physical register or join circuit; those proofs remain required.",
+    "Merkle padding/paths for 1,2,3,5,17 leaves, all depth-0-to-20 body-free sizes/chunks/traffic, zero OTP depth bytes, 8,200 two-pass budget, 375.00300125 s withdrawal bound, 625 us guard interval, OTP chunk indices and all 36 N/Q cases passed.",
+    "Abstract zero-based receive/seal, cold-reset-only entropy-hold clearing, and four-candidate rolling admission checks passed, including duplicate retry and claimed-restart cap bypass rejection. Authority durability/atomicity and physical reset/sealing were not tested."
+  ]
+}
