@@ -1,0 +1,76 @@
+{
+  "manifest_version": 1,
+  "repository": "toddmaustin/REINS",
+  "baseline_commit": "6e82bff6521b153234529f6a58928b4c0a1435a7",
+  "implementation_profile": {
+    "authority_count": 3,
+    "quorum": 2,
+    "wire_version": 2,
+    "spi_version": 2,
+    "otp_schema_version": 2,
+    "authority_profile": 2,
+    "signature_algorithm": "SLH-DSA-SHA2-128s",
+    "signature_mode": "pure",
+    "signature_context": "",
+    "public_key_bytes": 32,
+    "request_bytes": 128,
+    "signature_bytes": 7856,
+    "reply_base_bytes": 7860,
+    "merkle_max_depth": 20,
+    "max_reply_bytes": 8500,
+    "rx_sram_bytes": 9216,
+    "verification_passes": 2
+  },
+  "artifacts": [
+    {
+      "path": "docs/REINS-Hardware-Specification-v0.3.pdf",
+      "role": "normative_specification",
+      "sha256": "1cee4a97375af4934a036204c79ceecdb97709a6fdac6f605a227f8b9d72f9a4"
+    },
+    {
+      "path": "docs/REINS_Hardware_Specification.md",
+      "role": "readable_specification",
+      "sha256": "a06b704d5ecdc15d524746c855c472a50c8010d2863ef50600d6762c05b0292d"
+    },
+    {
+      "path": "docs/REINS_Hardware_Specification.docx",
+      "role": "editable_specification",
+      "sha256": "042dd2faae4bfdead9871e88d1c7c55540feee379bc3f123d50e4fdafcc8b1f1"
+    },
+    {
+      "path": "docs/REINS_design_review_notes.md",
+      "role": "design_review",
+      "sha256": "7269f0227b72762e57ea51cb0c2226d332a8975fbe43de0a2fc704fa01ef790c"
+    },
+    {
+      "path": "docs/validation/REINS_validation_vectors.json",
+      "role": "reins_encoding_vectors",
+      "sha256": "95da6f60e0f4791db60544d451e2b9f372e626ddde209b4983f7adb38f63eedd"
+    },
+    {
+      "path": "docs/validation/REINS_signed_batch_fixtures.json",
+      "role": "signed_reins_fixtures",
+      "sha256": "ffed5b8c6670b2a871fa13f6f5e84f9c9b3b24c86ea5d21fc03db2413d42b583"
+    },
+    {
+      "path": "docs/validation/SLH_DSA_ACVP_vectors.json",
+      "role": "nist_algorithm_vectors",
+      "sha256": "9421daffd9aabbe3f7c65d2888554012eb752060b49f878073720209b05b13c4"
+    },
+    {
+      "path": "docs/validation/slh_verify.py",
+      "role": "reference_verifier",
+      "sha256": "b18bb9208299628620cb4a5c905e5914e3e64d849e9b2241b972b414052dcca1"
+    },
+    {
+      "path": "docs/validation/validate.py",
+      "role": "reference_validator",
+      "sha256": "5fe851782fe1dd4710306c76dce97971501e1e27808175473b458d0f0e74f187"
+    },
+    {
+      "path": "docs/validation/REINS_validation_record.md",
+      "role": "validation_record",
+      "sha256": "cedb89716c40b81f41f0c2a3384ec53a8f1423495a866a64b2b24b7cf87701ae"
+    }
+  ]
+}
