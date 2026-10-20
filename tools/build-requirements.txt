@@ -1,3 +1,0 @@
-# Optional way to install the tested build drivers in a Python virtual environment.
-cmake==3.31.6
-ninja==1.11.1.4

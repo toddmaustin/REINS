@@ -1,4 +1,4 @@
-#include "reins/simulation.hpp"
+#include "reins/simulation.h"
 
 #include <chrono>
 #include <limits>

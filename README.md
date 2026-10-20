@@ -1,225 +1,241 @@
 # REINS
 
-**Revocable Execution through Independent Networked Supervision**
+REINS stands for **Revocable Execution through Independent Networked Supervision**.
+The intended hardware lets protected computation run while **two of three
+independent authorities** approve a current lease. If two authorities stop approving
+renewals, the lease expires and local hardware stops execution. There is no remote
+"kill now" message: stopping depends on a bounded local timeout.
 
-REINS permits protected execution while a current lease has approval from two of
-three independent authorities. Withholding new grants at two authorities prevents
-renewal even if the third keeps signing; local enforcement stops execution at the
-committed lease's expiry. The v0.3 protocol has no immediate remote KILL command.
+This repository is building toward SystemVerilog hardware, a C++ reference model,
+and Verilator simulation. **Today it contains the software signing/verification
+and scheduling tools, not an RTL kill switch or a complete device simulator.**
+The software tests are useful evidence about these components; they do not prove
+physical clock, randomness, isolation or fault-resistance properties.
 
-Scope is fixed at **N=3, Q=2**, **SLH-DSA-SHA2-128s, pure mode, empty context**, and
-wire/SPI/schema/profile 2. The target is SystemVerilog RTL, an independent C++ model
-and Verilator directed/fuzz/fault tests.
+## Start here
 
-## Current status and sources
+After checking out this repository (or the PR branch you are reviewing):
 
-Available now: pinned specification/fixture checks, a C++ host signer/verifier,
-an event-driven two-pass verification service with immutable inputs, latency,
-cancellation and stale-result testing, CMake/Ninja builds, directed tests,
-sanitizer configuration, and JSON reference-mode reports.
+```sh
+make build
+make quick-tests
+make tests
+```
 
-There is **no RTL or complete device/lease simulator yet**. A verified software
-signature does not authorize execution. Controller, SPI, guards, full behavioral
-model, real-RTL tests, FST traces and fault campaigns remain later milestones.
-Unsupported simulation modes fail instead of falling back to software.
+Each test command prints the directory containing its saved results. You do not
+need to add `tee` or redirect output. A failed build or test makes the command fail
+and keeps the logs for inspection.
 
-Read the [normative v0.3 PDF](docs/REINS-Hardware-Specification-v0.3.pdf),
-[fixed scope/source rules](docs/IMPLEMENTATION_SCOPE.md),
-[development plan](docs/IMPLEMENTATION_PLAN.md), and
-[executable simulation strategy](docs/SIMULATION_STRATEGY.md).
-The [Markdown companion](docs/REINS_Hardware_Specification.md) and
-[review notes](docs/REINS_design_review_notes.md) assist implementation.
+## What do I need installed?
 
-## Prerequisites
-
-| Tool | Requirement |
+| Tool | Why it is needed |
 |---|---|
-| Git | Checkout and PR branches |
-| Python | 3.10+, standard library for source/fixture checks |
-| C++ compiler | C++20; tested with GCC 14.2 |
-| OpenSSL development library | **3.5.0+**, default provider with `SLH-DSA-SHA2-128s`; tested with 3.5.7 |
-| CMake | 3.25+; tested with 3.31.6 |
-| Ninja | Tested with 1.11.1 |
+| GNU Make 4+ | Builds the programs and provides all test/clean targets |
+| A C++20 compiler | Builds the simulator and C++ tests; GCC 14.2 was tested |
+| Python 3.10+ | Prepares example data and runs checks/report collection; standard library only |
+| pkg-config | Finds the installed OpenSSL headers and library |
+| OpenSSL **3.5+ development package** | Provides SHA-256 and SLH-DSA-SHA2-128s signing/verification |
 
-Verilator is not required for the current software mode. It will be pinned/tested
-when the first RTL component is introduced. No credentials or private signing
-keys are needed. Test authorities generate ephemeral keys in host memory.
-
-The tested host is Debian 13, x86-64, GCC 14.2, OpenSSL 3.5.7, Python 3.12.14,
-CMake 3.31.6 and Ninja 1.11.1. Linux/WSL2 is the initial development path; macOS
-portability has not yet been validated here.
-
-### Install/select tools
-
-Install your system's C++ compiler, Python, and **OpenSSL 3.5+ development package**.
-You need headers and `libcrypto`, not just the `openssl` command. Older stock
-OpenSSL 3.0/3.4 packages are insufficient. Use a supported newer package or the
-official OpenSSL release/build instructions.
-
-On macOS, Homebrew provides candidate tools:
+OpenSSL's development package includes headers and `libcrypto`, not just the
+`openssl` executable. Many older systems supply OpenSSL 3.0 or 3.4, which do not
+provide the required signature algorithm. Check what pkg-config finds:
 
 ```sh
-brew install cmake ninja openssl@3 python
+pkg-config --modversion libcrypto
 ```
 
-Select its library with `-DOPENSSL_ROOT_DIR="$(brew --prefix openssl@3)"` during
-configuration if CMake otherwise chooses an older library. A custom Linux prefix
-is selected the same way. CMake must find matching 3.5+ headers and libraries.
-`openssl version` and `openssl list -signature-algorithms` inspect the command-line
-provider; simulation reports identify the actual linked runtime library.
-
-If system CMake/Ninja are missing or too old, install the tested driver pins:
+For a custom OpenSSL installation, point `PKG_CONFIG_PATH` at its pkg-config files
+before running Make. For example, if installed under `/opt/openssl-3.5`:
 
 ```sh
-python3 -m venv .venv
-. .venv/bin/activate
-python -m pip install -r tools/build-requirements.txt
+export PKG_CONFIG_PATH=/opt/openssl-3.5/lib/pkgconfig
+make build
 ```
 
-This optional environment supplies build drivers, not OpenSSL or the C++ compiler.
+Some installations use `lib64/pkgconfig`; use the directory that actually contains
+`libcrypto.pc`. Make checks the version and links against that installation.
 
-## Checkout and build
+On macOS, a candidate setup is:
 
 ```sh
-git clone https://github.com/toddmaustin/REINS.git
-cd REINS
+brew install make pkg-config openssl@3 python
+export PKG_CONFIG_PATH="$(brew --prefix openssl@3)/lib/pkgconfig"
+gmake build
+gmake tests
 ```
 
-Check out the PR branch when reviewing changes before merge. From the repo root,
-with the tools above on your path:
+Use `gmake` when your system's `make` is an older version. Linux/WSL2 is the tested
+path: Debian 13, GCC 14.2, GNU Make 4.4.1, Python 3.12.14 and OpenSSL 3.5.7.
+macOS has not yet been validated here. Verilator will become a prerequisite when
+RTL is introduced; it is not needed for the current software tests.
+
+The first build downloads a small, pinned C++ testing dependency called **doctest**.
+The downloader verifies HTTPS certificates and both archive and file SHA-256
+hashes. Downloads are cached in `.deps/`; subsequent builds/tests work offline.
+No Python packages or private signing keys are needed.
+See [dependency versions and licenses](third_party/README.md).
+
+## Build and test targets
+
+| Command | What it does |
+|---|---|
+| `make build` | Builds the C++ CLI and test program and prepares their input data |
+| `make quick-tests` | Builds as needed and runs fast checks, skipping fresh key generation/signing |
+| `make tests` | Builds as needed and runs all current software and infrastructure checks |
+| `make baseline-tests` | Runs source/fixture/tool checks using only Python; no C++ build or OpenSSL package needed |
+| `make sanitize-tests` | Builds/runs the full suite with C++ address/undefined-behavior sanitizers |
+| `make clean-results` | Deletes all retained test results, leaving builds and dependencies intact |
+| `make clean` | Deletes builds and all test results; keeps the downloaded dependency cache |
+| `make clean-deps` | Deletes only the dependency cache; the next build needs network access |
+| `make help` | Prints the target list |
+
+Builds are incremental: unchanged sources are not recompiled. To build in parallel:
 
 ```sh
-cmake --preset dev
-cmake --build --preset dev
+make -j4 build
 ```
 
-For a custom OpenSSL installation, replace the configure command with:
+Test targets build with four jobs by default; change that with `JOBS`:
 
 ```sh
-cmake --preset dev -DOPENSSL_ROOT_DIR=/your/openssl-3.5-prefix
+make JOBS=8 tests
 ```
 
-Generated objects, derived binary fixtures and dependencies stay in `build/dev/`.
-First test-enabled configuration downloads pinned doctest v2.4.12 with HTTPS TLS
-and SHA-256 verification. See [dependency provenance/licenses](third_party/README.md).
-After the first configuration, offline reconfiguration can reuse that cache:
+To focus the C++ portion on an existing test name while still collecting results:
 
 ```sh
-cmake --preset dev -DFETCHCONTENT_FULLY_DISCONNECTED=ON
-cmake --build --preset dev
+make tests TEST_FILTER='*cancellation*'
 ```
 
-Do not select disconnected mode before the dependency exists. Built tests and
-source/fixture checks run offline.
+Other groups still run. A filter that selects zero C++ tests fails instead of
+reporting success. Use the Make test targets so output is always retained.
 
-## Run tests
+Sanitizers check this project's C++ for memory errors and undefined behavior. They
+do not instrument the installed OpenSSL library or simulate physical faults.
+Release binaries go in `build/release/`; sanitizer binaries use `build/sanitize/`.
 
-```sh
-ctest --preset quick
-ctest --preset full
-```
+## What are fixtures?
 
-Both currently select the same four CTest entries; future components will extend
-the labels. They include 13 C++ doctest cases, all 28 selected NIST outcomes, both
-supplied signed RENEW fixtures, fresh host-signed ARM replies for all three slots
-at depths 0/20, scheduling/cancellation/immutability/error scenarios, 12 Python
-baseline regressions and CLI-report checks. Failure returns a nonzero status.
-Presets also fail on an empty CTest selection.
+A **fixture** is a reusable example input with a known expected answer. Here,
+fixtures include a public configuration, requests, public keys, signed authority
+replies, and the expected verification results. They let us check the same behavior
+each time without needing real hardware or a live authority service.
 
-For detailed C++ output or an existing case filter:
+For example, a test can feed a known valid signed reply to the verifier and expect
+success. It can then change a signature byte and expect rejection. Rejection in
+that second case means the test passed: the verifier caught the tampering.
 
-```sh
-build/dev/reins-sim-tests --success
-build/dev/reins-sim-tests --test-case="*cancellation*"
-```
+The supplied fixtures are readable JSON under `docs/validation/`. The build derives
+binary copies in `build/<configuration>/fixtures/` for the C++ tests. It leaves the
+original files unchanged and checks their hashes against a pinned manifest.
 
-### Sanitizers
+There are two important sets:
 
-```sh
-cmake --preset sanitize
-cmake --build --preset sanitize
-ctest --preset sanitize
-```
+- **NIST algorithm cases:** 28 selected official signature-verification examples.
+  Four should verify and 24 should be rejected. These check the cryptographic
+  implementation against independent answers.
+- **REINS protocol examples:** two signed renewal replies for round 3, slots 0 and
+  1, with known request/configuration/Merkle values. These check REINS framing and
+  binding, not just the signature algorithm in isolation.
 
-This instruments project C++ with ASan/UBSan. System OpenSSL is uninstrumented.
-The separate sanitizer build may download doctest on first configure. To reuse a
-verified source, configure with
-`-DFETCHCONTENT_SOURCE_DIR_DOCTEST=/absolute/path/to/build/dev/_deps/doctest-src`.
+The C++ tests also generate temporary host authority keys and sign fresh ARM
+(startup) replies for all three slots, at Merkle proof depths 0 and 20. These check
+signing and verification together. The keys are test material, never deployment
+keys. Existing renewal signatures cannot be reused for a different request.
 
-### Source/fixture checks without a C++ build
+A **Merkle proof** shows that a particular grant belongs to an authority's signed
+batch. A **nonce** is a per-round challenge intended to be freshly random, binding
+approval to that round. The current deterministic test data does not establish
+physical randomness.
 
-Only Python 3.10+ is required:
+## What are the tests checking?
 
-```sh
-python3 tools/check_baseline.py
-python3 tools/check_baseline.py --validate-fixtures
-python3 -B -m unittest discover -s tools/tests -v
-```
+| Saved group | Questions it checks |
+|---|---|
+| `build` | Can the selected compiler/OpenSSL build the actual programs and prepare verified inputs? |
+| `sim-directed` | Do known signatures verify, tampered data fail, configuration/request/key bindings hold, and simulated jobs obey timing, cancellation and immutable-input rules? |
+| `baseline` | Are the normative source files unchanged, the implementation fixed at 3/2, and the fixture OTP header supported? The full suite also runs the original Python review validation. |
+| `tool-regressions` | Do unsupported profiles and source changes fail? In the full suite, do logging, failure status, timeouts, empty selection, retention and clean behavior work? |
+| `sim-report` | Does the actual CLI produce correct JSON and deterministic event times, reject invalid inputs/modes, and return the right exit status? |
 
-These enforce fixed profile/source roles/SHA-256 pins and the supplied OTP profile
-header; they do not authorize a device or validate every OTP policy field. The
-review validator runs on temporary copies because it rewrites records and Markdown
-when invoked directly. Assertions stay enabled even with `PYTHONOPTIMIZE` set.
-The original baseline files remain unchanged.
+Currently the full suite contains 13 C++ cases (164 assertions) and 20 Python tool
+regressions, in addition to review/CLI checks. The quick suite runs 12 C++ cases
+and 12 source/profile regressions. It still checks all 28 NIST outcomes, but skips
+the slower fresh-key signing case and the second Python cryptographic cross-check.
+Counts will grow as implementation progresses; saved logs record what executed.
 
-## Reference simulation and reports
+These are **software tests**. Current results do not exercise an RTL controller,
+actual SPI wiring, physical permit guards, or a complete two-of-three lease system.
+The [implementation plan](docs/IMPLEMENTATION_PLAN.md) describes those next steps.
 
-```sh
-build/dev/reins-sim --fixtures build/dev/fixtures --mode reference \
-  --first-pass-ticks 7 --second-pass-ticks 11 \
-  --output build/dev/reference-report.json
-```
+## Where are my results?
 
-This replays the supplied **RENEW round-3** replies for slots 0 and 1 and prints
-JSON, optionally saving the same JSON. Completion ticks are `[7, 18, 25, 36]`, with
-four independent verification calls. Host times vary. Exit 1 indicates invalid
-cryptographic evidence; exit 2 indicates invalid options or an unavailable mode.
-The CLI never grants a vote, lease or permit.
-
-Reports identify mode, scenario, actual OpenSSL backend, host wall/verification
-time and simulated ticks. Configured delays are not hardware cycles. Unmeasured
-RTL cycle count/rate and peak memory are `null`; `authorization_checked` is false.
-Do not interpret host timings as RTL performance or physical safety evidence.
-
-Host signing executes once per approved test root. Verification executes once per
-pass at scheduled events, not every idle tick. Cancellation drops work by default;
-a stale-testing policy can return old tags for future RTL generation-gate tests.
-See [simulation APIs and evidence limits](docs/SIMULATION_STRATEGY.md).
-
-Software SHA acceleration, the fast-control Verilator wrapper, full-RTL mode,
-FST debugging, fuzz presets and RTL fault campaigns remain pending their hardware
-and measurement prerequisites. Requesting unavailable modes fails.
-
-## Layout
+Every test invocation creates a new, uniquely named directory under `test-results/`.
+The UTC timestamp, suite and configuration are included in the name. A later test
+run never replaces or automatically deletes earlier runs, including failed runs.
 
 ```text
-CMakeLists.txt / CMakePresets.json  C++ build and CTest/sanitizer entry points
-sim/include/reins/                 Crypto/event/fixture interfaces
-sim/src/                          Host crypto, event service and CLI
-sim/tests/                        Directed C++ doctest cases
-tools/                            Baseline checks, derived fixtures and CLI tests
-tools/tests/                      Fixed-profile/source-check regressions
-third_party/README.md             Dependency versions, hashes, sources and licenses
-docs/IMPLEMENTATION_SCOPE.md       Fixed 3/2 contract and source-change procedure
-docs/IMPLEMENTATION_PLAN.md        Development order and completion criteria
-docs/SIMULATION_STRATEGY.md        APIs, modes, evidence and future RTL boundary
-docs/implementation_baseline.json  Source/profile pins
-docs/validation/                  Public fixtures and Python review model
+test-results/<timestamp>-full-release-<unique>/
+  runner.log                        Overall progress and result paths
+  summary.json                      Commands, statuses, timing, exit codes and revision
+  junit.xml                         Machine-readable results, one entry per group
+  build/output.log                  Compiler/linker output, including build failures
+  build/build-config.json           Compiler and flags used for this build
+  sim-directed/output.log           C++ test names, assertions and results
+  baseline/output.log               Source/profile and review checks
+  baseline/review-package/          Retained generated review records (full suite)
+  tool-regressions/output.log        Python test results
+  tool-regressions/collector-regressions/
+  sim-report/output.log              CLI test summary
+  sim-report/cli-artifacts/          Each CLI stdout/stderr, commands and JSON reports
 ```
 
-Keep baseline fixtures intact; generated binary inputs belong in the build tree.
-Test keys and signatures must never be provisioned in equipment.
+Start with `runner.log` or `summary.json`, then inspect the failed group's
+`output.log`. Test stdout and stderr are both saved. The JSON records executed,
+failed, timed-out and unrun groups separately. The JUnit file includes group output;
+individual C++ assertions are in the detailed C++ log.
 
-## Troubleshooting
+Collector regression tests deliberately create failures/timeouts to verify the
+reporting system. Their nested reports under `collector-regressions/` are expected
+negative cases; the enclosing `tool-regressions` result says whether those checks
+passed. Scratch input copies may be removed, but retained logs and reports stay.
 
-| Symptom | Action |
-|---|---|
-| Suitable OpenSSL not found | Install 3.5+ development headers/library; select `OPENSSL_ROOT_DIR` |
-| Provider/signature initialization fails | Check actual runtime library and SLH-DSA default-provider support |
-| doctest download fails | Check network/trust settings; retain TLS/hash verification; reuse a verified cache when available |
-| Baseline pin mismatch | Inspect the named source and provenance before changing pins |
-| Missing fixtures/executables | Configure and build before running CTest/CLI |
-| Full-RTL or fast-control unavailable | Components are pending; reference results do not substitute for them |
-| Test fails | Preserve output, mode and tool versions; baseline sources stay unchanged |
+Results are local and ignored by Git; they are not automatically uploaded to GitHub.
+Delete them only when you choose `make clean-results` or `make clean`. The test
+runner never calls either target on your checkout. Clean-target tests use an
+isolated scratch directory.
 
-The repository uses the [PolyForm Noncommercial License 1.0.0](LICENSE).
+## Reading the simulation report
+
+The CLI test saves a `reference-report.json` under its `cli-artifacts/` directory.
+It reports four software verification calls for the two supplied renewal replies.
+With pass delays of 7 and 11 ticks, completion times are `[7, 18, 25, 36]`.
+
+**Simulated ticks are configured delays; host time is elapsed computer time.**
+Neither is a measured hardware cycle count. RTL metrics are `null` and
+`authorization_checked` is false because this program only verifies cryptographic
+evidence and schedules results; it grants no vote, lease or execution permit.
+See [simulation design and APIs](docs/SIMULATION_STRATEGY.md) for details.
+
+## Sources and layout
+
+The [v0.3 PDF](docs/REINS-Hardware-Specification-v0.3.pdf) is the normative source.
+The [fixed scope](docs/IMPLEMENTATION_SCOPE.md), [readable specification](docs/REINS_Hardware_Specification.md)
+and [review notes](docs/REINS_design_review_notes.md) explain its selected 3/2 profile.
+
+```text
+Makefile                   Build, test and clean entry points
+sim/include/reins/         C++ interfaces (.h)
+sim/src/                   Software implementation (.cc)
+sim/tests/                 Directed C++ tests (.cc)
+tools/                     Dependency/input preparation and retained test runner
+tools/tests/               Source/profile/collector regression tests
+docs/validation/           Original public fixtures and review code
+.deps/                     Download cache; generated, not committed
+build/                     Programs, objects and derived inputs; generated
+test-results/              Retained logs/reports; generated
+```
+
+Use `.cc` and `.h` for first-party C++ files. Further conventions are in
+[AGENTS.md](AGENTS.md). The repository uses the
+[PolyForm Noncommercial License 1.0.0](LICENSE).

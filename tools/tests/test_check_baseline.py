@@ -5,6 +5,7 @@ import copy
 import hashlib
 import io
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -110,6 +111,10 @@ class SourceBaselineTests(unittest.TestCase):
         self.directory = tempfile.TemporaryDirectory(prefix="reins-source-test-")
         self.addCleanup(self.directory.cleanup)
         self.root = Path(self.directory.name)
+        parent = Path(os.environ.get("REINS_TEST_OUTPUT_DIR", ROOT / "test-results")) / "source-regressions"
+        parent.mkdir(parents=True, exist_ok=True)
+        self.outputs = Path(tempfile.mkdtemp(prefix=self._testMethodName + "-", dir=parent))
+        self.capture_number = 0
         self.manifest = json.loads((ROOT / baseline.MANIFEST).read_text())
         for name in [str(baseline.MANIFEST), "tools/check_baseline.py"] + [
             artifact["path"] for artifact in self.manifest["artifacts"]
@@ -122,8 +127,13 @@ class SourceBaselineTests(unittest.TestCase):
         (self.root / baseline.MANIFEST).write_text(json.dumps(self.manifest))
 
     def check(self):
-        with redirect_stdout(io.StringIO()):
-            return baseline.check_baseline(self.root)
+        self.capture_number += 1
+        output = io.StringIO()
+        try:
+            with redirect_stdout(output):
+                return baseline.check_baseline(self.root)
+        finally:
+            (self.outputs / f"check-{self.capture_number}.stdout.log").write_text(output.getvalue())
 
     def test_unchanged_package_passes(self):
         self.assertEqual(len(self.check()), 10)
@@ -137,6 +147,8 @@ class SourceBaselineTests(unittest.TestCase):
             text=True,
             check=False,
         )
+        (self.outputs / "cli.stdout.log").write_text(result.stdout)
+        (self.outputs / "cli.stderr.log").write_text(result.stderr)
         self.assertEqual(result.returncode, 1)
         self.assertIn("unsupported implementation profile", result.stderr)
 

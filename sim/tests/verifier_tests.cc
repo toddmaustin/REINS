@@ -1,6 +1,6 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest/doctest.h>
-#include "reins/fixture_io.hpp"
+#include "reins/fixture_io.h"
 
 #include <algorithm>
 #include <limits>

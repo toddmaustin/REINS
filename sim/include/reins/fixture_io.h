@@ -1,6 +1,6 @@
 #pragma once
 
-#include "reins/simulation.hpp"
+#include "reins/simulation.h"
 #include <filesystem>
 #include <fstream>
 #include <stdexcept>
