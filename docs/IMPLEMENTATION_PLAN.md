@@ -16,7 +16,7 @@ open.
 
 Section 2 now has [executable software infrastructure](SIMULATION_STRATEGY.md):
 C++ host signing/verification, immutable asynchronous verification jobs, event
-latency/cancellation, reference-mode reporting, and local build/test presets.
+latency/cancellation, reference-mode reporting, and local Make build/test targets.
 RTL modes, controller authorization, real-cycle/FST/SPI benchmarks, and the full
 PR 02 behavioral model remain with their dependent development milestones.
 
@@ -121,7 +121,7 @@ sites, and requirement evidence grow with each component, starting in its own PR
 
 ### PR 01 — Build, fixtures, and verification foundation
 
-**Deliver:** C++20, CMake/Ninja, a pinned tested Verilator release, one C++ test
+**Deliver:** C++20, GNU Make, a pinned tested Verilator release, one C++ test
 framework, assertion-enabled simulation, optional FST tracing, and local developer
 instructions. Pin third-party sources and record licenses and vector provenance.
 Support ordinary regression offline after dependency setup.
@@ -135,7 +135,8 @@ Introduce test labels and performance-report fields before larger components.
 negative test; an assertion failure returns a nonzero runner status; empty test
 selection cannot be reported as a successful regression; existing fixture
 validation runs reproducibly without modifying tracked files. Run `validate.py`
-on temporary copies because it regenerates records and Markdown.
+on isolated copies because it regenerates records and Markdown; retain test
+outputs and generated review records until an explicit clean target removes them.
 
 ### PR 02 — Independent C++ reference simulator and test authorities
 
@@ -390,8 +391,8 @@ sim/{model,drivers,monitors,tests,fuzz,fault,fixtures}/
 tools/                  # Fixture generation, replay, performance and reports
 docs/                   # Existing specification plus architecture and evidence
 third_party/            # Dependency pins and license notices, as needed
-CMakeLists.txt
-CMakePresets.json
+Makefile
+test-results/           # Retained per-run logs/reports; removed only by clean targets
 ```
 
 Keep the supplied validation material intact as the provenance baseline; place
@@ -399,30 +400,32 @@ new generated regression artifacts under the test tooling with generation metada
 Public test keys/seeds are test material only. Real authority private keys never
 enter RTL, the relay, or repository setup instructions.
 
-PR 01 should establish these command interfaces as applicable targets arrive;
-they are planned interfaces, not currently implemented commands:
+The implemented public interface is GNU Make. Every test invocation retains a
+distinct result directory until `make clean-results` or `make clean` is requested:
 
 ```sh
-cmake --preset dev
-cmake --build --preset dev
-ctest --preset quick
-ctest --preset full
-
-cmake --preset fuzz
-cmake --build --preset fuzz
-ctest --preset fuzz-smoke
-
-ctest --preset fault
-ctest --preset nightly
+make build
+make quick-tests
+make tests
+make baseline-tests
+make sanitize-tests
+make clean-results
+make clean
 ```
 
 | Suite | Intended contents |
 |---|---|
-| quick | Fixture checks, component tests, fast controller tests, small real-crypto smoke once available |
-| full | Complete deterministic directed/component/integration corpus, including selected full RTL |
+| quick-tests | Current fast source/software checks; later component/controller and RTL smoke tests |
+| tests | All current deterministic checks; later complete directed/component/integration corpus |
+| baseline-tests | Python source/profile, fixture review and tool checks, without a C++ build |
+| sanitize-tests | Current C++ address/undefined-behavior checks plus the full software suite |
 | fuzz-smoke | Bounded repeatable fuzz runs; dedicated extended campaigns use saved budgets/corpora |
 | fault | Declared bounded campaigns, separated by controller, sequencer, datapath and enforcement coverage |
 | nightly | Longer fuzz/fault and selected production-timing runs with exact executed counts |
+
+The fuzz-smoke, fault and nightly interfaces are future Make targets, not current
+executables. Retain raw outputs, JSON/JUnit summaries and reproducer artifacts for
+all future test modes as well; never overwrite or age out earlier runs automatically.
 
 Each PR description must give the problem/result, requirement IDs, prerequisites,
 exact local commands, observed outcomes and runtime, simulation mode, replay

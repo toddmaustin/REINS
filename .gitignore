@@ -1,4 +1,6 @@
 /build/
+/test-results/
+/.deps/
 /.venv/
 __pycache__/
 *.pyc

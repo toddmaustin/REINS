@@ -104,4 +104,6 @@ supplied corpus and its provenance; add new test artifacts separately.
 
 Run the read-only checks documented in the [README](../README.md). The supplied
 review validator rewrites records and Markdown when invoked directly; the wrapper
-runs it in a temporary directory and leaves the pinned checkout files unchanged.
+runs it on isolated copies and leaves the pinned checkout files unchanged. Make
+test targets retain the generated review package and logs in their per-run result
+directory until an explicit clean target removes them.

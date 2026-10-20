@@ -57,7 +57,7 @@ rejection by real RTL remains a controller integration test in a later milestone
 
 `tools/prepare_sim_fixtures.py` first verifies all baseline pins, then writes
 derived binary inputs only to the requested build directory. The supplied JSON,
-Python review code, specification and source hashes stay unchanged. CMake rebuilds
+Python review code, specification and source hashes stay unchanged. Make rebuilds
 derived inputs when a pinned source or preparation tool changes.
 
 The CLI replays the two supplied **RENEW round-3** replies. It does not relabel
@@ -103,6 +103,13 @@ delivery, zero-latency ordering, overflow and host-generated ARM replies.
 The CLI tests verify deterministic simulated time, JSON/file agreement, nonzero
 failure status for corrupted replies, and rejection of unavailable modes/options.
 
-The sanitizer preset instruments this project's C++ with AddressSanitizer and
+The `make sanitize-tests` target instruments this project's C++ with AddressSanitizer and
 UndefinedBehaviorSanitizer. It does not instrument the separately installed
 OpenSSL library or establish physical fault safety.
+
+Every Make test target captures build output, stdout/stderr and generated reports
+under a unique `test-results/` directory. `summary.json` and `junit.xml` preserve
+group status and output; the CLI artifact directory keeps every replay report and
+negative-case diagnostic. Full-suite review records are retained under the run's
+`baseline/review-package/` rather than discarded. Old results are deleted only by
+an explicit `make clean-results` or `make clean`, including failed or timed-out runs.

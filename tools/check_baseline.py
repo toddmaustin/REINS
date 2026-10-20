@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""Check pinned source files; optionally run review validation on temporary copies."""
+"""Check pinned source files; optionally run review validation on isolated copies."""
 
 import argparse
+from contextlib import nullcontext
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -141,8 +143,16 @@ def check_baseline(root):
 def validate_fixtures(root, artifacts):
     # The supplied review script rewrites records and the Markdown specification.
     # Copy the pinned package, preserving relative paths, so these writes are local
-    # to a disposable directory and cannot modify the checkout.
-    with tempfile.TemporaryDirectory(prefix="reins-baseline-") as directory:
+    # to another directory and cannot modify the checkout. Make's test runner
+    # supplies a retained output directory for the generated review records.
+    output = os.environ.get("REINS_TEST_OUTPUT_DIR")
+    if output:
+        retained = Path(output) / "review-package"
+        retained.mkdir(parents=True, exist_ok=False)
+        location = nullcontext(str(retained))
+    else:
+        location = tempfile.TemporaryDirectory(prefix="reins-baseline-")
+    with location as directory:
         temporary_root = Path(directory)
         for artifact in artifacts:
             source = root / artifact["path"]
