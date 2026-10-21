@@ -1,9 +1,11 @@
-# SHA-256 RTL
+# REINS RTL: hashing and platform control
 
 R04 supplies real SystemVerilog SHA-256 hardware and C++ tests on Verilator.
 R03 protected primitives and general fault-injection infrastructure are deferred.
-This milestone provides hashing before configuration hashing and entropy
-conditioning are implemented in later RTL milestones.
+R05 uses that hashing core for public OTP validation and fresh two-source entropy
+conditioning, with configuration lifecycle, reset/startup, independent trusted
+time and a health/expiry gate. The [R05 profile](../docs/R05_PLATFORM_PROFILE.md)
+fully documents its technology interfaces, raw sample counts/cutoffs and framing.
 
 ## Files and architecture
 
@@ -119,8 +121,9 @@ make tests
 make sanitize-tests JOBS=2
 ```
 
-`make rtl-build` builds just the SHA test executable and `make software-build`
-builds the independent software simulator. Normal build includes both. Builds
+`make rtl-build` builds the SHA and R05 test executables, including the C++ oracle
+objects needed by R05; `make software-build` builds the independent software
+simulator. Normal build includes all of them. Builds
 enable SystemVerilog assertions, fatal RTL lint warnings and line coverage.
 The `rtl-lint` group separately checks production modules with assertions and
 with `SYNTHESIS` defined, excluding both the test top and simulation assertions.
@@ -194,3 +197,50 @@ artifact logging; it is not a silicon frequency or end-to-end SLH-DSA measuremen
 R04 alone does not establish safe SHA sharing between verification passes,
 independent acceptance paths, a REINS controller, physical enforcement or safe
 platform integration.
+
+## R05 configuration, reset, time and entropy control
+
+[`reins_platform_control.sv`](reins_platform_control.sv) integrates four component
+types. The production port comments specify each input/output; the
+[platform profile](../docs/R05_PLATFORM_PROFILE.md) gives the complete schema,
+reset matrix, source framing, sample accounting and wrapper obligations.
+
+| Module | State and role |
+|---|---|
+| [`reins_config.sv`](reins_config.sv) | Checked 272-byte snapshot and digest; fixed N=3/Q=2/schema/profile/timing/distinctness checks; physically enabled programming and permanent-close requests |
+| [`reins_trusted_time.sv`](reins_trusted_time.sv) | Two reference progress monitors, startup qualification and nonwrapping 64-bit local ticks independent of crypto/host |
+| [`reins_source_health.sv`](reins_source_health.sv) | Per-source startup/availability, binary repetition and proportion tests, required-event timeout |
+| [`reins_entropy.sv`](reins_entropy.sv) | Per-draw fresh buffers, dedicated SHA conditioning, retained previous nonce and sticky hold |
+| [`reins_platform_control.sv`](reins_platform_control.sv) | Startup sequencing, generation, immediate general-fault gate and original-expiry gate on R06's trusted internal lease |
+| [`reins_otp_model.sv`](../sim/rtl/reins_otp_model.sv) | Simulation-only retained logical OTP/lifecycle wrapper |
+| [`r05_test_top.sv`](../sim/rtl/r05_test_top.sv) | Simulation-only integration and passive actual-SHA observations |
+| [`r05_rtl_tests.cc`](../sim/tests/r05_rtl_tests.cc) | Independent parser/health/hash checks, signed reference leases, directed and seeded timeline tests |
+
+The controller starts off and stays off for open/invalid OTP. It checks all bytes
+of closed OTP, both timing references and both raw sources before starting local
+time and collecting a fresh first nonce. Recognized cold reset only permits this
+qualification sequence; it never grants execution by itself. Warm reset cancels
+work and removes permission but cannot clear hold or retained repeat history.
+Actual power loss loses that volatile history while preserving the modeled OTP.
+
+An **entropy hold** blocks fresh authorization and invalidates pending work while
+letting a previously healthy lease expire at its original deadline. General
+timing, sensor or integrity alarms withdraw permission immediately. R05's lease
+ports are an internal interface for the future R06 vote/commit controller; they
+are not an authorization command or a host bypass. The R05 component cannot
+authorize execution on its own.
+
+Tests count real accepted SHA transfers and compare exact conditioner/configuration
+bytes and digests against independent host code. `r05-rtl/` retains its own logs,
+`conditioner-events.jsonl`, `performance.json`, line coverage and optional FST.
+Replay seeded timelines with `REINS_R05_SEED=12345 make tests`; save a bounded
+waveform with `REINS_R05_TRACE=1 make RTL_TRACE=1 quick-tests`. Both RTL groups
+always run through `make quick-tests`/`make tests`; only extended fuzz is omitted
+from quick tests.
+
+Two predictable test sources each contribute 384 raw bits to a documented
+124-byte SHA frame. These counts and health thresholds are **unassessed digital
+settings**: passing tests supplies no evidence of physical entropy, source
+independence, clock floor or actual stop latency. Production integration must
+replace/qualify the physical OTP, reset, reference, source, sensor and enforcement
+interfaces. R03 protected replicas/internal fault campaigns remain deferred.

@@ -6,22 +6,26 @@ fault injection. Develop it in the pull-request order below. Each PR must provid
 local build and test commands and evidence for the behavior it introduces.
 
 This document is the development roadmap. The fixed scope and PR 02 software
-reference milestone are implemented. RTL milestones remain open; software/Python
-validation is not evidence that RTL exists.
+reference milestone are implemented. R04 SHA-256 and R05 configuration/reset/time/
+entropy RTL are implemented with Verilator tests. The remaining RTL milestones
+are open; software/Python validation is not evidence that their RTL exists.
 
 Section 1 is established by [IMPLEMENTATION_SCOPE.md](IMPLEMENTATION_SCOPE.md),
 the [pinned baseline manifest](implementation_baseline.json), and the read-only
 checks in the [README](../README.md). This completes the scope/source-of-truth
-preparation. PR 01's RTL build/tracing work and the other hardware milestones remain
-open.
+preparation. R04/05 also supply component RTL build, assertions, line coverage and
+bounded tracing. PR 01's broader requirement matrix and remaining foundation
+items should be tracked alongside their dependent hardware milestones.
 
 Section 2 now has [executable software infrastructure](SIMULATION_STRATEGY.md):
 C++ host signing/verification, immutable asynchronous verification jobs, event
 latency/cancellation, reference-mode reporting, and local Make build/test targets.
 PR 02 now adds the complete software device/authority/relay behavioral model,
 state/lease reporting, pinned public replay corpus and semantic completion tests.
-RTL modes, protected hardware authorization and real-cycle/FST/SPI benchmarks
-remain with their dependent development milestones.
+Component RTL modes, real-cycle measurements and bounded FST now exist for R04/05.
+Protected hardware authorization and SPI benchmarks remain with their dependent
+development milestones. R03 protected primitives/internal fault campaigns are
+deferred by the current development decision.
 
 ## 1. Fixed scope and source of truth
 
@@ -221,6 +225,16 @@ input/output/control corruption and independently observed starts/completions.
 Passing this PR alone does not establish safe sharing between verification passes.
 
 ### PR 05 — Configuration, reset, timing, and entropy control
+
+**Status: implemented for digital simulation profile 1.** See the
+[platform profile and evidence record](R05_PLATFORM_PROFILE.md) and the
+[RTL guide](../rtl/README.md). Real SHA-256 configuration hashing/conditioning,
+retained-versus-power-loss reset behavior and independent monitor-clock progress
+are exercised on Verilator. Tests use predictable source bits, with no assessed
+entropy credit or physical timing claim. The lease input is a trusted internal
+boundary for R06; signed C++ reference-model quorums exercise its hold/expiry gate.
+Actual RTL vote/commit state, fixed round scheduling, enforcement and protected
+R03 primitives remain separate work.
 
 **Deliver:** the 272-byte public OTP schema, field/key distinctness checks,
 configuration hashing, open/closed/invalid lifecycle, physically enabled
@@ -493,5 +507,7 @@ behavior; and measure environmental/fault coverage and the actual stop bound.
 Sharing SHA hardware or broadening N/Q is a later change requiring renewed
 performance, fault, and regression evidence.
 
-**Next development action: PR 01, then PR 02.** Establish reproducible local tests
-and the independent expected behavior before building the larger RTL controller.
+**Next development action: PR 06.** Build the lease, fixed-round, request and
+quorum controller against the independent reference model and R04/05 components.
+Keep R03 protected primitives and general internal fault campaigns explicitly
+deferred until their implementation and integration are resumed.

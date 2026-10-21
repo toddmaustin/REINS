@@ -13,6 +13,12 @@ message-framing/padding RTL, clocked by a C++ Verilator harness. The
 [RTL guide](../rtl/README.md) specifies interfaces, bounds, independent oracle
 checks and saved measurements. R03 protected primitives/internal fault injection
 are deferred; R04 exercises interface corruption without claiming their protections.
+R05 adds **rtl-r05** configuration, reset, timing and entropy control with real
+RTL SHA-256 instances. The [platform profile](R05_PLATFORM_PROFILE.md) records
+trusted technology interfaces, deterministic source settings, exact conditioner
+framing, retained reset history and evidence limits. A signed C++ reference quorum
+supplies a trusted internal lease to test its RTL health/expiry gate; the actual
+vote/commit controller remains R06 work.
 
 ## Boundaries and APIs
 
@@ -106,6 +112,7 @@ independent Python outcomes anchor the C++ implementation.
 |---|---|---|
 | Reference | R02 device, authority, relay and cryptographic scheduling models | Software authorization/lease/stop evidence and semantic replay; no RTL or physical enforcement |
 | RTL SHA-256 | R04 compression and bounded message wrapper on Verilator | Real SHA datapath, padding/chaining, handshake counts, cycles and host throughput; no REINS acceptance controller |
+| RTL R05 | Configuration/reset/time/entropy components on Verilator | Real OTP checking/hash, fresh conditioning, digital health/hold/reset history, independent time and internal lease gate; no physical entropy or RTL quorum controller |
 | Fast control | Pending controller/SPI/guard RTL and simulation wrapper | Later: real control with software cryptography |
 | Crypto control | Deferred until measurements justify a software SHA compression backend | Later: real sequencing with abstracted compression datapath |
 | Full RTL | SHA primitive available; pending Merkle/SLH-DSA RTL and protected acceptance | Later: actual complete digital crypto/control and cycle measurements |
@@ -113,8 +120,9 @@ independent Python outcomes anchor the C++ implementation.
 
 Unavailable CLI modes fail with status 2. There is no silent fallback to software.
 Production RTL will not contain a simulation-verifier bypass. Optional compression
-acceleration, FST traces, real SPI ARM benchmarks and full production-timing RTL
-runs remain with the components they require.
+acceleration, real SPI ARM benchmarks and full production-timing RTL runs remain
+with the components they require. R04/05 component tests already provide optional
+bounded FST traces through the Make interface.
 
 ## Reports and tests
 

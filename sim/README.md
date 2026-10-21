@@ -10,6 +10,9 @@ It does not replace the reference model's software crypto backend. The
 [RTL guide](../rtl/README.md) explains the hardware interfaces, C++ oracle,
 handshake scoreboard, tests and measured performance. R03 protected primitives
 and general internal fault injection are deferred.
+R05 adds a second Verilator executable for actual configuration/reset/time/entropy
+RTL. Its [platform profile](../docs/R05_PLATFORM_PROFILE.md) documents every
+technology boundary and the predictable digital source settings.
 
 This directory contains the simulator: `src/` holds implementation files,
 `include/reins/` holds interfaces, and `tests/` holds C++ tests. All commands below
@@ -43,13 +46,15 @@ scenarios. `reins-sim` preserves the original low-level verification harness for
 the two supplied RENEW round-3 replies. A verified signature becomes a vote only
 after the device model checks its current context, deadlines, hold and distinct
 slot. The modeled permit is a software result. A pin-level SPI driver,
-SystemVerilog REINS controller and its Verilator integration are later milestones.
+SystemVerilog quorum/lease controller and its Verilator integration are later
+milestones. R05 already integrates startup, configuration, trusted time and
+entropy components and tests their gate on a reference-model-authorized lease.
 See the [implementation plan](../docs/IMPLEMENTATION_PLAN.md) and
 [simulation strategy](../docs/SIMULATION_STRATEGY.md).
 
 ## Source map
 
-These are the fifteen current C++ source/header files in `sim/`:
+These are the sixteen current C++ source/header files in `sim/`:
 
 | File | Responsibility | Main entry points |
 |---|---|---|
@@ -68,12 +73,22 @@ These are the fifteen current C++ source/header files in `sim/`:
 | [`sim/src/reference_fixture_generator.cc`](src/reference_fixture_generator.cc) | Explicit generation of new public keys, ARM/RENEW signatures and proof-depth records | `main` for `reins-generate-fixtures`; private keys never serialized |
 | [`sim/tests/reference_tests.cc`](tests/reference_tests.cc) | R02 completion and boundary regressions | Every quorum pair, withholding, duplicate/mixed contexts, reset/entropy, receive races, expiry and deterministic long timelines |
 | [`sim/tests/sha256_rtl_tests.cc`](tests/sha256_rtl_tests.cc) | Clocked R04 Verilator driver and independent OpenSSL scoreboard | Compression/padding known answers, arbitrary states, directed/fuzz/interface-corruption checks, measurements and retained artifacts |
+| [`sim/tests/r05_rtl_tests.cc`](tests/r05_rtl_tests.cc) | Clocked R05 platform-control driver, independent configuration/raw-health/conditioner oracles and signed reference leases | OTP closure and invalid fields, cold/warm/power history, fresh samples, hold/expiry/fault boundaries, cancellation, seeded timelines, retained evidence |
 
 [`sim/rtl/sha256_test_top.sv`](rtl/sha256_test_top.sv) is the simulation-only top
 for [`rtl/sha256_compress.sv`](../rtl/sha256_compress.sv) and
 [`rtl/sha256_message.sv`](../rtl/sha256_message.sv). It exposes direct compression,
 message hashing and passive internal block-interface observations. The production
 modules have no test fault ports or software result bypass.
+
+[`sim/rtl/r05_test_top.sv`](rtl/r05_test_top.sv) connects production
+[`reins_platform_control.sv`](../rtl/reins_platform_control.sv) to
+[`sim/rtl/reins_otp_model.sv`](rtl/reins_otp_model.sv). The latter represents
+nonvolatile public storage and irreversible lifecycle, with first-clock-only
+factory fixtures and partial-closure stimuli. It has no reset input. The R05 top
+also exposes passive actual-SHA observations and separate reduced-width time/raw
+health probes for exact boundary tests. Those probes cannot feed a production
+nonce or permission result.
 
 The common crypto, verifier, device, authority and scenario objects are linked
 into these programs:
@@ -84,11 +99,48 @@ build/<configuration>/reins-reference   Device CLI, with reference_main.cc
 build/<configuration>/reins-sim-tests   verifier_tests.cc + reference_tests.cc
 build/<configuration>/reins-generate-fixtures  Explicit generator target only
 build/<configuration>/sha256-rtl/reins-sha256-tests  Actual clocked SHA hardware tests
+build/<configuration>/r05-rtl/reins-r05-tests        Actual platform-control hardware tests
 ```
 
 The configuration is `release` or `sanitize`. The two small I/O/diagnostic headers
 contain inline helpers. Neither the cryptographic verifier nor the event service
 depends on doctest; doctest is the C++ test framework used by the test executable.
+
+### R05 platform control and state
+
+`r05_rtl_tests.cc` creates a separate `VerilatedContext`/DUT per bench and advances
+the independent monitor clock. Synthetic A/B reference edges normally occur every
+four/five monitor clocks. Startup raw events qualify the source monitors; each
+nonce then consumes a separate fresh 384-bit buffer from each source through
+real RTL SHA-256. C++ independently reconstructs the full 124-byte conditioner
+frame and checks the resulting digest with OpenSSL. Predictable balanced raw
+bytes pass digital health tests but provide **no assessed entropy**.
+
+| Hardware state | Where it lives |
+|---|---|
+| Public OTP bytes, written-byte bitmap, permanent lifecycle | Simulation wrapper `reins_otp_model` registers modeling retained technology storage; survive all reset inputs |
+| Checked configuration/digest and decoded timing | `reins_config` snapshot/output registers; re-read after reset/startup |
+| Startup phase, first-nonce qualification, generation, sticky general fault | `reins_platform_control` registers |
+| Run-relative ticks and reference qualification/watchdogs | `reins_trusted_time` registers |
+| Per-source health/startup counters and failure | Two `reins_source_health` instances |
+| Fresh raw buffers, active draw/deadline, conditioned nonce | `reins_entropy` registers |
+| Previous sampled nonce, history-valid, sticky hold | `reins_entropy`; retained across warm and recognized cold events, lost on actual power loss |
+| Armed/vote/committed lease state | Still `reference::Device` in software; actual RTL state belongs to R06 |
+
+For the signed-lease examples, the harness takes the **actual RTL nonce**, asks
+two independently keyed C++ authorities to sign its requests, and sends both real
+verification passes through `reference::Device`. It then supplies the reference's
+committed expiry at the trusted internal R06 lease boundary. The RTL independently
+checks startup/general health, generation and current time. Permission must match
+the reference through an entropy hold and the original expiry. This checks the
+R05 gate without claiming an implemented RTL quorum/lease controller. All signed
+requests are printed before verification, including rejected checks.
+
+Cold recognition and retention loss are deliberately separate: a cold event
+keeps previous-nonce history if power survives, while `por_ni=0` discards it.
+The R02 reference `Reset::cold` models the latter. Full reset semantics, exact
+conditioner bytes, inclusive health cutoffs and technology replacement obligations
+are in [R05_PLATFORM_PROFILE.md](../docs/R05_PLATFORM_PROFILE.md).
 
 ### Supporting repository files
 
@@ -487,6 +539,8 @@ independent C++ simulator without Verilator. Address/undefined-behavior sanitize
 instrument this project's C++ and the generated simulator, not installed OpenSSL.
 For the SHA harness, `REINS_SHA_SEED=12345 make tests` replays a chosen fuzz seed;
 `REINS_SHA_TRACE=1 make RTL_TRACE=1 quick-tests` saves a bounded FST waveform.
+For R05, use `REINS_R05_SEED=12345 make tests` and
+`REINS_R05_TRACE=1 make RTL_TRACE=1 quick-tests` respectively.
 
 To run a CLI replay while retaining both output streams in a new directory:
 
@@ -633,6 +687,7 @@ For the full `make tests` suite, the main paths are:
 | `build/output.log`, `build/build-config.json` | Build diagnostics and compiler settings |
 | `sim-directed/output.log` | C++ assertions, complete requests and illustrative timelines |
 | `sha256-rtl/` | Actual RTL test output, public transaction JSONL, performance JSON, per-model line coverage and optional bounded FST |
+| `r05-rtl/` | OTP/reset/time/entropy RTL logs, actual conditioner-frame/nonces JSONL, profile/seed/SHA ownership/performance JSON, per-model coverage and optional bounded FST |
 | `rtl-lint/output.log` | Standalone production-module checks with assertions and with `SYNTHESIS` defined |
 | `sim-report/output.log` | CLI scenario expectations and observed status |
 | `sim-report/cli-artifacts/` | Individual CLI stdout/stderr, command records, JSON and negative-case inputs |
@@ -640,8 +695,9 @@ For the full `make tests` suite, the main paths are:
 | `reference-report/reference-replays-*/` | All six stateful scenarios, duplicate semantic reports, input traces and negative-case diagnostics |
 | `baseline/`, `tool-regressions/` | Source/fixture review and test-infrastructure results |
 
-The quick suite skips fresh-key signing and some slower/infrastructure checks;
-the full suite includes them. To select one C++ example while retaining the other
+The quick suite skips the larger software host-signing cases, extended RTL fuzz
+and some slower infrastructure checks; it still runs R05's bounded signed-lease
+examples. The full suite includes all of them. To select one software C++ example while retaining the other
 full-suite groups, use `make tests TEST_FILTER='*cancellation*'`. A zero-match C++
 selection fails.
 
@@ -665,7 +721,9 @@ while advancing the RTL simulation and compare semantic events with `Device`.
 The RTL must independently enforce the live acceptance conditions before voting;
 the reference does not dictate RTL microstates. R04 supplies the functional SHA
 primitive and bounded message wrapper with actual RTL fuzz/interface checks.
-Merkle/SLH-DSA and controller integration, R03 internal fault campaigns and physical
+R05 builds on it with digital startup, configuration, timing and fresh entropy
+control and a documented trusted internal lease gate. Merkle/SLH-DSA and quorum
+controller integration, R03 internal fault campaigns and physical
 qualification remain separate work. Passing SHA tests does not establish safe
 sharing between verification passes. The software mutation/stale/stall cases
 establish only their declared software behaviors.
