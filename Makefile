@@ -47,7 +47,7 @@ build: $(BUILD_DIR)/reins-sim $(BUILD_DIR)/reins-reference $(BUILD_DIR)/reins-si
 
 check-tools:
 	@$(PYTHON) -c 'import sys; sys.exit(0 if sys.version_info >= (3, 10) else "Python 3.10+ required")'
-	@$(PKG_CONFIG) --exact-version=3.5.7 libcrypto || { echo "Pinned OpenSSL 3.5.7 development package required; set PKG_CONFIG_PATH for a custom installation." >&2; exit 1; }
+	@$(PKG_CONFIG) --atleast-version=3.5.0 libcrypto || { echo "OpenSSL 3.5 or newer development package required, with default-provider SLH-DSA support; set PKG_CONFIG_PATH for a custom installation." >&2; exit 1; }
 
 $(DOCTEST_HEADER): tools/fetch_doctest.py | check-tools
 	$(PYTHON) -E -s -B tools/fetch_doctest.py

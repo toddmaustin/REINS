@@ -1,6 +1,8 @@
 {
   "implementation": "OpenSSL",
   "version": "3.5.7",
+  "version_role": "tested_reference_baseline",
+  "minimum_version": "3.5.0",
   "provider": "default",
   "algorithm": "SLH-DSA-SHA2-128s",
   "repository": "https://github.com/openssl/openssl.git",

@@ -28,8 +28,10 @@ def main():
                "tools/reference_fixtures.py", "tools/generate_reference_fixtures.py", "third_party/crypto-backend.json"]
     artifacts = [str(CORPUS.relative_to(ROOT))] + sorted(
         str(path.relative_to(ROOT)) for path in CORPUS.parent.glob("*.trace"))
-    manifest = {"schema_version": 1, "generator": data["generator"],
-                "backend_commit": json.loads((ROOT / "third_party/crypto-backend.json").read_text())["commit"],
+    backend = json.loads((ROOT / "third_party/crypto-backend.json").read_text())
+    manifest = {"schema_version": 2, "generator": data["generator"],
+                "backend_runtime": data["backend"],
+                "reference_backend": {"version": backend["version"], "commit": backend["commit"]},
                 "generator_source_sha256": {name: sha((ROOT / name).read_bytes()) for name in sources},
                 "artifacts": artifacts, "sha256": {name: sha((ROOT / name).read_bytes()) for name in artifacts}}
     MANIFEST.write_text(json.dumps(manifest, indent=2) + "\n")

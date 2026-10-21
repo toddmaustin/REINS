@@ -3,6 +3,7 @@ import hashlib
 import importlib.util
 import json
 from pathlib import Path
+import re
 
 ROOT = Path(__file__).resolve().parents[1]
 CORPUS = ROOT / "sim/fixtures/r02.json"
@@ -14,13 +15,20 @@ def sha(data):
     return hashlib.sha256(data).hexdigest()
 
 
+def openssl_version(description):
+    """Parse description's released OpenSSL version and require the 3.5+ API baseline."""
+    match = re.fullmatch(r"OpenSSL (\d+)\.(\d+)\.(\d+)(?: .*)?", description)
+    if not match or tuple(map(int, match.groups())) < (3, 5, 0):
+        raise ValueError("fixture signing backend requires OpenSSL 3.5 or newer")
+    return tuple(map(int, match.groups()))
+
+
 def validate(data, python_crypto=False):
     """Validate parsed corpus data; python_crypto enables the supplied independent verifier."""
     if (data["schema_version"], data["generator"], data["algorithm"], data["mode"], data["context"]) != (
             1, "reins-r02/1", "SLH-DSA-SHA2-128s", "pure", ""):
         raise ValueError("unsupported R02 fixture generator/profile")
-    if not data["backend"].startswith("OpenSSL 3.5.7 "):
-        raise ValueError("unrecognized fixture signing backend")
+    openssl_version(data["backend"])
     otp = bytes.fromhex(data["otp"])
     if len(otp) != 272 or otp[:12] != b"RNOP\0\2\2\2\3\2\0\0" or sha(otp) != data["configuration_digest"]:
         raise ValueError("invalid R02 OTP/digest")
@@ -81,10 +89,8 @@ def load(python_crypto=False):
     """Load pinned public artifacts; python_crypto adds independent signature checks."""
     manifest = json.loads(MANIFEST.read_text())
     backend = json.loads((ROOT / "third_party/crypto-backend.json").read_text())
-    if manifest["schema_version"] != 1 or manifest["generator"] != "reins-r02/1":
+    if manifest["schema_version"] not in (1, 2) or manifest["generator"] != "reins-r02/1":
         raise ValueError("unsupported R02 provenance manifest")
-    if manifest["backend_commit"] != backend["commit"] or backend["version"] != "3.5.7":
-        raise ValueError("R02 backend pin mismatch")
     if (backend["provider"], backend["algorithm"], backend["protocol_mode"], backend["protocol_context"]) != (
             "default", "SLH-DSA-SHA2-128s", "pure", ""):
         raise ValueError("R02 backend algorithm/interface mismatch")
@@ -94,4 +100,13 @@ def load(python_crypto=False):
     for relative in manifest["artifacts"]:
         if sha((ROOT / relative).read_bytes()) != manifest["sha256"][relative]:
             raise ValueError(f"R02 artifact hash mismatch: {relative}")
-    return validate(json.loads(CORPUS.read_text()), python_crypto)
+    data = json.loads(CORPUS.read_text())
+    if manifest["schema_version"] == 1:
+        # Preserve the original corpus's exact generation provenance.
+        if (manifest["backend_commit"] != backend["commit"] or
+                openssl_version(data["backend"]) != tuple(map(int, backend["version"].split(".")))):
+            raise ValueError("R02 historical backend pin mismatch")
+    elif (manifest["backend_runtime"] != data["backend"] or manifest["reference_backend"] != {
+            "version": backend["version"], "commit": backend["commit"]}):
+        raise ValueError("R02 runtime/reference backend provenance mismatch")
+    return validate(data, python_crypto)

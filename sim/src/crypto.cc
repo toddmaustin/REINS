@@ -12,8 +12,8 @@
 #include <string_view>
 
 namespace reins::sim {
-static_assert(OPENSSL_VERSION_MAJOR==3 && OPENSSL_VERSION_MINOR==5 && OPENSSL_VERSION_PATCH==7,
-              "the independent reference backend is pinned to OpenSSL 3.5.7");
+static_assert(OPENSSL_VERSION_NUMBER >= 0x30500000L,
+              "the independent reference backend requires OpenSSL 3.5 or newer headers");
 namespace {
 constexpr auto algorithm = "SLH-DSA-SHA2-128s";
 constexpr std::size_t signature_bytes = 7856;
@@ -30,6 +30,12 @@ void require(bool condition, const char* operation) {
         ERR_error_string_n(error, message, sizeof(message));
         throw std::runtime_error(std::string(operation) + ": " + message);
     }
+}
+
+// Require OpenSSL 3.5+ at runtime; algorithm/API support is checked by EVP calls.
+// Takes no parameters and permits compatible header/library version differences.
+void require_backend() {
+    require(OpenSSL_version_num() >= 0x30500000L, "OpenSSL 3.5 or newer runtime required");
 }
 
 // Append every byte in value to the destination output buffer.
@@ -79,7 +85,7 @@ bool slh_verify(std::span<const std::uint8_t> message,
                 std::span<const std::uint8_t> context, bool internal) {
     if (signature.size() != signature_bytes || public_key.size() != 32 || context.size() > 255)
         return false;
-    require(OpenSSL_version_num()==OPENSSL_VERSION_NUMBER,"runtime OpenSSL must match pinned 3.5.7 headers");
+    require_backend();
     ERR_clear_error();
     Key key(EVP_PKEY_new_raw_public_key_ex(nullptr, algorithm, "provider=default",
                                          public_key.data(), public_key.size()), EVP_PKEY_free);
@@ -107,7 +113,7 @@ bool slh_verify(std::span<const std::uint8_t> message,
 
 // Hash the bytes supplied in data using the host SHA-256 implementation.
 Hash sha256(std::span<const std::uint8_t> data) {
-    require(OpenSSL_version_num()==OPENSSL_VERSION_NUMBER,"runtime OpenSSL must match pinned 3.5.7 headers");
+    require_backend();
     Hash result{};
     require(SHA256(data.data(), data.size(), result.data()) != nullptr, "SHA-256");
     return result;
@@ -163,7 +169,7 @@ struct TestAuthority::Impl {
     Key key{nullptr, EVP_PKEY_free};
     // Generate one ephemeral host-only authority keypair; takes no parameters.
     Impl() {
-        require(OpenSSL_version_num()==OPENSSL_VERSION_NUMBER,"runtime OpenSSL must match pinned 3.5.7 headers");
+        require_backend();
         Context ctx(EVP_PKEY_CTX_new_from_name(nullptr, algorithm, "provider=default"), EVP_PKEY_CTX_free);
         require(bool(ctx), "create test authority key generator");
         require(EVP_PKEY_keygen_init(ctx.get()) == 1, "initialize test authority key generator");

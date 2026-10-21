@@ -82,10 +82,13 @@ are trusted harness inputs, not capabilities granted to the relay.
 
 ## Independent cryptographic backend
 
-[crypto-backend.json](../third_party/crypto-backend.json) pins OpenSSL 3.5.7 default
-provider, upstream commit `8cf17aaeb4599f8af87fefd810b5b5fee90fe69e`, Apache-2.0.
-Make requires that exact development version, C++ checks its headers/runtime, and
-EVP calls request `provider=default`. OpenSSL is independent of both future REINS
+[crypto-backend.json](../third_party/crypto-backend.json) pins the tested reference
+baseline: OpenSSL 3.5.7 default provider, upstream commit
+`8cf17aaeb4599f8af87fefd810b5b5fee90fe69e`, Apache-2.0. The supported minimum is
+OpenSSL 3.5.0: Make and C++ check the minimum headers/runtime version; EVP calls
+request `provider=default` and check required algorithm/API support. Compatible
+headers and runtime need not have identical versions. Reports record the actual
+runtime. OpenSSL is independent of both future REINS
 RTL and the supplied Python implementation. FIPS 205 names the algorithm standard;
 this does not claim use of a FIPS-validated module.
 
@@ -104,7 +107,10 @@ The public OTP captures every configuration input and key; nonce derivation inpu
 are recorded in the scripts and generator version.
 
 The [manifest](../sim/fixtures/r02-manifest.json) records artifact hashes,
-`reins-r02/1`, generating-source hashes and the backend commit. Source hashes are
+`reins-r02/1`, generating-source hashes and the original backend commit. New
+generation uses manifest version 2, recording `backend_runtime` separately from
+the tested `reference_backend` version/commit. Version 1 still requires its
+original 3.5.7 generation provenance. Source hashes are
 historical generation provenance; an implementation comment change alone does not
 invalidate otherwise pinned public test inputs. Ordinary builds verify artifact
 pins and derive binary copies. Explicit `make regenerate-reference-fixtures`

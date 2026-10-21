@@ -148,8 +148,10 @@ outputs and generated review records until an explicit clean target removes them
 [provenance manifest](../sim/fixtures/r02-manifest.json) and
 [completion tests](../sim/tests/reference_tests.cc). `make tests` runs both the
 original corpus and the stateful model. `make sanitize-tests` instruments the C++.
-The pinned independent backend is OpenSSL 3.5.7's default implementation at the
-[recorded upstream commit](../third_party/crypto-backend.json); every new signature
+The tested independent backend baseline is OpenSSL 3.5.7's default implementation at the
+[recorded upstream commit](../third_party/crypto-backend.json). Builds accept OpenSSL
+3.5 or newer with the required default-provider algorithm/APIs; reports record the
+actual runtime, separately from the reference source pin. Every new signature
 is additionally checked by the supplied Python verifier in the full suite.
 
 **Deliver:** event-driven provisioning, reset, entropy-event, round, lease, vote,
