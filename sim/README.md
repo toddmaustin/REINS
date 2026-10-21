@@ -27,8 +27,10 @@ The simulator has four immediate goals:
 4. Produce inspectable inputs, outcomes and timing reports for local PR review.
 
 The REINS path uses **SLH-DSA-SHA2-128s, pure mode, empty context**, through OpenSSL
-**pinned version 3.5.7**, default provider. Software hashing and signature verification execute directly on the
-host CPU. Configured event delays control simulated completion times; the program
+**3.5 or newer**, default provider; 3.5.7 remains the tested reference baseline.
+The build checks the minimum version and EVP operations check algorithm/API support.
+Reports record the actual runtime version. Software hashing and signature
+verification execute directly on the host CPU. Configured event delays control simulated completion times; the program
 does not simulate each instruction or hardware clock cycle of that computation.
 
 `reins-reference` runs the full R02 software device model and replays public
@@ -361,7 +363,9 @@ The new corpus in [`fixtures/r02.json`](fixtures/r02.json) contains 25 independe
 keyed public replies: ARM for all slots, RENEW rounds 2/3 for all slots, fresh
 slot-2 renewals through round 12, proof depths 0/1/2/17/20 and three-leaf proofs.
 The [manifest](fixtures/r02-manifest.json) pins artifacts and records generator
-version, generating-source hashes and the backend commit. The supplied Python
+version, generating-source hashes and the original backend commit. Future manifest
+version 2 records the actual signing runtime separately from the tested reference
+version/commit; version 1 preserves the original 3.5.7 provenance. The supplied Python
 verifier checks every signature in the full suite. No original fixture private
 keys are assumed to exist.
 

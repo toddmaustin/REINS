@@ -2,8 +2,9 @@
 
 This implements the software infrastructure for section 2 of the
 [implementation plan](IMPLEMENTATION_PLAN.md). The currently executable mode is
-**reference**, using an event-driven C++ device model and the pinned OpenSSL
-3.5.7 default provider. R02 implements digital provisioning, reset, entropy events,
+**reference**, using an event-driven C++ device model and the OpenSSL 3.5+ default
+provider, with 3.5.7 as the tested reference baseline. Reports record the actual
+runtime version. R02 implements digital provisioning, reset, entropy events,
 rounds, lease/vote gates, receive jobs, stopping, independent authorities and an
 untrusted relay. It contains no RTL controller, physical permit enforcement or
 pin-level SPI master. See [R02_REFERENCE_MODEL.md](R02_REFERENCE_MODEL.md).
@@ -82,8 +83,10 @@ That original CLI remains `reins-sim`. The new `reins-reference` CLI replays
 six pinned stateful scenarios using 25 newly signed public R02 records. They cover
 ARM in every slot/pair, successive RENEW rounds, real fresh third-signer traffic
 after two withhold, misrouting/mixed contexts and a fault at the would-be commit
-tick. Artifact hashes, generator version/source hashes and the crypto backend
-commit are recorded. Ordinary builds never regenerate keys. Explicit
+tick. Artifact hashes, generator version/source hashes and crypto backend
+provenance are recorded. New manifest version 2 separates the actual signing
+runtime from the tested reference version/commit; the original manifest retains
+its historical 3.5.7 pin. Ordinary builds never regenerate keys. Explicit
 `make regenerate-reference-fixtures` produces new public material, discards
 private keys and cross-checks every signature using the supplied Python verifier.
 

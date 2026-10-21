@@ -6,8 +6,12 @@ verification results, input hashes and every quorum pair. All material is for
 testing; no private key is committed and no original fixture private key is used.
 
 `r02-manifest.json` pins the corpus and six timestamped `.trace` scenarios and
-records generator version, generating-source hashes and the pinned independent
-OpenSSL commit. `tools/prepare_sim_fixtures.py` derives binary copies under
+records generator version, generating-source hashes and the original independent
+OpenSSL 3.5.7 commit. New generation uses manifest version 2, which records the
+actual signing runtime separately from the tested reference version/commit;
+OpenSSL 3.5 or newer can generate and consume fixtures. Historical source hashes
+describe generation time and need not match later implementation changes.
+`tools/prepare_sim_fixtures.py` derives binary copies under
 `build/<configuration>/fixtures/`. Normal builds and tests never rewrite these
 tracked sources. The full suite additionally verifies all 25 signatures with the
 original pinned Python verifier.

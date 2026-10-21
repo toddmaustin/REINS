@@ -36,13 +36,17 @@ and keeps the logs for inspection.
 | Python 3.10+ | Prepares example data and runs checks/report collection; standard library only |
 | Trusted CA certificates | Let Python verify HTTPS when downloading the test dependency |
 | pkg-config | Finds the installed OpenSSL headers and library |
-| OpenSSL **3.5.7 development package** | Pinned independent SHA-256 / FIPS 205 SLH-DSA signing and verification backend |
+| OpenSSL **3.5 or newer development package** | Independent SHA-256 / FIPS 205 SLH-DSA backend, with the default provider's SLH-DSA support |
 
 OpenSSL's development package includes headers and `libcrypto`, not just the
 `openssl` executable. Many older systems supply OpenSSL 3.0 or 3.4, which do not
-provide the required signature algorithm. R02 pins version **3.5.7**, its default
-provider, and the [upstream source commit](third_party/crypto-backend.json).
-Make requires that exact version; C++ checks both headers and runtime library.
+provide the required signature algorithm. Make and C++ require **3.5.0 or newer**
+headers and runtime library; EVP calls check that the required signing and
+verification APIs and default-provider algorithm are available. Compatible header
+and runtime versions can differ. OpenSSL **3.5.7** and its
+[upstream source commit](third_party/crypto-backend.json) remain the tested reference
+baseline, rather than an exact installation requirement. Reports record the actual
+runtime version, and the tests check its cryptographic behavior.
 Check what pkg-config finds:
 
 ```sh
@@ -50,28 +54,31 @@ pkg-config --modversion libcrypto
 ```
 
 For a custom OpenSSL installation, point `PKG_CONFIG_PATH` at its pkg-config files
-before running Make. For example, if installed under `/opt/openssl-3.5.7`:
+before running Make. For example, if installed under `/opt/openssl`:
 
 ```sh
-export PKG_CONFIG_PATH=/opt/openssl-3.5.7/lib/pkgconfig
+export PKG_CONFIG_PATH=/opt/openssl/lib/pkgconfig
 make build
 ```
 
 Some installations use `lib64/pkgconfig`; use the directory that actually contains
-`libcrypto.pc`. Make checks the version and links against that installation.
+`libcrypto.pc`. Make checks the minimum version, links against that installation
+and records its library directory in the executables' runtime search path.
 
 On macOS, a candidate setup is:
 
 ```sh
-brew install make pkg-config python
-# Install the pinned OpenSSL 3.5.7 separately, then select its prefix:
-export PKG_CONFIG_PATH=/path/to/openssl-3.5.7/lib/pkgconfig
+brew install make pkg-config python openssl@3
+# Check that Homebrew's current OpenSSL is at least 3.5:
+export PKG_CONFIG_PATH="$(brew --prefix openssl@3)/lib/pkgconfig"
+pkg-config --modversion libcrypto
 gmake build
 gmake tests
 ```
 
 Use `gmake` when your system's `make` is an older version. Linux/WSL2 is the tested
 path: Debian 13, GCC 14.2, GNU Make 4.4.1, Python 3.12.14 and OpenSSL 3.5.7.
+The full suite also passes with a source-built OpenSSL 3.5.0.
 macOS has not yet been validated here. Verilator will become a prerequisite when
 RTL is introduced; it is not needed for the current software tests.
 
@@ -219,7 +226,9 @@ There are three important sets:
   three-leaf Merkle batching. [Pinned scenario scripts](sim/fixtures/) exercise
   every quorum pair, fresh third-signer withholding, adversarial relay traffic and
   same-tick faults. The [manifest](sim/fixtures/r02-manifest.json) records generator
-  version, generating-source hashes, the backend commit and artifact hashes.
+  version, generating-source hashes, the original backend commit and artifact hashes.
+  Future regeneration records the actual OpenSSL runtime separately from the
+  tested reference commit, so a newer installation does not claim that source pin.
 
 The C++ tests also generate temporary host authority keys and sign fresh ARM
 (startup) replies for all three slots, at Merkle proof depths 0 and 20. These check
@@ -253,7 +262,7 @@ physical randomness.
 | `reference-fixtures` | Do all R02 artifact hashes, public input bindings and Merkle roots match? The full suite cross-checks every new signature with the supplied Python verifier. |
 | `reference-report` | Do all six stateful scenarios replay identically, expose real state/lease decisions, reject false expectations, and retain request traces even for invalid evidence? |
 
-Currently the full suite contains 32 C++ cases and 27 Python tool
+Currently the full suite contains 32 C++ cases and 30 Python tool
 regressions, in addition to review/corpus/CLI checks. The quick suite runs 28 C++ cases
 and 12 source/profile regressions. It still checks all 28 NIST outcomes, but skips
 the slower fresh-key signing case and the second Python cryptographic cross-check.

@@ -5,7 +5,7 @@ it is not committed to this repository.
 
 | Dependency | Selection | Purpose / license |
 |---|---|---|
-| OpenSSL | Exact 3.5.7, default provider; upstream commit `8cf17aaeb4599f8af87fefd810b5b5fee90fe69e` | Independent host SHA-256 / FIPS 205 SLH-DSA backend; Apache-2.0 |
+| OpenSSL | 3.5 or newer, default provider; tested reference 3.5.7 at upstream commit `8cf17aaeb4599f8af87fefd810b5b5fee90fe69e` | Independent host SHA-256 / FIPS 205 SLH-DSA backend; Apache-2.0 |
 | doctest | v2.4.12, archive SHA-256 `73381c7aa4dee704bd935609668cf41880ea7f19fa0504a200e13b74999c2d70` | C++ test framework; MIT |
 | GNU Make | Tested with 4.4.1 | Public build/test/clean interface; GPL-3.0-or-later |
 
@@ -17,12 +17,20 @@ verified archive is in `.deps/downloads/`. Cached files are checked before use.
 Python uses the system TLS trust store or `SSL_CERT_FILE` when a trusted custom
 CA bundle is needed. See the [download troubleshooting instructions](../README.md#if-the-doctest-download-reports-certificate_verify_failed).
 
-The machine-readable pin is [crypto-backend.json](crypto-backend.json). The
-upstream annotated tag is `openssl-3.5.7`; the recorded peeled commit fixes its
-source. `pkg-config` requires exact 3.5.7, compilation checks header version and
-runtime calls require matching library version. EVP operations explicitly select
-`provider=default`. This is algorithm conformance evidence, not a claim that a
-FIPS-validated module/provider is in use.
+The machine-readable policy is [crypto-backend.json](crypto-backend.json).
+`minimum_version` is 3.5.0. The `version`, `tag` and `commit` fields pin the tested
+reference baseline, OpenSSL 3.5.7, rather than the user's installed library.
+`pkg-config`, compilation and runtime checks require at least 3.5.0; compatible
+header/library versions need not be identical. EVP operations explicitly select
+`provider=default` and fail if the required SLH-DSA algorithm or APIs are unavailable.
+This is algorithm conformance evidence, not a claim that a FIPS-validated
+module/provider is in use.
+
+The committed corpus retains its original manifest and backend provenance.
+Newly generated manifests record the observed runtime string separately from the
+reference version/commit. An arbitrary installed OpenSSL build's source commit is
+not inferred from its version string. Fixture checks do not require the generating
+runtime to equal the consuming runtime.
 
 The C++ tests exercise the actual default-provider SLH-DSA implementation
 against independently expected NIST cases and the supplied Python review fixtures.
