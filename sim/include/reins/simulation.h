@@ -3,6 +3,7 @@
 #include <array>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <queue>
 #include <span>
 #include <string>
@@ -109,17 +110,23 @@ public:
     bool cancel(std::uint64_t token);
     // Process events due through target's simulated tick and return their evidence.
     std::vector<Completion> advance_to(Tick target);
+    // Advance the clock to target but defer equal-tick events for higher-priority inputs.
+    std::vector<Completion> advance_before(Tick target);
     // Return the current simulated tick.
     Tick now() const noexcept;
     // Return whether a live job owns the service.
     bool busy() const noexcept;
     // Return the count of actual cryptographic pass evaluations.
     std::uint64_t verification_calls() const noexcept;
+    // Return the earliest queued event tick, including a cancelled event awaiting disposal.
+    std::optional<Tick> next_event_tick() const noexcept;
     // Disallow copying the supplied service's job/event ownership.
     VerifierService(const VerifierService&) = delete;
     // Disallow assigning a copy of the supplied service's job/event ownership.
     VerifierService& operator=(const VerifierService&) = delete;
 private:
+    // Process target's due events, including equality only when include_equal is true.
+    std::vector<Completion> advance(Tick target, bool include_equal);
     struct Impl;
     std::unique_ptr<Impl> impl_;
 };

@@ -51,6 +51,12 @@ bool VerifierService::busy() const noexcept { return bool(impl_->active); }
 // Return the number of actual cryptographic pass evaluations; no parameters.
 std::uint64_t VerifierService::verification_calls() const noexcept { return impl_->calls; }
 
+// Return the earliest queued event's tick, or no value for an empty event queue.
+std::optional<Tick> VerifierService::next_event_tick() const noexcept {
+    if (impl_->events.empty()) return std::nullopt;
+    return impl_->events.top().tick;
+}
+
 // Copy input into an immutable job, scheduling each pass according to latency.
 std::uint64_t VerifierService::submit(const VerificationInput& input, Latency latency) {
     if (busy()) throw std::logic_error("verification backend already owns a live job");
@@ -77,11 +83,12 @@ bool VerifierService::cancel(std::uint64_t token) {
     return true;
 }
 
-// Process events through target's simulated tick and return their tagged evidence.
-std::vector<Completion> VerifierService::advance_to(Tick target) {
+// Process events up to target, including equality only when include_equal permits it.
+std::vector<Completion> VerifierService::advance(Tick target, bool include_equal) {
     if (target < now()) throw std::invalid_argument("simulation time cannot move backwards");
     std::vector<Completion> result;
-    while (!impl_->events.empty() && impl_->events.top().tick <= target) {
+    while (!impl_->events.empty() && (impl_->events.top().tick < target ||
+           (include_equal && impl_->events.top().tick == target))) {
         auto event = impl_->events.top();
         impl_->events.pop();
         impl_->now = event.tick;
@@ -107,4 +114,8 @@ std::vector<Completion> VerifierService::advance_to(Tick target) {
     impl_->now = target;
     return result;
 }
+// Deliver all events through target, including those finishing exactly at target.
+std::vector<Completion> VerifierService::advance_to(Tick target) { return advance(target,true); }
+// Move the clock to target while deferring equal-tick completions until inputs settle.
+std::vector<Completion> VerifierService::advance_before(Tick target) { return advance(target,false); }
 } // namespace reins::sim

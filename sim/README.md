@@ -2,9 +2,9 @@
 
 The REINS simulator provides executable software evidence for the fixed **N=3,
 Q=2** implementation. Its current **reference mode** performs real cryptographic
-verification on the host computer and delivers results through an event-driven
-verification service. It is the foundation for a C++ reference model and future
-Verilator integration.
+verification on the host computer and models provisioning, reset, entropy events,
+rounds, votes, leases, receive jobs and stopping. The C++ reference model is the
+semantic oracle for future Verilator integration.
 
 This directory contains the simulator: `src/` holds implementation files,
 `include/reins/` holds interfaces, and `tests/` holds C++ tests. All commands below
@@ -22,26 +22,27 @@ The simulator has four immediate goals:
    independently expected results.
 2. Model when verification evidence becomes available, including two passes,
    cancellation, stalls and late results.
-3. Provide a reusable boundary between test drivers, software cryptography and a
-   future RTL controller.
+3. Model two-of-three authorization independently of future RTL microstates, with
+   independent test authorities, withholding, batching and an untrusted relay.
 4. Produce inspectable inputs, outcomes and timing reports for local PR review.
 
 The REINS path uses **SLH-DSA-SHA2-128s, pure mode, empty context**, through OpenSSL
-3.5 or later. Software hashing and signature verification execute directly on the
+**pinned version 3.5.7**, default provider. Software hashing and signature verification execute directly on the
 host CPU. Configured event delays control simulated completion times; the program
 does not simulate each instruction or hardware clock cycle of that computation.
 
-The current CLI replays two supplied **RENEW round-3** replies for slots 0 and 1.
-The directed tests also generate fresh host-signed ARM replies for all three slots.
-A verified signature is cryptographic evidence only: the current code does not
-count votes, commit leases or drive an execution permit. A complete device model,
-SPI driver, SystemVerilog controller and Verilator wrapper are later milestones.
+`reins-reference` runs the full R02 software device model and replays public
+scenarios. `reins-sim` preserves the original low-level verification harness for
+the two supplied RENEW round-3 replies. A verified signature becomes a vote only
+after the device model checks its current context, deadlines, hold and distinct
+slot. The modeled permit is a software result. A pin-level SPI driver,
+SystemVerilog controller and Verilator wrapper are later milestones.
 See the [implementation plan](../docs/IMPLEMENTATION_PLAN.md) and
 [simulation strategy](../docs/SIMULATION_STRATEGY.md).
 
 ## Source map
 
-These are all seven current C++ source/header files in `sim/`:
+These are all fourteen current C++ source/header files in `sim/`:
 
 | File | Responsibility | Main entry points |
 |---|---|---|
@@ -52,12 +53,22 @@ These are all seven current C++ source/header files in `sim/`:
 | [`sim/include/reins/fixture_io.h`](include/reins/fixture_io.h) | Bounded binary fixture loading and per-slot request/tag preparation | `fixture::read`, `fixture::load` |
 | [`sim/include/reins/diagnostics.h`](include/reins/diagnostics.h) | Readable request dumps, cryptographic verdict names and completion timelines | `diagnostic::write_input`, `write_completions`, `verdict_name`, `hex` |
 | [`sim/tests/verifier_tests.cc`](tests/verifier_tests.cc) | Directed C++ checks and illustrative test logging, using doctest | NIST, REINS proof/signature, mutation, scheduling, cancellation, stall, overflow and host-signing cases |
+| [`sim/include/reins/reference.h`](include/reins/reference.h) | Stateful model types and public APIs | `Configuration`, `Device`, `Snapshot`, `EntropyEvent`, `SemanticEvent`, `Authority`, `Relay`, scenario/report functions |
+| [`sim/src/reference_device.cc`](src/reference_device.cc) | Digital provisioning, reset/entropy semantics, scheduled rounds, final vote gates, lease expiry, receive ownership and stop | `Device::Impl`, configuration/request helpers and `Device` methods |
+| [`sim/src/reference_authority.cc`](src/reference_authority.cc) | Independent host keys/policies, approved-leaf batching, delay and untrusted packet delivery | `Authority::batch`, `depth_fixture`, `Relay` |
+| [`sim/src/reference_scenario.cc`](src/reference_scenario.cc) | Timestamped script replay, equal-tick priority and canonical semantic JSON | `replay`, `report_json` |
+| [`sim/src/reference_main.cc`](src/reference_main.cc) | Stateful reference CLI | `main` for `reins-reference` |
+| [`sim/src/reference_fixture_generator.cc`](src/reference_fixture_generator.cc) | Explicit generation of new public keys, ARM/RENEW signatures and proof-depth records | `main` for `reins-generate-fixtures`; private keys never serialized |
+| [`sim/tests/reference_tests.cc`](tests/reference_tests.cc) | R02 completion and boundary regressions | Every quorum pair, withholding, duplicate/mixed contexts, reset/entropy, receive races, expiry and deterministic long timelines |
 
-`crypto.cc` and `verifier_service.cc` are linked into both programs:
+The common crypto, verifier, device, authority and scenario objects are linked
+into these programs:
 
 ```text
 build/<configuration>/reins-sim         CLI, with main.cc
-build/<configuration>/reins-sim-tests   C++ tests, with verifier_tests.cc
+build/<configuration>/reins-reference   Device CLI, with reference_main.cc
+build/<configuration>/reins-sim-tests   verifier_tests.cc + reference_tests.cc
+build/<configuration>/reins-generate-fixtures  Explicit generator target only
 ```
 
 The configuration is `release` or `sanitize`. The two small I/O/diagnostic headers
@@ -75,6 +86,11 @@ depends on doctest; doctest is the C++ test framework used by the test executabl
 | [`tools/test_sim_report.py`](../tools/test_sim_report.py) | Exercises the actual CLI, JSON reports, request traces, deterministic event times and failure statuses |
 | [`tools/fetch_doctest.py`](../tools/fetch_doctest.py) | Downloads or reuses the pinned C++ test dependency with TLS and SHA-256 checks |
 | [`tools/write_build_config.py`](../tools/write_build_config.py) | Records compiler/flag settings and triggers rebuilding when they change |
+| [`tools/reference_fixtures.py`](../tools/reference_fixtures.py) | Independent Python hashing, root reconstruction, artifact pin checks and optional supplied-verifier cross-check |
+| [`tools/generate_reference_fixtures.py`](../tools/generate_reference_fixtures.py) | Runs the generator explicitly, preserves its output, checks signatures and records source/artifact hashes |
+| [`tools/check_reference_fixtures.py`](../tools/check_reference_fixtures.py) | Exposes R02 corpus checks to the retained Make test runner |
+| [`tools/test_reference_report.py`](../tools/test_reference_report.py) | Checks six public scenarios, deterministic JSON, actual controller/lease state and CLI failure status |
+| [`sim/fixtures/`](fixtures/) | Public R02 corpus, manifest and replay scripts; no private keys |
 | [`tools/tests/`](../tools/tests/) | Python regressions for the baseline checker, result collector and HTTPS dependency download |
 | [`docs/validation/`](../docs/validation/) | Original public REINS fixtures, selected official NIST cases and supplied Python review code |
 | [`docs/implementation_baseline.json`](../docs/implementation_baseline.json) | Pinned source hashes and implementation profile |
@@ -88,12 +104,14 @@ flowchart LR
     PREP --> BIN["Binary fixtures"]
     BIN --> DRIVER["CLI or directed C++ test"]
     AUTH["Host test authority"] --> DRIVER
-    DRIVER --> JOB["Immutable captured job"]
+    DRIVER --> DEVICE["Device: provisioning, entropy, round, receive ownership"]
+    DEVICE --> JOB["Immutable captured job"]
     JOB --> EVENTS["Two scheduled pass events"]
     EVENTS --> CRYPTO["Real host verification per pass"]
     CRYPTO --> RESULT["Tagged Completion evidence"]
-    RESULT --> LOG["Assertions, traces and JSON reports"]
-    RESULT -. "future integration" .-> RTL["RTL live-context and lease gates"]
+    RESULT --> GATE["Device: current-context gates, distinct votes, fixed-issue lease"]
+    GATE --> LOG["Semantic events, state, permit, lease and JSON reports"]
+    LOG -. "future semantic comparison" .-> RTL["RTL live-context and lease gates"]
 ```
 
 The responsibilities are separate: the driver supplies bytes and advances time,
@@ -113,6 +131,100 @@ repairing or substituting it.
 | `Latency` | Delay to pass 1, additional delay to pass 2, and a test-only never-complete option; defaults are 100/100 ticks |
 | `Verdict` | `verified`, `format_error` or `signature_error` |
 | `Completion` | Token, captured tag, pass number, finish tick, verdict, cancellation diagnostic and measured host verification time |
+| `Configuration` | Validated 272-byte OTP, configuration digest, fixed timings and three distinct public keys |
+| `EntropyEvent` | Captured generation/round, absolute sample-start tick, supplied nonce and health outcome |
+| `Snapshot` | Inspectable controller/permit, pending context, vote bitmap, committed issue/expiry, remaining time and receive outcome |
+| `SemanticEvent` | Deterministic absolute/run tick, generation/round/slot/token, event kind and detail |
+| `AuthorityPolicy` | Independent ARM/RENEW permissions, withholding, batch delay and signing delay |
+| `SignedReply`, `RelayPacket` | Approved public bytes/readiness versus arbitrary transport bytes/destination/delivery time |
+
+## Where device state and lease information live
+
+[`Device::Impl`](src/reference_device.cc) owns all volatile model state in host
+memory. `state` is the operational FSM; `committed_issue` and `expiry` define the
+active execution lease. `pending` contains the current round, kind, nonce,
+I/B/E and distinct-vote bitmap. `receive` owns the one logical buffer and its
+captured context. `snapshot()` returns values without exposing mutable ownership.
+
+The states are UNPROVISIONED, CLOSED_INIT, WAIT_ARM, RUNNING, STOPPING, STOPPED and
+FAULT. Only a two-slot ARM quorum enters RUNNING. `permit` is derived from RUNNING
+and the live committed expiry, while `remaining` saturates at zero. It is distinct
+from the lower-level verifier's `busy()` ownership indicator.
+
+### Provisioning, reset and entropy
+
+`program(image, physical_enable, physically_stopped)` accepts an entire valid OTP
+image only while open. `close` permanently fixes it with both physical interlocks.
+The digital simulation platform identifier is 1; N/Q must be exactly 3/2, timing
+must satisfy `0 < W <= P < L`, and IDs/keys and reserved fields are checked.
+Ambiguous closure fails off. These APIs model trusted commissioning inputs, not
+new SPI opcodes or physical OTP macros.
+
+Cold/warm reset immediately withdraws authorization and cancels pending jobs.
+`startup(healthy)` then establishes a new local run at tick zero while permit is
+off. An entropy event must belong to the captured run/round, report healthy
+sampling started at or after issue, and differ from retained previous nonce history.
+`test_nonce` supplies deterministic public bytes for tests; it is not a TRNG.
+
+Entropy failure latches a hold, cancels pending grants/jobs and stops publication.
+An existing healthy lease may reach its old expiry. Warm reset preserves the
+hold/history and cannot finish an interrupted cold-qualification attempt. Cold
+reset loses volatile history and keeps an effective hold until healthy startup
+and a fresh first-round nonce complete qualification. Physical cross-power-cycle
+freshness remains a platform assumption, not something test bytes establish.
+Cold reset discards volatile run/receive-token counters too. Their values may
+repeat in a new powered context; fresh nonces provide cross-reset replay protection.
+Sealing events map the receive token to the separate host verifier token used in
+completion events, so a reader can follow both identities without conflating them.
+
+### Scheduled rounds, votes and leases
+
+Rounds use local run ticks: `I=(r-1)*P`, `B=I+W`, `E=I+L`, all checked for overflow.
+The model advances to meaningful events, not every idle tick. Entropy delay cannot
+move these boundaries. After a quorum closes its round, the next round still
+starts at its fixed scheduled issue tick. WAIT_ARM requests are ARM; RUNNING
+requests are RENEW. All slots share one nonce and differ only in their slot byte.
+
+The device counts a slot only after both complete verification passes and another
+live-context check: generation, round/kind/nonce, selected slot, hold, state,
+`now < B`, and `now < current_expiry` when already RUNNING. Duplicates do not add
+votes. The second distinct vote commits `committed_issue=I`, `expiry=E` and
+`remaining=E-now`. Incoming traffic and partial votes cannot extend that lease.
+
+Expiry withdraws permit at the boundary and enters STOPPING, invalidating jobs
+and the run. `complete_stop(true)` represents trusted physical acknowledgement and
+enters STOPPED. Healthy startup plus new entropy is required before another ARM
+attempt. The relay cannot issue a trusted stop acknowledgement, reset, monitor
+alarm or an execution-enable command.
+
+`apply_at(tick, input)` schedules a high-priority external reset/fault/hold/abort
+before equal-tick verifier completion. Internal expiry, receive timeout and round
+window cancellation are also processed before a vote. Ordinary relay traffic is
+delivered after already-due verification, allowing a released buffer to be reused.
+The replay driver groups equal-timestamp commands according to this priority.
+
+## Authorities and the untrusted relay
+
+Each `Authority` generates its own independent host key and registers the exact
+configuration/key slot. Its policy allows ARM/RENEW separately and can withhold
+or impose batch/signing delay. Policy state survives device resets because it
+belongs to the authority object. It does not recall signatures already issued.
+
+`batch` validates and approves every candidate before constructing the tree.
+Rejected candidates never enter a signed root. Approved leaves retain order; the
+last approved leaf pads a non-power-of-two batch. One signature is shared by all
+proofs from that batch. `depth_fixture` efficiently models a full tree of duplicate
+approved leaves for synthetic depth-17/20 cases without allocating a million nodes.
+
+`Relay` queues arbitrary reply bytes, delivery times and destination slots. It can
+drop by never enqueueing, delay, duplicate, reorder, misroute or corrupt packets;
+it holds no authority key. The device always reconstructs its own expected grant
+and applies the normal receive/verification gates. Authority policies are software
+test state, not a production durable admission/HSM implementation.
+`SignedReply::ready_at` models logical publication readiness; the honest driver
+respects it when enqueueing a response. Verification `Latency` in relay/script
+examples is trusted test-harness configuration, not a field accepted from a wire
+packet. It abstracts the backend's timing without replacing either actual pass.
 
 ## How cryptographic verification works
 
@@ -151,9 +263,9 @@ raise exceptions rather than being reported as successful evidence.
 `expected_batch_root` exposes the same grant/Merkle construction for independent
 root comparisons and test signing. It throws on invalid framing.
 
-The framing checks do not implement complete OTP provisioning/policy validation
-or live lease/state/health checks. Those remain with the full device model and
-controller milestones.
+This low-level function does not authorize a lease. `Configuration::parse` and
+`Device` add digital provisioning, round, hold and live authorization checks.
+Physical integrity, sensors and clock/entropy qualification remain platform work.
 
 `TestAuthority` generates ephemeral host keypairs and signs roots for tests.
 Private keys remain in host memory and are not serialized or printed. The separate
@@ -181,6 +293,9 @@ are ordinary host memory, not an implementation of the 9,216-byte receive SRAM.
    `target`. Advancing through idle time requires no per-tick loop.
 5. Pass 1 leaves ownership live. Pass 2 releases ownership if that same job is
    still the owner. `verification_calls()` counts actual pass evaluations.
+
+`advance_before(target)` moves the verifier clock but defers equal-tick results;
+the device uses it to settle high-priority inputs before `advance_to(target)`.
 
 Zero-delay passes are delivered in pass order at the same tick. Backwards time
 raises an error. A `never_complete` job retains ownership without queuing pass
@@ -229,6 +344,7 @@ A **fixture** is a reusable input with a known expected answer.
 | `root-0.bin`, `root-1.bin` | Independently expected roots for directed comparisons |
 | `nist-index.txt`, `nist-*-*.bin` | Expected outcomes, interfaces and inputs for the 28 selected NIST algorithm cases |
 | `ready.stamp` | Make's fixture-preparation completion marker |
+| `r02-otp.bin`, `r02-*-request/reply/root.bin`, `r02-index.txt` | Derived public R02 inputs for the stateful tests and scenario replay |
 
 The inputs live under `build/<configuration>/fixtures/`; original JSON and source
 pins remain unchanged. `fixture::load(directory, slot)` selects that slot's reply,
@@ -236,9 +352,25 @@ sets the request's slot byte, decodes the request round and captures generation 
 It requires a corresponding reply file: the supplied corpus has slots 0 and 1;
 the C++ host-signing tests construct slot-2 evidence separately.
 
-`main.cc` loads and submits slot 0, advances through its two passes, then repeats
+The legacy `main.cc` loads and submits slot 0, advances through its two passes, then repeats
 for slot 1. With delays 7/11, the completion ticks are `[7, 18, 25, 36]`. The two
-replies are checked cryptographically; there is no implemented quorum/lease commit.
+replies are checked cryptographically. The separate `reference_main.cc` uses the
+stateful model and its actual quorum/lease decisions.
+
+The new corpus in [`fixtures/r02.json`](fixtures/r02.json) contains 25 independently
+keyed public replies: ARM for all slots, RENEW rounds 2/3 for all slots, fresh
+slot-2 renewals through round 12, proof depths 0/1/2/17/20 and three-leaf proofs.
+The [manifest](fixtures/r02-manifest.json) pins artifacts and records generator
+version, generating-source hashes and the backend commit. The supplied Python
+verifier checks every signature in the full suite. No original fixture private
+keys are assumed to exist.
+
+Ordinary builds only derive binary copies. Explicit `make regenerate-reference-fixtures`
+creates new test keys/signatures, verifies public results and updates the new
+corpus/manifest, retaining generator output. Private keys are discarded. Regenerated
+bytes change; replaying one committed corpus remains deterministic. Generating-source
+hashes record provenance at generation time, rather than requiring every later
+implementation/comment change to regenerate keys.
 
 ## Build and run
 
@@ -260,11 +392,9 @@ To run a CLI replay while retaining both output streams in a new directory:
 ```sh
 mkdir -p test-results
 reins_replay_dir=$(mktemp -d test-results/manual-replay.XXXXXXXX)
-build/release/reins-sim \
+build/release/reins-reference \
   --fixtures build/release/fixtures \
-  --mode reference \
-  --first-pass-ticks 7 \
-  --second-pass-ticks 11 \
+  --scenario sim/fixtures/renew-withholding.trace \
   --trace-inputs \
   --output "$reins_replay_dir/report.json" \
   >"$reins_replay_dir/stdout.log" 2>"$reins_replay_dir/stderr.log"
@@ -276,6 +406,49 @@ printf 'Exit status: %s\nResults: %s\n' "$reins_replay_status" "$reins_replay_di
 request/event trace and any error diagnostics. The output directory must already
 exist when using `--output`.
 
+The stateful `reins-reference` options are:
+
+| CLI option | Behavior |
+|---|---|
+| `--fixtures DIR` | Required derived binary input directory |
+| `--scenario FILE` | Required timestamped public scenario script |
+| `--trace-inputs` | Request dumps, completions and scenario commands on stderr |
+| `--output FILE` | Also save canonical state/lease/event JSON to FILE |
+| `--help` | Print usage and exit successfully |
+
+Exit 0 means all scenario expectations passed, including an expected expiry or
+rejected attack. Exit 1 means a failed expectation or runtime failure. Exit 2
+means invalid CLI/scenario syntax. Process success does not mean permit is on.
+
+### Scenario script language
+
+Each line is `ABSOLUTE_TICK COMMAND ARGUMENTS`; `#` starts a comment. Times must
+be monotonic. Reset/fault/hold inputs at a timestamp precede verification finishing
+there; ordinary traffic follows already-due results, and `expect` observes the
+settled state. Every run's local clock begins at qualified startup, so a later
+run can have local tick zero at a nonzero absolute simulation timestamp.
+
+| Command | Meaning |
+|---|---|
+| `provision`, `close` | Trusted physical commissioning using `r02-otp.bin` |
+| `cold`, `warm`, `startup` | Reset or healthy startup qualification |
+| `entropy ROUND DOMAIN` | Complete a healthy draw at this timestamp using `test_nonce(ROUND, DOMAIN)` |
+| `reply NAME SLOT FIRST SECOND` | Untrusted delivery of named public reply to SLOT; FIRST/SECOND are the two simulated pass delays |
+| `entropy_fail`, `alarm` | Trusted entropy failure or immediate general monitor alarm |
+| `stop_ack` | Trusted physical stop completion |
+| `advance` | Advance time without external input |
+| `expect STATE PERMIT EXPIRY` | Require controller state, permit 0/1 and local-run lease expiry, or `none` |
+
+Start with [`arm-pair-01.trace`](fixtures/arm-pair-01.trace), then
+[`renew-withholding.trace`](fixtures/renew-withholding.trace),
+[`adversarial-relay.trace`](fixtures/adversarial-relay.trace), and
+[`same-tick-fault.trace`](fixtures/same-tick-fault.trace). Script commands are
+trusted test-harness inputs, not newly defined wire or management commands.
+
+### Legacy verification CLI
+
+The original `reins-sim` options remain available for low-level corpus replay:
+
 | CLI option | Behavior |
 |---|---|
 | `--fixtures DIR` | Required directory containing the generated public inputs |
@@ -286,12 +459,30 @@ exist when using `--output`.
 | `--output FILE` | Also write the JSON report to FILE |
 | `--help` | Print usage and exit successfully |
 
-Exit 0 means the replay verified both passes for both jobs, or help was requested.
+For this legacy program, exit 0 means the replay verified both passes for both jobs, or help was requested.
 Exit 1 means invalid evidence or a runtime failure such as unreadable fixtures,
 scheduling overflow or a crypto-library error. Exit 2 means invalid CLI
 configuration, including unsupported modes or invalid tick arguments.
 
 ### Reading the JSON report
+
+`reins-reference` emits report version 2, mode `reference-device`:
+
+| Fields | Interpretation |
+|---|---|
+| `state`, `permit`, `entropy_hold`, `closed` | Actual software controller and authorization/lifecycle state |
+| `tick`, `run_tick`, `generation`, `round` | Absolute simulation time and volatile run-relative identity |
+| `request_ready`, `votes`, `issue`, `deadline`, `proposed_expiry` | Pending context; proposals are not active leases |
+| `committed_issue`, `lease_expiry`, `remaining` | Active lease in **local run ticks**, or null when none; remaining saturates at zero |
+| `receive_token`, `receive_outcome`, `receive_offset` | One receive job and its retained completed status |
+| `events` | Ordered semantic transitions with time, identity, kind and detail; no host timing noise |
+| `authorization_checked`, `rtl_cycles` | True for software final gates, null for unimplemented RTL measurements |
+
+For an active lease, absolute expiry is `tick - run_tick + lease_expiry`.
+`Device::snapshot()` supplies the same information programmatically. A JSON report
+cannot be restored as permission after reset.
+
+The original `reins-sim` report remains version 1, mode `reference`:
 
 | Fields | Interpretation |
 |---|---|
@@ -318,6 +509,14 @@ Neither value is a measured RTL cycle count.
   delivery, stalls, zero-delay ordering, deadline-boundary delivery and time errors.
 - Fresh host-signed ARM replies for slots 0, 1 and 2 at proof depths 0 and 20.
 
+`reference_tests.cc` adds all R02 completion criteria: the public corpus matches;
+every quorum pair authorizes; one signer, duplicates and mixed contexts cannot;
+two withholding authorities force expiry while the third signs fresh renewals;
+and 1,000-round timelines replay deterministically. Boundary cases cover cold/warm
+reset, entropy timing/repeats/hold, fixed-issue leases, complete receive/seal/abort,
+absolute job timeout, stale job ownership, same-tick external faults, B/current-expiry
+equality, overflow, policy delay and actual three-leaf batching.
+
 Before each signed-response check, diagnostic helpers print the complete request,
 decoded fields, scenario and expectation, including cases expected to fail.
 Actual verdicts follow. Truncated fields are marked unavailable. Timeline and
@@ -334,6 +533,8 @@ For the full `make tests` suite, the main paths are:
 | `sim-directed/output.log` | C++ assertions, complete requests and illustrative timelines |
 | `sim-report/output.log` | CLI scenario expectations and observed status |
 | `sim-report/cli-artifacts/` | Individual CLI stdout/stderr, command records, JSON and negative-case inputs |
+| `reference-fixtures/output.log` | Pinned new corpus and optional supplied-Python signature cross-check |
+| `reference-report/reference-replays-*/` | All six stateful scenarios, duplicate semantic reports, input traces and negative-case diagnostics |
 | `baseline/`, `tool-regressions/` | Source/fixture review and test-infrastructure results |
 
 The quick suite skips fresh-key signing and some slower/infrastructure checks;
@@ -349,14 +550,17 @@ previous runs. Repository-wide test coverage is documented in the
 
 ## Extending the simulator
 
-Start with `simulation.h` for the boundary, `main.cc` for a complete driver,
-`crypto.cc` for byte-level verification, and `verifier_service.cc` for event
-lifetime/ownership. Use the existing directed cases as examples of valid and
-deliberately invalid inputs.
+Start with `reference.h` / `reference_device.cc` for controller and lease state,
+`reference_scenario.cc` / `reference_main.cc` for replay, and `simulation.h` /
+`verifier_service.cc` for the asynchronous crypto boundary. `crypto.cc` contains
+byte-level verification. Use the existing directed cases as examples of valid
+and deliberately invalid inputs. Model choices and requirement evidence are in
+[the R02 design record](../docs/R02_REFERENCE_MODEL.md).
 
 A future Verilator driver can submit the captured job and consume completions
-while advancing the RTL simulation. The RTL must independently enforce the live
-acceptance conditions before voting. Full SHA/Merkle/SLH-DSA RTL and physical
+while advancing the RTL simulation and compare semantic events with `Device`.
+The RTL must independently enforce the live acceptance conditions before voting;
+the reference does not dictate RTL microstates. Full SHA/Merkle/SLH-DSA RTL and physical
 qualification remain separate development work; fuzz and RTL fault campaigns
 are also pending. The software mutation/stale/stall cases establish only their
 declared software behaviors.

@@ -5,20 +5,23 @@ simulator, a Verilator test environment, directed tests, fuzzing, and implementa
 fault injection. Develop it in the pull-request order below. Each PR must provide
 local build and test commands and evidence for the behavior it introduces.
 
-This document is the development roadmap. All implementation milestones below are
-open; existing Python validation is a baseline, not evidence that RTL exists.
+This document is the development roadmap. The fixed scope and PR 02 software
+reference milestone are implemented. RTL milestones remain open; software/Python
+validation is not evidence that RTL exists.
 
 Section 1 is established by [IMPLEMENTATION_SCOPE.md](IMPLEMENTATION_SCOPE.md),
 the [pinned baseline manifest](implementation_baseline.json), and the read-only
 checks in the [README](../README.md). This completes the scope/source-of-truth
-preparation; the PR 01 build foundation and later implementation milestones remain
+preparation. PR 01's RTL build/tracing work and the other hardware milestones remain
 open.
 
 Section 2 now has [executable software infrastructure](SIMULATION_STRATEGY.md):
 C++ host signing/verification, immutable asynchronous verification jobs, event
 latency/cancellation, reference-mode reporting, and local Make build/test targets.
-RTL modes, controller authorization, real-cycle/FST/SPI benchmarks, and the full
-PR 02 behavioral model remain with their dependent development milestones.
+PR 02 now adds the complete software device/authority/relay behavioral model,
+state/lease reporting, pinned public replay corpus and semantic completion tests.
+RTL modes, protected hardware authorization and real-cycle/FST/SPI benchmarks
+remain with their dependent development milestones.
 
 ## 1. Fixed scope and source of truth
 
@@ -139,6 +142,15 @@ on isolated copies because it regenerates records and Markdown; retain test
 outputs and generated review records until an explicit clean target removes them.
 
 ### PR 02 — Independent C++ reference simulator and test authorities
+
+**Status: implemented in software.** See the [R02 model/evidence record](R02_REFERENCE_MODEL.md),
+[source guide](../sim/README.md), [public corpus](../sim/fixtures/r02.json),
+[provenance manifest](../sim/fixtures/r02-manifest.json) and
+[completion tests](../sim/tests/reference_tests.cc). `make tests` runs both the
+original corpus and the stateful model. `make sanitize-tests` instruments the C++.
+The pinned independent backend is OpenSSL 3.5.7's default implementation at the
+[recorded upstream commit](../third_party/crypto-backend.json); every new signature
+is additionally checked by the supplied Python verifier in the full suite.
 
 **Deliver:** event-driven provisioning, reset, entropy-event, round, lease, vote,
 receive-job, and stop models. Use three independent test keys and authority policy

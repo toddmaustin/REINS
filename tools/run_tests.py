@@ -191,6 +191,7 @@ def run_suite(suite, configuration, output_root, steps, *, build=None, cwd=ROOT,
 
 
 def suite_steps(suite, build_dir, test_filter):
+    """Select suite's logged commands using build_dir binaries and optional test_filter."""
     python = [sys.executable, "-E", "-s", "-B"]
     baseline = python + [str(ROOT / "tools/check_baseline.py")]
     if suite != "quick":
@@ -201,6 +202,10 @@ def suite_steps(suite, build_dir, test_filter):
         regression = python + ["-m", "unittest", "discover", "-s", "tools/tests", "-p", "test_check_baseline.py", "-v"]
     steps = [Step("baseline", baseline), Step("tool-regressions", regression, count_kind="unittest")]
     if suite != "baseline":
+        crosscheck = python + [str(ROOT / "tools/check_reference_fixtures.py")]
+        if suite != "quick":
+            crosscheck += ["--python-crypto"]
+        steps.append(Step("reference-fixtures", crosscheck))
         cpp = [str(build_dir / "reins-sim-tests"), "--success", "--no-colors"]
         if suite == "quick":
             cpp += ["--test-case-exclude=*host authorities*"]
@@ -209,6 +214,8 @@ def suite_steps(suite, build_dir, test_filter):
         steps.insert(0, Step("sim-directed", cpp, count_kind="doctest"))
         steps.append(Step("sim-report", python + [str(ROOT / "tools/test_sim_report.py"),
             "--executable", str(build_dir / "reins-sim"), "--fixtures", str(build_dir / "fixtures")]))
+        steps.append(Step("reference-report", python + [str(ROOT / "tools/test_reference_report.py"),
+            "--executable", str(build_dir / "reins-reference"), "--fixtures", str(build_dir / "fixtures")]))
     return steps
 
 

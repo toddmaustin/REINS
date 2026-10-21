@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "generator": "reins-r02/1",
+  "backend_commit": "8cf17aaeb4599f8af87fefd810b5b5fee90fe69e",
+  "generator_source_sha256": {
+    "sim/src/reference_fixture_generator.cc": "e0d193f13e4cd99dd6781a01167be186df7c2b0cc0809430e3716b2a26f10a7e",
+    "sim/src/reference_authority.cc": "15988d4751dc61c2b90e3479435846f664059e14e52e38641d8dfd7443701f00",
+    "sim/src/reference_device.cc": "8e2ee9fa8303e441a92280bad389b3603cf7bda7783bea738a102d8f36a1bce2",
+    "sim/src/crypto.cc": "6295a466311a51c3d3018844bc7bc7b3c886190fe4d711c84ff9b7136cc428bd",
+    "sim/include/reins/reference.h": "d58aa4e361b94e8a40e74d95725fc8b21966071464105fc61ff8fc448a7b78df",
+    "sim/include/reins/simulation.h": "1e20c7fc11a0a4d8b50ffeddf1b8c0d4fbef4ba1f6c36ebd5a692c98f04a03cf",
+    "sim/include/reins/diagnostics.h": "7d07cdf72a05ff007a7f3c3877a3c8081e9054f6609ffe2d7348598fc7bf7bd8",
+    "tools/reference_fixtures.py": "aa82c924c14107695338c566fd161aee0cfafbe86f6adedcdb4cc9ea53fb37a7",
+    "tools/generate_reference_fixtures.py": "34a38593adfcf259dabd3ff9a3c5fada52b5a266f7ed881961c40c9125c90f16",
+    "third_party/crypto-backend.json": "499f304f226d620fb271b2b2a7f0687fb6f3304099294c078d8a0c27e4c970da"
+  },
+  "artifacts": [
+    "sim/fixtures/r02.json",
+    "sim/fixtures/adversarial-relay.trace",
+    "sim/fixtures/arm-pair-01.trace",
+    "sim/fixtures/arm-pair-02.trace",
+    "sim/fixtures/arm-pair-12.trace",
+    "sim/fixtures/renew-withholding.trace",
+    "sim/fixtures/same-tick-fault.trace"
+  ],
+  "sha256": {
+    "sim/fixtures/r02.json": "ec1e3bce57f0ebd497a303278896543b29856597924f49fa05b4c160134b1b3a",
+    "sim/fixtures/adversarial-relay.trace": "a15f804551962afc6676089441bbce3d16f96c822f4c7beb3d500a0cc3df62f3",
+    "sim/fixtures/arm-pair-01.trace": "ade44da60126c0ecda362d1238291e0c823de61bb99eb18ad5892828c18f1064",
+    "sim/fixtures/arm-pair-02.trace": "18c24e0d7b34dfa85aa74f1d2ee6943fdbde780d77996d2572fe889c44dce523",
+    "sim/fixtures/arm-pair-12.trace": "9f07b0caa62994da2e3fef237df2691e90b4cd46956b5a8851c1be8b889245f7",
+    "sim/fixtures/renew-withholding.trace": "908492e3db88a0a51b53d13bccabd0af08bd4a2ede31d3ab97aa72f3674d048c",
+    "sim/fixtures/same-tick-fault.trace": "caefccad82e7d78c8689c005856a7b4be1a2a77c52ff43ba47d6efe3f4355f44"
+  }
+}

@@ -2,10 +2,11 @@
 
 This implements the software infrastructure for section 2 of the
 [implementation plan](IMPLEMENTATION_PLAN.md). The currently executable mode is
-**reference**, using an event-driven C++ verification service and the OpenSSL
-3.5+ default provider. The service is reusable by a future Verilator wrapper; this
-change contains no RTL controller, timing enforcement, vote accumulation, permit
-output, SPI master, or complete behavioral device model.
+**reference**, using an event-driven C++ device model and the pinned OpenSSL
+3.5.7 default provider. R02 implements digital provisioning, reset, entropy events,
+rounds, lease/vote gates, receive jobs, stopping, independent authorities and an
+untrusted relay. It contains no RTL controller, physical permit enforcement or
+pin-level SPI master. See [R02_REFERENCE_MODEL.md](R02_REFERENCE_MODEL.md).
 
 ## Boundaries and APIs
 
@@ -53,6 +54,16 @@ The service intentionally can deliver cryptographically valid evidence exactly
 at or after a deadline. The current tests establish this timing capability;
 rejection by real RTL remains a controller integration test in a later milestone.
 
+`sim/include/reins/reference.h` adds `Device`, `Authority`, `Relay` and their
+semantic data types. `Device` consumes actual service completions and applies
+round/nonce/run/slot, distinct-vote, hold and strict deadline/current-expiry gates
+before committing a software lease. It stores explicit armed/controller state and
+committed issue/expiry; its receive job is sealed before both passes.
+`apply_at` / `advance_before` settle high-priority external inputs before equal-tick
+verification. Expiry, round/window cancellation and receive timeout also dominate
+votes. Scenario replay groups equal-tick resets/faults/holds before completions,
+then ordinary traffic and expectations. No RTL microstate matching is required.
+
 ## Reproducibility and fixtures
 
 `tools/prepare_sim_fixtures.py` first verifies all baseline pins, then writes
@@ -67,6 +78,15 @@ fresh host authority keys and sign valid ARM roots for slots 0, 1 and 2, at proo
 depths 0 and 20. These dynamic keys/signatures are not byte-identical fixtures;
 their verification outcomes and scheduling checks are repeatable.
 
+That original CLI remains `reins-sim`. The new `reins-reference` CLI replays
+six pinned stateful scenarios using 25 newly signed public R02 records. They cover
+ARM in every slot/pair, successive RENEW rounds, real fresh third-signer traffic
+after two withhold, misrouting/mixed contexts and a fault at the would-be commit
+tick. Artifact hashes, generator version/source hashes and the crypto backend
+commit are recorded. Ordinary builds never regenerate keys. Explicit
+`make regenerate-reference-fixtures` produces new public material, discards
+private keys and cross-checks every signature using the supplied Python verifier.
+
 All 28 selected official algorithm vectors run through an explicitly separate
 `algorithm_test` interface, including the 14 internal-interface cases. That test
 interface does not widen the REINS pure/empty-context gate. Known roots and the
@@ -76,7 +96,7 @@ independent Python outcomes anchor the C++ implementation.
 
 | Mode | Current status | What its results establish |
 |---|---|---|
-| Reference | Implemented for cryptographic jobs, host signing and event scheduling | Actual software cryptography and scheduling; no lease authorization or RTL behavior |
+| Reference | R02 device, authority, relay and cryptographic scheduling models | Software authorization/lease/stop evidence and semantic replay; no RTL or physical enforcement |
 | Fast control | Pending controller/SPI/guard RTL and simulation wrapper | Later: real control with software cryptography |
 | Crypto control | Deferred until measurements justify a software SHA compression backend | Later: real sequencing with abstracted compression datapath |
 | Full RTL | Pending SHA/Merkle/SLH-DSA RTL and protected acceptance | Later: actual digital crypto/control and cycle measurements |
@@ -95,6 +115,13 @@ call count, total simulated time, host wall time and host verification time.
 Unmeasured RTL cycles, cycles/second and peak memory are `null`; authorization is
 explicitly marked unchecked. Simulated latency is never reported as measured
 hardware performance. Preserve the report plus build/tool versions for comparison.
+
+`reins-reference` emits report version 2, `mode=reference-device`, actual software
+controller/permit, pending votes/deadlines, committed issue/expiry/remaining,
+receive status and canonical semantic events. Its `authorization_checked=true`
+means the software gates ran; `rtl_cycles` remains null. Events exclude measured
+host durations so identical public inputs replay byte-identically. Device state
+is volatile and report JSON cannot restore permission after reset.
 
 The directed suite covers the NIST outcomes, existing roots, signature-region and
 context/key/configuration mutations, malformed lengths/index, immutable capture,
