@@ -300,6 +300,8 @@ Neither is a measured hardware cycle count. RTL metrics are `null` and
 `authorization_checked` is false because this program only verifies cryptographic
 evidence and schedules results; it grants no vote, lease or execution permit.
 See [simulation design and APIs](docs/SIMULATION_STRATEGY.md) for details.
+The [simulator source guide](sim/README.md) explains each source file, the
+architecture, job lifecycle, verification steps and CLI operation.
 
 ## Sources and layout
 
