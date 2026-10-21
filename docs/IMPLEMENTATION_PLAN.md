@@ -121,6 +121,10 @@ Use these modes, and identify the mode in every result:
 Each numbered item is a reviewable milestone. Split larger milestones further
 when needed, preserving this dependency order. Directed tests, fuzz corpora, fault
 sites, and requirement evidence grow with each component, starting in its own PR.
+R03 protected primitives and general fault-injection infrastructure are currently
+**deferred** by project decision. R04 hashing proceeds first; later milestones
+that require R03 protections still need that work before claiming protected
+acceptance or fault resistance.
 
 ### PR 01 — Build, fixtures, and verification foundation
 
@@ -173,6 +177,9 @@ Do not assume private keys for the existing signed fixtures are available.
 
 ### PR 03 — Protected primitives and fault-injection infrastructure
 
+**Status: deferred.** Its general internal-fault instrumentation and protected
+storage/control work are not prerequisites for R04 functional SHA bring-up.
+
 **Deliver:** checked 64-bit arithmetic; dissimilar redundant storage/update paths;
 sparse state and accept-code handling; protected generations and counters; and
 memory-integrity interfaces. Check a minimum Hamming distance of four for FSM and
@@ -192,6 +199,15 @@ prevents residue from contaminating later attempts; reports distinguish missed
 triggers from executed injections.
 
 ### PR 04 — SHA-256 RTL and software cross-checks
+
+**Status: implemented.** See the [RTL interface/test guide](../rtl/README.md),
+[core selection/license review](../third_party/sha256-core-review.md) and
+[C++ Verilator harness](../sim/tests/sha256_rtl_tests.cc). A first-party 64-round
+iterative compression core accepts arbitrary input chaining states; its bounded
+message wrapper supplies RTL padding/chaining. `make tests` includes directed,
+seeded fuzz and interface-corruption cases, independent pin observations and
+retained actual cycle/throughput reports. R03 remains deferred; these results do
+not establish internal fault protection or safe sharing across verification passes.
 
 **Deliver:** an iterative SHA-256 compression core, message framing/padding support,
 and bounded request/completion interfaces. Place this before provisioning and

@@ -8,6 +8,11 @@ runtime version. R02 implements digital provisioning, reset, entropy events,
 rounds, lease/vote gates, receive jobs, stopping, independent authorities and an
 untrusted relay. It contains no RTL controller, physical permit enforcement or
 pin-level SPI master. See [R02_REFERENCE_MODEL.md](R02_REFERENCE_MODEL.md).
+R04 additionally supplies **rtl-sha256**: real iterative compression and
+message-framing/padding RTL, clocked by a C++ Verilator harness. The
+[RTL guide](../rtl/README.md) specifies interfaces, bounds, independent oracle
+checks and saved measurements. R03 protected primitives/internal fault injection
+are deferred; R04 exercises interface corruption without claiming their protections.
 
 ## Boundaries and APIs
 
@@ -100,9 +105,10 @@ independent Python outcomes anchor the C++ implementation.
 | Mode | Current status | What its results establish |
 |---|---|---|
 | Reference | R02 device, authority, relay and cryptographic scheduling models | Software authorization/lease/stop evidence and semantic replay; no RTL or physical enforcement |
+| RTL SHA-256 | R04 compression and bounded message wrapper on Verilator | Real SHA datapath, padding/chaining, handshake counts, cycles and host throughput; no REINS acceptance controller |
 | Fast control | Pending controller/SPI/guard RTL and simulation wrapper | Later: real control with software cryptography |
 | Crypto control | Deferred until measurements justify a software SHA compression backend | Later: real sequencing with abstracted compression datapath |
-| Full RTL | Pending SHA/Merkle/SLH-DSA RTL and protected acceptance | Later: actual digital crypto/control and cycle measurements |
+| Full RTL | SHA primitive available; pending Merkle/SLH-DSA RTL and protected acceptance | Later: actual complete digital crypto/control and cycle measurements |
 | RTL fault | Pending fault-site implementation | Later: declared implementation-level injection evidence |
 
 Unavailable CLI modes fail with status 2. There is no silent fallback to software.

@@ -5,6 +5,11 @@ Q=2** implementation. Its current **reference mode** performs real cryptographic
 verification on the host computer and models provisioning, reset, entropy events,
 rounds, votes, leases, receive jobs and stopping. The C++ reference model is the
 semantic oracle for future Verilator integration.
+R04 also adds an independent **real RTL SHA-256** test executable on Verilator.
+It does not replace the reference model's software crypto backend. The
+[RTL guide](../rtl/README.md) explains the hardware interfaces, C++ oracle,
+handshake scoreboard, tests and measured performance. R03 protected primitives
+and general internal fault injection are deferred.
 
 This directory contains the simulator: `src/` holds implementation files,
 `include/reins/` holds interfaces, and `tests/` holds C++ tests. All commands below
@@ -38,13 +43,13 @@ scenarios. `reins-sim` preserves the original low-level verification harness for
 the two supplied RENEW round-3 replies. A verified signature becomes a vote only
 after the device model checks its current context, deadlines, hold and distinct
 slot. The modeled permit is a software result. A pin-level SPI driver,
-SystemVerilog controller and Verilator wrapper are later milestones.
+SystemVerilog REINS controller and its Verilator integration are later milestones.
 See the [implementation plan](../docs/IMPLEMENTATION_PLAN.md) and
 [simulation strategy](../docs/SIMULATION_STRATEGY.md).
 
 ## Source map
 
-These are all fourteen current C++ source/header files in `sim/`:
+These are the fifteen current C++ source/header files in `sim/`:
 
 | File | Responsibility | Main entry points |
 |---|---|---|
@@ -62,6 +67,13 @@ These are all fourteen current C++ source/header files in `sim/`:
 | [`sim/src/reference_main.cc`](src/reference_main.cc) | Stateful reference CLI | `main` for `reins-reference` |
 | [`sim/src/reference_fixture_generator.cc`](src/reference_fixture_generator.cc) | Explicit generation of new public keys, ARM/RENEW signatures and proof-depth records | `main` for `reins-generate-fixtures`; private keys never serialized |
 | [`sim/tests/reference_tests.cc`](tests/reference_tests.cc) | R02 completion and boundary regressions | Every quorum pair, withholding, duplicate/mixed contexts, reset/entropy, receive races, expiry and deterministic long timelines |
+| [`sim/tests/sha256_rtl_tests.cc`](tests/sha256_rtl_tests.cc) | Clocked R04 Verilator driver and independent OpenSSL scoreboard | Compression/padding known answers, arbitrary states, directed/fuzz/interface-corruption checks, measurements and retained artifacts |
+
+[`sim/rtl/sha256_test_top.sv`](rtl/sha256_test_top.sv) is the simulation-only top
+for [`rtl/sha256_compress.sv`](../rtl/sha256_compress.sv) and
+[`rtl/sha256_message.sv`](../rtl/sha256_message.sv). It exposes direct compression,
+message hashing and passive internal block-interface observations. The production
+modules have no test fault ports or software result bypass.
 
 The common crypto, verifier, device, authority and scenario objects are linked
 into these programs:
@@ -71,6 +83,7 @@ build/<configuration>/reins-sim         CLI, with main.cc
 build/<configuration>/reins-reference   Device CLI, with reference_main.cc
 build/<configuration>/reins-sim-tests   verifier_tests.cc + reference_tests.cc
 build/<configuration>/reins-generate-fixtures  Explicit generator target only
+build/<configuration>/sha256-rtl/reins-sha256-tests  Actual clocked SHA hardware tests
 ```
 
 The configuration is `release` or `sanitize`. The two small I/O/diagnostic headers
@@ -468,9 +481,12 @@ make tests
 make sanitize-tests
 ```
 
-There is no simulator-local Makefile. Verilator is not required for the current
-software implementation. Address/undefined-behavior sanitizers instrument this
-project's C++, not the installed OpenSSL library.
+There is no simulator-local Makefile. Verilator 5+ is required for normal builds
+and tests; 5.032 is the tested baseline. `make software-build` builds only the
+independent C++ simulator without Verilator. Address/undefined-behavior sanitizers
+instrument this project's C++ and the generated simulator, not installed OpenSSL.
+For the SHA harness, `REINS_SHA_SEED=12345 make tests` replays a chosen fuzz seed;
+`REINS_SHA_TRACE=1 make RTL_TRACE=1 quick-tests` saves a bounded FST waveform.
 
 To run a CLI replay while retaining both output streams in a new directory:
 
@@ -616,6 +632,8 @@ For the full `make tests` suite, the main paths are:
 | `summary.json`, `runner.log`, `junit.xml` | Group status, commands, timing, revision and aggregate evidence |
 | `build/output.log`, `build/build-config.json` | Build diagnostics and compiler settings |
 | `sim-directed/output.log` | C++ assertions, complete requests and illustrative timelines |
+| `sha256-rtl/` | Actual RTL test output, public transaction JSONL, performance JSON, per-model line coverage and optional bounded FST |
+| `rtl-lint/output.log` | Standalone production-module checks with assertions and with `SYNTHESIS` defined |
 | `sim-report/output.log` | CLI scenario expectations and observed status |
 | `sim-report/cli-artifacts/` | Individual CLI stdout/stderr, command records, JSON and negative-case inputs |
 | `reference-fixtures/output.log` | Pinned new corpus and optional supplied-Python signature cross-check |
@@ -645,10 +663,12 @@ and deliberately invalid inputs. Model choices and requirement evidence are in
 A future Verilator driver can submit the captured job and consume completions
 while advancing the RTL simulation and compare semantic events with `Device`.
 The RTL must independently enforce the live acceptance conditions before voting;
-the reference does not dictate RTL microstates. Full SHA/Merkle/SLH-DSA RTL and physical
-qualification remain separate development work; fuzz and RTL fault campaigns
-are also pending. The software mutation/stale/stall cases establish only their
-declared software behaviors.
+the reference does not dictate RTL microstates. R04 supplies the functional SHA
+primitive and bounded message wrapper with actual RTL fuzz/interface checks.
+Merkle/SLH-DSA and controller integration, R03 internal fault campaigns and physical
+qualification remain separate work. Passing SHA tests does not establish safe
+sharing between verification passes. The software mutation/stale/stall cases
+establish only their declared software behaviors.
 
 Follow [AGENTS.md](../AGENTS.md): use `.cc`/`.h`, give each new or modified
 function a short purpose/parameter comment, use the Make test interface and retain

@@ -8,6 +8,7 @@ it is not committed to this repository.
 | OpenSSL | 3.5 or newer, default provider; tested reference 3.5.7 at upstream commit `8cf17aaeb4599f8af87fefd810b5b5fee90fe69e` | Independent host SHA-256 / FIPS 205 SLH-DSA backend; Apache-2.0 |
 | doctest | v2.4.12, archive SHA-256 `73381c7aa4dee704bd935609668cf41880ea7f19fa0504a200e13b74999c2d70` | C++ test framework; MIT |
 | GNU Make | Tested with 4.4.1 | Public build/test/clean interface; GPL-3.0-or-later |
+| Verilator | 5+ supported; tested baseline 5.032 (Debian 5.032-1+b2) | Actual SHA-256 RTL simulation, assertions, line coverage and optional FST; Artistic-2.0 or LGPL-3.0 |
 
 `tools/fetch_doctest.py` downloads the official GitHub archive with TLS and checksum
 verification and extracts only the header and license. Their individual SHA-256
@@ -45,3 +46,8 @@ Integration reference: official OpenSSL 3.5.7
 Only the explicit `algorithm_test` interface enables NIST internal/nonempty-context
 cases. REINS reply verification and root signing always use pure encoding and an
 empty context.
+
+R04 uses first-party SHA-256 RTL under the repository license. The
+[core selection review](sha256-core-review.md) records the pinned reusable
+candidate, BSD-2-Clause license, interface behavior and decision to implement the
+explicit chaining-state interface directly. The candidate is not a build dependency.

@@ -4,6 +4,8 @@
 CXX ?= c++
 PYTHON ?= python3
 PKG_CONFIG ?= pkg-config
+VERILATOR ?= verilator
+RTL_TRACE ?= 0
 SANITIZE ?= 0
 JOBS ?= 4
 TEST_FILTER ?=
@@ -34,16 +36,33 @@ TEST_OBJECTS := $(addprefix $(BUILD_DIR)/obj/,verifier_tests.o reference_tests.o
 REFERENCE_OBJECT := $(BUILD_DIR)/obj/reference_main.o
 GENERATOR_OBJECT := $(BUILD_DIR)/obj/reference_fixture_generator.o
 OBJECTS := $(LIB_OBJECTS) $(MAIN_OBJECT) $(TEST_OBJECTS) $(REFERENCE_OBJECT) $(GENERATOR_OBJECT)
+RTL_SOURCES := rtl/sha256_compress.sv rtl/sha256_message.sv sim/rtl/sha256_test_top.sv
+RTL_DIR := $(abspath $(BUILD_DIR)/sha256-rtl)
+RTL_BINARY := $(BUILD_DIR)/sha256-rtl/reins-sha256-tests
+RTL_TRACE_FLAGS := $(if $(filter 1,$(RTL_TRACE)),--trace-fst,)
 BASELINE_INPUTS := docs/implementation_baseline.json $(wildcard docs/REINS*) $(wildcard docs/validation/*) $(wildcard sim/fixtures/*) third_party/crypto-backend.json
 
 # Pass only explicit build settings to the logged recursive build. The runner
 # resets jobserver flags and uses JOBS, so inherited descriptors are unnecessary.
 export CXX PYTHON PKG_CONFIG SANITIZE CPPFLAGS CXXFLAGS LDFLAGS LDLIBS
 export PROJECT_CPPFLAGS PROJECT_CXXFLAGS PROJECT_LDFLAGS OPENSSL_LIBS
+export VERILATOR RTL_TRACE
 
-.PHONY: build check-tools verify-deps quick-tests tests baseline-tests sanitize-tests regenerate-reference-fixtures clean clean-results clean-deps help FORCE
+.PHONY: build software-build rtl-build rtl-lint check-tools check-rtl-tools verify-deps quick-tests tests baseline-tests sanitize-tests regenerate-reference-fixtures clean clean-results clean-deps help FORCE
 
-build: $(BUILD_DIR)/reins-sim $(BUILD_DIR)/reins-reference $(BUILD_DIR)/reins-sim-tests $(BUILD_DIR)/fixtures/ready.stamp
+build: software-build rtl-build
+
+software-build: $(BUILD_DIR)/reins-sim $(BUILD_DIR)/reins-reference $(BUILD_DIR)/reins-sim-tests $(BUILD_DIR)/fixtures/ready.stamp
+
+rtl-build: $(RTL_BINARY)
+
+# Check production modules independently of the passive observation/test top.
+rtl-lint: check-rtl-tools
+	$(VERILATOR) --lint-only -Wall --assert --top-module sha256_message rtl/sha256_compress.sv rtl/sha256_message.sv
+	$(VERILATOR) --lint-only -Wall -DSYNTHESIS --top-module sha256_message rtl/sha256_compress.sv rtl/sha256_message.sv
+
+check-rtl-tools:
+	@$(PYTHON) -c 'import re, subprocess, sys; version=subprocess.check_output(sys.argv[1:]+["--version"], text=True); print(version, end=""); match=re.match(r"Verilator ([0-9]+)\.", version); sys.exit(0 if match and int(match[1])>=5 else "Verilator 5+ required")' $(VERILATOR)
 
 check-tools:
 	@$(PYTHON) -c 'import sys; sys.exit(0 if sys.version_info >= (3, 10) else "Python 3.10+ required")'
@@ -78,6 +97,13 @@ $(BUILD_DIR)/reins-reference: $(LIB_OBJECTS) $(REFERENCE_OBJECT)
 $(BUILD_DIR)/reins-generate-fixtures: $(LIB_OBJECTS) $(GENERATOR_OBJECT)
 	$(CXX) $^ $(PROJECT_LDFLAGS) $(LDFLAGS) $(OPENSSL_LIBS) $(LDLIBS) -o $@
 
+$(RTL_BINARY): $(RTL_SOURCES) sim/tests/sha256_rtl_tests.cc Makefile $(DOCTEST_HEADER) $(BUILD_DIR)/build-config.json | check-tools check-rtl-tools verify-deps
+	@mkdir -p $(RTL_DIR)
+	$(VERILATOR) --cc --exe --build -j 2 --assert --coverage-line $(RTL_TRACE_FLAGS) -Wall --top-module sha256_test_top \
+	  --Mdir $(RTL_DIR) -o reins-sha256-tests $(RTL_SOURCES) $(abspath sim/tests/sha256_rtl_tests.cc) \
+	  -CFLAGS '-std=c++20 -Wall -Wextra $(OPT_FLAGS) $(OPENSSL_CFLAGS) -isystem $(abspath $(DOCTEST_DIR)) $(CXXFLAGS)' \
+	  -LDFLAGS '$(PROJECT_LDFLAGS) $(LDFLAGS) $(OPENSSL_LIBS) $(LDLIBS)'
+
 regenerate-reference-fixtures: $(BUILD_DIR)/reins-generate-fixtures
 	$(PYTHON) -E -s -B tools/generate_reference_fixtures.py --generator $(BUILD_DIR)/reins-generate-fixtures
 
@@ -107,6 +133,9 @@ clean-deps:
 
 help:
 	@echo 'make build          Build the C++ reference/verifier CLIs and tests (default)'
+	@echo 'make rtl-build      Build assertion/coverage-enabled Verilator SHA-256 tests'
+	@echo 'make rtl-lint       Check standalone production RTL with/without SYNTHESIS'
+	@echo 'make software-build Build only the independent C++ simulator and tests'
 	@echo 'make quick-tests    Build and run fast checks; retain every run'
 	@echo 'make tests          Build and run all current checks; retain every run'
 	@echo 'make baseline-tests Run source/fixture checks without C++ or OpenSSL'

@@ -9,9 +9,13 @@ renewals, the lease expires and local hardware stops execution. There is no remo
 This repository now contains the **R02 event-driven C++ device reference model**:
 provisioning, reset, entropy events, ARM/RENEW rounds, two-of-three voting, execution
 leases, receive jobs, stopping, test authorities and an untrusted relay. It uses
-real host signature verification. SystemVerilog and Verilator integration remain
-later work. Software tests do not prove physical clock, randomness, isolation or
-fault-resistance properties.
+real host signature verification. **R04 adds iterative SHA-256 SystemVerilog RTL
+and a C++ Verilator harness** with message padding, directed tests, seeded fuzz,
+interface-corruption checks and measured cycles/throughput. R03 protected
+primitives and general fault-injection infrastructure are deferred. The REINS
+controller and signature-verification RTL remain later work. These tests do not
+prove physical clock, randomness, isolation or fault-resistance properties.
+See the [RTL guide](rtl/README.md) for interfaces and hashing tests.
 
 ## Start here
 
@@ -37,6 +41,7 @@ and keeps the logs for inspection.
 | Trusted CA certificates | Let Python verify HTTPS when downloading the test dependency |
 | pkg-config | Finds the installed OpenSSL headers and library |
 | OpenSSL **3.5 or newer development package** | Independent SHA-256 / FIPS 205 SLH-DSA backend, with the default provider's SLH-DSA support |
+| Verilator **5+** | Compiles and runs the actual SHA-256 RTL with assertions and line coverage; tested with **5.032** |
 
 OpenSSL's development package includes headers and `libcrypto`, not just the
 `openssl` executable. Many older systems supply OpenSSL 3.0 or 3.4, which do not
@@ -68,7 +73,7 @@ and records its library directory in the executables' runtime search path.
 On macOS, a candidate setup is:
 
 ```sh
-brew install make pkg-config python openssl@3
+brew install make pkg-config python openssl@3 verilator
 # Check that Homebrew's current OpenSSL is at least 3.5:
 export PKG_CONFIG_PATH="$(brew --prefix openssl@3)/lib/pkgconfig"
 pkg-config --modversion libcrypto
@@ -79,8 +84,11 @@ gmake tests
 Use `gmake` when your system's `make` is an older version. Linux/WSL2 is the tested
 path: Debian 13, GCC 14.2, GNU Make 4.4.1, Python 3.12.14 and OpenSSL 3.5.7.
 The full suite also passes with a source-built OpenSSL 3.5.0.
-macOS has not yet been validated here. Verilator will become a prerequisite when
-RTL is introduced; it is not needed for the current software tests.
+macOS has not yet been validated here. On Debian/Ubuntu, `sudo apt-get install
+verilator` installs the packaged tool; check `verilator --version` reports 5 or
+newer. Set `VERILATOR=/path/to/verilator` for a custom installation. Verilator is
+required for normal builds/tests; `make software-build` and `make baseline-tests`
+provide software-only entry points.
 
 The first build downloads a small, pinned C++ testing dependency called **doctest**.
 The downloader verifies HTTPS certificates and both archive and file SHA-256
@@ -141,9 +149,12 @@ installing cached files too. A failed download requires no `make clean`.
 
 | Command | What it does |
 |---|---|
-| `make build` | Builds the C++ CLI and test program and prepares their input data |
+| `make build` | Builds the C++ simulators/tests, prepares input data, and builds the Verilated SHA-256 tests |
+| `make software-build` | Builds only the independent C++ simulators/tests and input data |
+| `make rtl-build` | Builds only the assertion/coverage-enabled SHA-256 Verilator test executable |
+| `make rtl-lint` | Checks production RTL with assertions and with `SYNTHESIS` defined, independently of the simulation top |
 | `make quick-tests` | Builds as needed and runs fast checks, skipping fresh key generation/signing |
-| `make tests` | Builds as needed and runs all current software and infrastructure checks |
+| `make tests` | Builds as needed and runs all current software, SHA-256 RTL and infrastructure checks |
 | `make baseline-tests` | Runs source/fixture/tool checks using only Python; no C++ build or OpenSSL package needed |
 | `make sanitize-tests` | Builds/runs the full suite with C++ address/undefined-behavior sanitizers |
 | `make regenerate-reference-fixtures` | Explicitly generates new public R02 keys/signatures and provenance; changes tracked fixtures |
@@ -256,19 +267,23 @@ physical randomness.
 |---|---|
 | `build` | Can the selected compiler/OpenSSL build the actual programs and prepare verified inputs? |
 | `sim-directed` | Do known signatures verify, tampered data fail, configuration/request/key bindings hold, and simulated jobs obey timing, cancellation and immutable-input rules? |
+| `sha256-rtl` | Do actual clocked compression and message-padding RTL match published answers and OpenSSL, including arbitrary states, boundaries, seeded fuzz, backpressure, cancellation and interface corruption? |
+| `rtl-lint` | Do the standalone production modules pass fatal-warning lint/elaboration with assertions and with simulation assertions excluded for synthesis? |
 | `baseline` | Are the normative source files unchanged, the implementation fixed at 3/2, and the fixture OTP header supported? The full suite also runs the original Python review validation. |
 | `tool-regressions` | Do unsupported profiles and source changes fail? In the full suite, do TLS trust, download diagnostics, logging, failure status, timeouts, empty selection, retention and clean behavior work? |
 | `sim-report` | Does the actual CLI produce correct JSON and deterministic event times, reject invalid inputs/modes, and return the right exit status? |
 | `reference-fixtures` | Do all R02 artifact hashes, public input bindings and Merkle roots match? The full suite cross-checks every new signature with the supplied Python verifier. |
 | `reference-report` | Do all six stateful scenarios replay identically, expose real state/lease decisions, reject false expectations, and retain request traces even for invalid evidence? |
 
-Currently the full suite contains 32 C++ cases and 30 Python tool
-regressions, in addition to review/corpus/CLI checks. The quick suite runs 28 C++ cases
-and 12 source/profile regressions. It still checks all 28 NIST outcomes, but skips
+Currently the full suite contains 32 software C++ cases, 9 SHA-256 RTL C++ cases
+and 30 Python tool regressions, in addition to review/corpus/CLI checks. The quick
+suite runs 28 software and 8 RTL cases, plus 12 source/profile regressions. It still
+checks all 28 NIST outcomes, but skips
 the slower fresh-key signing case and the second Python cryptographic cross-check.
 Counts will grow as implementation progresses; saved logs record what executed.
 
-These are **software tests**. Current results do not exercise an RTL controller,
+The `sha256-rtl` group exercises **actual SHA-256 hardware simulated on Verilator**;
+other groups exercise software. Current results do not exercise an RTL controller,
 actual SPI wiring or physical permit guards. The two-of-three lease system is
 modeled in C++; its correctness remains to be established independently in RTL.
 The [implementation plan](docs/IMPLEMENTATION_PLAN.md) describes those next steps.
@@ -287,6 +302,11 @@ test-results/<timestamp>-full-release-<unique>/
   build/output.log                  Compiler/linker output, including build failures
   build/build-config.json           Compiler and flags used for this build
   sim-directed/output.log           C++ test names, assertions and results
+  sha256-rtl/output.log             Actual RTL directed/fuzz/interface-corruption checks
+  sha256-rtl/performance.json       Actual cycles/compression and simulator throughput
+  sha256-rtl/transactions.jsonl     Public hash inputs, results and observed latencies
+  sha256-rtl/coverage/              Per-model line coverage; optional sha256.fst alongside
+  rtl-lint/output.log               Standalone production/assertion/synthesis-path lint
   baseline/output.log               Source/profile and review checks
   baseline/review-package/          Retained generated review records (full suite)
   tool-regressions/output.log        Python test results
