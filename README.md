@@ -33,6 +33,7 @@ and keeps the logs for inspection.
 | GNU Make 4+ | Builds the programs and provides all test/clean targets |
 | A C++20 compiler | Builds the simulator and C++ tests; GCC 14.2 was tested |
 | Python 3.10+ | Prepares example data and runs checks/report collection; standard library only |
+| Trusted CA certificates | Let Python verify HTTPS when downloading the test dependency |
 | pkg-config | Finds the installed OpenSSL headers and library |
 | OpenSSL **3.5+ development package** | Provides SHA-256 and SLH-DSA-SHA2-128s signing/verification |
 
@@ -74,6 +75,55 @@ The downloader verifies HTTPS certificates and both archive and file SHA-256
 hashes. Downloads are cached in `.deps/`; subsequent builds/tests work offline.
 No Python packages or private signing keys are needed.
 See [dependency versions and licenses](third_party/README.md).
+
+### If the doctest download reports `CERTIFICATE_VERIFY_FAILED`
+
+This error means Python cannot verify the HTTPS server's certificate chain. It
+occurs before the C++ build and is separate from the OpenSSL development-package
+version check. Common causes are a missing system CA bundle or a network proxy
+that uses your organization's CA.
+
+For the system Python on Debian/Ubuntu, repair the trusted certificate store:
+
+```sh
+sudo apt-get install --reinstall ca-certificates
+sudo update-ca-certificates
+make build
+```
+
+If that bundle already exists but Python looks elsewhere (for example, after a
+custom OpenSSL installation), explicitly select it:
+
+```sh
+SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt make build
+```
+
+If it still fails, or your network uses a university/company HTTPS proxy, obtain
+the trusted PEM CA bundle from your administrator. Point Python to that file:
+
+```sh
+export SSL_CERT_FILE=/absolute/path/to/trusted-ca-bundle.pem
+make build
+make tests
+```
+
+The path is a placeholder for a real, trusted file. `SSL_CERT_FILE` is used by
+Python's TLS library even when Python runs with `-E`; that option ignores
+`PYTHON*` environment variables. Set it in the shell where you run Make.
+`REQUESTS_CA_BUNDLE` and `CURL_CA_BUNDLE` do not configure this Python urllib
+downloader. Use a CA bundle that includes the issuers you need; do not disable
+certificate verification.
+
+To see which CA paths your selected Python uses:
+
+```sh
+python3 -E -s -B -c 'import ssl; print(ssl.get_default_verify_paths())'
+```
+
+For a machine without network access, copy a previously verified
+`doctest-v2.4.12.tar.gz` into `.deps/downloads/` from a trusted machine and retry
+`make build`. The downloader checks the pinned archive and member hashes before
+installing cached files too. A failed download requires no `make clean`.
 
 ## Build and test targets
 
@@ -155,10 +205,10 @@ physical randomness.
 | `build` | Can the selected compiler/OpenSSL build the actual programs and prepare verified inputs? |
 | `sim-directed` | Do known signatures verify, tampered data fail, configuration/request/key bindings hold, and simulated jobs obey timing, cancellation and immutable-input rules? |
 | `baseline` | Are the normative source files unchanged, the implementation fixed at 3/2, and the fixture OTP header supported? The full suite also runs the original Python review validation. |
-| `tool-regressions` | Do unsupported profiles and source changes fail? In the full suite, do logging, failure status, timeouts, empty selection, retention and clean behavior work? |
+| `tool-regressions` | Do unsupported profiles and source changes fail? In the full suite, do TLS trust, download diagnostics, logging, failure status, timeouts, empty selection, retention and clean behavior work? |
 | `sim-report` | Does the actual CLI produce correct JSON and deterministic event times, reject invalid inputs/modes, and return the right exit status? |
 
-Currently the full suite contains 13 C++ cases (164 assertions) and 20 Python tool
+Currently the full suite contains 13 C++ cases (164 assertions) and 24 Python tool
 regressions, in addition to review/CLI checks. The quick suite runs 12 C++ cases
 and 12 source/profile regressions. It still checks all 28 NIST outcomes, but skips
 the slower fresh-key signing case and the second Python cryptographic cross-check.
