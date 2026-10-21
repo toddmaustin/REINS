@@ -19,6 +19,7 @@ using Key = Handle<EVP_PKEY, EVP_PKEY_free>;
 using Context = Handle<EVP_PKEY_CTX, EVP_PKEY_CTX_free>;
 using Signature = Handle<EVP_SIGNATURE, EVP_SIGNATURE_free>;
 
+// Require condition; report operation and OpenSSL's error detail on failure.
 void require(bool condition, const char* operation) {
     if (!condition) {
         const auto error = ERR_get_error();
@@ -28,21 +29,26 @@ void require(bool condition, const char* operation) {
     }
 }
 
+// Append every byte in value to the destination output buffer.
 void append(Bytes& output, std::span<const std::uint8_t> value) {
     for (auto byte : value) output.push_back(byte);
 }
+// Append the domain-separation text in value as bytes to output.
 void append(Bytes& output, std::string_view value) {
     for (auto byte : value) output.push_back(static_cast<std::uint8_t>(byte));
 }
+// Return whether all reserved bytes supplied in value are zero.
 bool zeros(std::span<const std::uint8_t> value) {
     return std::all_of(value.begin(), value.end(), [](auto byte) { return byte == 0; });
 }
+// Decode value's big-endian bytes; callers supply at most eight bytes.
 std::uint64_t big_endian(std::span<const std::uint8_t> value) {
     std::uint64_t result = 0;
     for (auto byte : value) result = (result << 8) | byte;
     return result;
 }
 
+// Check input's fixed profile, lengths, captured context and proof-index bounds.
 bool valid_framing(const VerificationInput& input) {
     const auto otp = std::span(input.otp);
     const auto request = std::span(input.request);
@@ -62,6 +68,8 @@ bool valid_framing(const VerificationInput& input) {
     return big_endian(reply.subspan(signature_bytes, 4)) < (std::uint64_t{1} << depth);
 }
 
+// Verify signature over message under public_key. context supplies the SLH-DSA
+// context; internal selects the NIST internal interface only for algorithm tests.
 bool slh_verify(std::span<const std::uint8_t> message,
                 std::span<const std::uint8_t> signature,
                 std::span<const std::uint8_t> public_key,
@@ -93,12 +101,14 @@ bool slh_verify(std::span<const std::uint8_t> message,
 }
 } // namespace
 
+// Hash the bytes supplied in data using the host SHA-256 implementation.
 Hash sha256(std::span<const std::uint8_t> data) {
     Hash result{};
     require(SHA256(data.data(), data.size(), result.data()) != nullptr, "SHA-256");
     return result;
 }
 
+// Reconstruct input's grant leaf and Merkle root; reject invalid input framing.
 Hash expected_batch_root(const VerificationInput& input) {
     if (!valid_framing(input)) throw std::invalid_argument("invalid REINS verification framing");
     Bytes grant = input.request;
@@ -123,6 +133,7 @@ Hash expected_batch_root(const VerificationInput& input) {
     return value;
 }
 
+// Prefix root with the REINS batch-signature domain separator.
 Bytes root_message(const Hash& root) {
     Bytes message;
     message.reserve(46);
@@ -131,6 +142,7 @@ Bytes root_message(const Hash& root) {
     return message;
 }
 
+// Verify input's reply against its captured request and provisioned slot key.
 Verdict verify_reply(const VerificationInput& input) {
     if (!valid_framing(input)) return Verdict::format_error;
     const auto root = expected_batch_root(input);
@@ -139,10 +151,12 @@ Verdict verify_reply(const VerificationInput& input) {
                       key, {}, false) ? Verdict::verified : Verdict::signature_error;
 }
 
+// Report the actual runtime OpenSSL backend; takes no parameters.
 std::string backend_version() { return OpenSSL_version(OPENSSL_VERSION); }
 
 struct TestAuthority::Impl {
     Key key{nullptr, EVP_PKEY_free};
+    // Generate one ephemeral host-only authority keypair; takes no parameters.
     Impl() {
         Context ctx(EVP_PKEY_CTX_new_from_name(nullptr, algorithm, nullptr), EVP_PKEY_CTX_free);
         require(bool(ctx), "create test authority key generator");
@@ -153,10 +167,15 @@ struct TestAuthority::Impl {
         require(result == 1, "generate test authority key");
     }
 };
+// Construct a test authority with a fresh host keypair; takes no parameters.
 TestAuthority::TestAuthority() : impl_(std::make_unique<Impl>()) {}
+// Release this authority's host keypair; takes no parameters.
 TestAuthority::~TestAuthority() = default;
+// Transfer the supplied authority's key ownership into this authority.
 TestAuthority::TestAuthority(TestAuthority&&) noexcept = default;
+// Replace this authority's key ownership with the supplied authority's key.
 TestAuthority& TestAuthority::operator=(TestAuthority&&) noexcept = default;
+// Export this authority's public key, without exposing private material.
 PublicKey TestAuthority::public_key() const {
     PublicKey result{};
     std::size_t size = result.size();
@@ -164,6 +183,7 @@ PublicKey TestAuthority::public_key() const {
             size == result.size(), "export test public key");
     return result;
 }
+// Sign root using this test key, pure SLH-DSA encoding and an empty context.
 Bytes TestAuthority::sign_root(const Hash& root) const {
     const auto message = root_message(root);
     Context ctx(EVP_PKEY_CTX_new_from_pkey(nullptr, impl_->key.get(), nullptr), EVP_PKEY_CTX_free);
@@ -185,6 +205,8 @@ Bytes TestAuthority::sign_root(const Hash& root) const {
     return result;
 }
 
+// Check signature over message under public_key for official NIST tests;
+// context and internal select that vector's context and signing interface.
 bool algorithm_test::verify(std::span<const std::uint8_t> message,
     std::span<const std::uint8_t> signature, std::span<const std::uint8_t> public_key,
     std::span<const std::uint8_t> context, bool internal) {

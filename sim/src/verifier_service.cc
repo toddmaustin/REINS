@@ -7,6 +7,7 @@
 
 namespace reins::sim {
 namespace {
+// Add the tick values a and b, rejecting unsigned scheduling overflow.
 Tick checked_add(Tick a, Tick b) {
     if (b > std::numeric_limits<Tick>::max() - a)
         throw std::overflow_error("simulation tick overflow");
@@ -23,6 +24,7 @@ struct VerifierService::Impl {
         Tick tick;
         unsigned pass;
         std::shared_ptr<Job> job;
+        // Compare against other by due tick, then job token and pass number.
         bool operator>(const Event& other) const {
             return std::tie(tick, job->token, pass) >
                    std::tie(other.tick, other.job->token, other.pass);
@@ -34,15 +36,22 @@ struct VerifierService::Impl {
     CancelledDelivery policy;
     std::shared_ptr<Job> active;
     std::priority_queue<Event, std::vector<Event>, std::greater<Event>> events;
+    // Initialize event state with value as the cancelled-event delivery policy.
     explicit Impl(CancelledDelivery value) : policy(value) {}
 };
 
+// Create an idle service; policy determines whether cancelled events are dropped.
 VerifierService::VerifierService(CancelledDelivery policy) : impl_(std::make_unique<Impl>(policy)) {}
+// Release captured jobs and queued events; takes no parameters.
 VerifierService::~VerifierService() = default;
+// Return the current simulated tick; takes no parameters.
 Tick VerifierService::now() const noexcept { return impl_->now; }
+// Return whether one live job owns the verifier; takes no parameters.
 bool VerifierService::busy() const noexcept { return bool(impl_->active); }
+// Return the number of actual cryptographic pass evaluations; no parameters.
 std::uint64_t VerifierService::verification_calls() const noexcept { return impl_->calls; }
 
+// Copy input into an immutable job, scheduling each pass according to latency.
 std::uint64_t VerifierService::submit(const VerificationInput& input, Latency latency) {
     if (busy()) throw std::logic_error("verification backend already owns a live job");
     if (impl_->next_token == std::numeric_limits<std::uint64_t>::max())
@@ -60,6 +69,7 @@ std::uint64_t VerifierService::submit(const VerificationInput& input, Latency la
     return job->token;
 }
 
+// Cancel the live job only when token matches its ownership identity.
 bool VerifierService::cancel(std::uint64_t token) {
     if (!busy() || impl_->active->token != token) return false;
     impl_->active->cancelled = true;
@@ -67,6 +77,7 @@ bool VerifierService::cancel(std::uint64_t token) {
     return true;
 }
 
+// Process events through target's simulated tick and return their tagged evidence.
 std::vector<Completion> VerifierService::advance_to(Tick target) {
     if (target < now()) throw std::invalid_argument("simulation time cannot move backwards");
     std::vector<Completion> result;

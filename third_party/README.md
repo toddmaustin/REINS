@@ -14,6 +14,8 @@ verification and extracts only the header and license. Their individual SHA-256
 hashes are pinned too. The header/license live in `.deps/doctest-2.4.12/`; the
 verified archive is in `.deps/downloads/`. Cached files are checked before use.
 `make clean` leaves this cache for offline rebuilds; `make clean-deps` removes it.
+Python uses the system TLS trust store or `SSL_CERT_FILE` when a trusted custom
+CA bundle is needed. See the [download troubleshooting instructions](../README.md#if-the-doctest-download-reports-certificate_verify_failed).
 
 `pkg-config` locates the OpenSSL development package and checks its minimum
 version. The C++ tests exercise the actual default-provider SLH-DSA implementation

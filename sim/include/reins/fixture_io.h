@@ -6,6 +6,7 @@
 #include <stdexcept>
 
 namespace reins::sim::fixture {
+// Read the bounded binary fixture at path; throw if it cannot be read completely.
 inline Bytes read(const std::filesystem::path& path) {
     std::ifstream file(path, std::ios::binary | std::ios::ate);
     if (!file) throw std::runtime_error("cannot open fixture: " + path.string());
@@ -19,6 +20,7 @@ inline Bytes read(const std::filesystem::path& path) {
     return value;
 }
 
+// Load directory's public OTP/request/reply fixtures for slot and capture its tag.
 inline VerificationInput load(const std::filesystem::path& directory, unsigned slot) {
     if (slot > 2) throw std::invalid_argument("slot must be 0, 1 or 2");
     VerificationInput result;

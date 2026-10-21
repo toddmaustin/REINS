@@ -1,4 +1,5 @@
 #include "reins/fixture_io.h"
+#include "reins/diagnostics.h"
 
 #include <charconv>
 #include <chrono>
@@ -7,6 +8,7 @@
 #include <string_view>
 
 namespace {
+// Parse text as an unsigned 64-bit tick count; reject signs and trailing bytes.
 std::uint64_t number(std::string_view text) {
     std::uint64_t value{};
     const auto [end, error] = std::from_chars(text.data(), text.data() + text.size(), value);
@@ -14,6 +16,7 @@ std::uint64_t number(std::string_view text) {
         throw std::invalid_argument("expected an unsigned 64-bit tick count");
     return value;
 }
+// Escape the backend description in text for use as a JSON string value.
 std::string quote(std::string_view text) {
     std::string result = "\"";
     for (char c : text) {
@@ -24,18 +27,24 @@ std::string quote(std::string_view text) {
 }
 }
 
+// Parse argc/argv CLI arguments, replay fixture jobs and emit their JSON report.
 int main(int argc, char** argv) {
     using namespace reins::sim;
     try {
         std::filesystem::path fixtures, output;
         Latency latency;
+        bool trace_inputs = false;
         for (int i = 1; i < argc; ++i) {
             const std::string_view option = argv[i];
             if (option == "--help") {
                 std::cout << "Usage: reins-sim --fixtures DIR [--mode reference] "
-                    "[--first-pass-ticks N] [--second-pass-ticks N] [--output FILE]\n"
+                    "[--first-pass-ticks N] [--second-pass-ticks N] [--output FILE] [--trace-inputs]\n"
                     "Replays the two supplied RENEW fixtures; no RTL or permit output.\n";
                 return 0;
+            }
+            if (option == "--trace-inputs") {
+                trace_inputs = true;
+                continue;
             }
             if (i + 1 == argc) throw std::invalid_argument("missing option value");
             const std::string_view value = argv[++i];
@@ -53,9 +62,13 @@ int main(int argc, char** argv) {
         VerifierService service;
         std::vector<Completion> completions;
         for (unsigned slot : {0u, 1u}) {
-            service.submit(fixture::load(fixtures, slot), latency);
+            const auto input = fixture::load(fixtures, slot);
+            if (trace_inputs) diagnostic::write_input(std::cerr, input, "CLI signed renewal replay",
+                "two independent verification passes; actual verdicts follow");
+            service.submit(input, latency);
             // submit() already checked both additions for overflow.
             auto results = service.advance_to(service.now() + latency.first_pass_ticks + latency.second_pass_ticks);
+            if (trace_inputs) diagnostic::write_completions(std::cerr, results);
             completions.insert(completions.end(), results.begin(), results.end());
         }
         const auto wall_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(

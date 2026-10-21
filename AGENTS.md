@@ -2,6 +2,9 @@
 
 - Use `.cc` for first-party C++ source files and `.h` for first-party C++ headers.
 - Keep includes, build targets, and documentation consistent with those names.
+- Give every new or modified first-party function a short comment or docstring
+  describing its purpose and each parameter. Keep interface and implementation
+  comments consistent. Apply this to test helpers as well as production code.
 - Preserve upstream and generated filenames in third-party dependencies and build
   outputs; the extension convention applies to code maintained in this repository.
 - Use the Makefile as the build/test interface; do not add CMake or Ninja setup.
