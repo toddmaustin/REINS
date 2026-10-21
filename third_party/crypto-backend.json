@@ -1,0 +1,12 @@
+{
+  "implementation": "OpenSSL",
+  "version": "3.5.7",
+  "provider": "default",
+  "algorithm": "SLH-DSA-SHA2-128s",
+  "repository": "https://github.com/openssl/openssl.git",
+  "tag": "openssl-3.5.7",
+  "commit": "8cf17aaeb4599f8af87fefd810b5b5fee90fe69e",
+  "license": "Apache-2.0",
+  "protocol_mode": "pure",
+  "protocol_context": ""
+}

@@ -6,11 +6,12 @@ independent authorities** approve a current lease. If two authorities stop appro
 renewals, the lease expires and local hardware stops execution. There is no remote
 "kill now" message: stopping depends on a bounded local timeout.
 
-This repository is building toward SystemVerilog hardware, a C++ reference model,
-and Verilator simulation. **Today it contains the software signing/verification
-and scheduling tools, not an RTL kill switch or a complete device simulator.**
-The software tests are useful evidence about these components; they do not prove
-physical clock, randomness, isolation or fault-resistance properties.
+This repository now contains the **R02 event-driven C++ device reference model**:
+provisioning, reset, entropy events, ARM/RENEW rounds, two-of-three voting, execution
+leases, receive jobs, stopping, test authorities and an untrusted relay. It uses
+real host signature verification. SystemVerilog and Verilator integration remain
+later work. Software tests do not prove physical clock, randomness, isolation or
+fault-resistance properties.
 
 ## Start here
 
@@ -35,21 +36,24 @@ and keeps the logs for inspection.
 | Python 3.10+ | Prepares example data and runs checks/report collection; standard library only |
 | Trusted CA certificates | Let Python verify HTTPS when downloading the test dependency |
 | pkg-config | Finds the installed OpenSSL headers and library |
-| OpenSSL **3.5+ development package** | Provides SHA-256 and SLH-DSA-SHA2-128s signing/verification |
+| OpenSSL **3.5.7 development package** | Pinned independent SHA-256 / FIPS 205 SLH-DSA signing and verification backend |
 
 OpenSSL's development package includes headers and `libcrypto`, not just the
 `openssl` executable. Many older systems supply OpenSSL 3.0 or 3.4, which do not
-provide the required signature algorithm. Check what pkg-config finds:
+provide the required signature algorithm. R02 pins version **3.5.7**, its default
+provider, and the [upstream source commit](third_party/crypto-backend.json).
+Make requires that exact version; C++ checks both headers and runtime library.
+Check what pkg-config finds:
 
 ```sh
 pkg-config --modversion libcrypto
 ```
 
 For a custom OpenSSL installation, point `PKG_CONFIG_PATH` at its pkg-config files
-before running Make. For example, if installed under `/opt/openssl-3.5`:
+before running Make. For example, if installed under `/opt/openssl-3.5.7`:
 
 ```sh
-export PKG_CONFIG_PATH=/opt/openssl-3.5/lib/pkgconfig
+export PKG_CONFIG_PATH=/opt/openssl-3.5.7/lib/pkgconfig
 make build
 ```
 
@@ -59,8 +63,9 @@ Some installations use `lib64/pkgconfig`; use the directory that actually contai
 On macOS, a candidate setup is:
 
 ```sh
-brew install make pkg-config openssl@3 python
-export PKG_CONFIG_PATH="$(brew --prefix openssl@3)/lib/pkgconfig"
+brew install make pkg-config python
+# Install the pinned OpenSSL 3.5.7 separately, then select its prefix:
+export PKG_CONFIG_PATH=/path/to/openssl-3.5.7/lib/pkgconfig
 gmake build
 gmake tests
 ```
@@ -134,6 +139,7 @@ installing cached files too. A failed download requires no `make clean`.
 | `make tests` | Builds as needed and runs all current software and infrastructure checks |
 | `make baseline-tests` | Runs source/fixture/tool checks using only Python; no C++ build or OpenSSL package needed |
 | `make sanitize-tests` | Builds/runs the full suite with C++ address/undefined-behavior sanitizers |
+| `make regenerate-reference-fixtures` | Explicitly generates new public R02 keys/signatures and provenance; changes tracked fixtures |
 | `make clean-results` | Deletes all retained test results, leaving builds and dependencies intact |
 | `make clean` | Deletes builds and all test results; keeps the downloaded dependency cache |
 | `make clean-deps` | Deletes only the dependency cache; the next build needs network access |
@@ -164,6 +170,27 @@ Sanitizers check this project's C++ for memory errors and undefined behavior. Th
 do not instrument the installed OpenSSL library or simulate physical faults.
 Release binaries go in `build/release/`; sanitizer binaries use `build/sanitize/`.
 
+## Where are armed state and the execution lease?
+
+The stateful model is [`reference::Device`](sim/include/reins/reference.h), with
+its state in [`Device::Impl`](sim/src/reference_device.cc). `snapshot()` exposes
+the controller state, modeled execution permit, pending round/vote bitmap,
+committed issue tick, lease expiry, remaining ticks and receive status. State is
+volatile host memory; a JSON report is an observation, not a saved authorization
+that can be restored after reset.
+
+| Program | Purpose |
+|---|---|
+| `reins-reference` | Full R02 software device model with ARM/RENEW, vote/lease gates and semantic scenario replay |
+| `reins-sim` | Original cryptographic verification/job-timing harness for the supplied round-3 replies |
+
+`make tests` exercises both and retains their JSON reports. The stateful replay's
+`arm-pair-01-0.json` shows `state=RUNNING`, `permit=true`, `committed_issue=0`, and
+`lease_expiry=300000000` after a valid pair. The withholding scenario renews twice,
+then stops at tick 360000000 even though the third authority continues supplying
+fresh signatures. See [sim/README.md](sim/README.md) for a complete replay command,
+the script language, architecture and state/lease field definitions.
+
 ## What are fixtures?
 
 A **fixture** is a reusable example input with a known expected answer. Here,
@@ -179,7 +206,7 @@ The supplied fixtures are readable JSON under `docs/validation/`. The build deri
 binary copies in `build/<configuration>/fixtures/` for the C++ tests. It leaves the
 original files unchanged and checks their hashes against a pinned manifest.
 
-There are two important sets:
+There are three important sets:
 
 - **NIST algorithm cases:** 28 selected official signature-verification examples.
   Four should verify and 24 should be rejected. These check the cryptographic
@@ -187,11 +214,27 @@ There are two important sets:
 - **REINS protocol examples:** two signed renewal replies for round 3, slots 0 and
   1, with known request/configuration/Merkle values. These check REINS framing and
   binding, not just the signature algorithm in isolation.
+- **R02 device corpus:** [25 newly generated public signed replies](sim/fixtures/r02.json)
+  for initial ARM in every slot, successive RENEW rounds, depths 0/1/2/17/20 and
+  three-leaf Merkle batching. [Pinned scenario scripts](sim/fixtures/) exercise
+  every quorum pair, fresh third-signer withholding, adversarial relay traffic and
+  same-tick faults. The [manifest](sim/fixtures/r02-manifest.json) records generator
+  version, generating-source hashes, the backend commit and artifact hashes.
 
 The C++ tests also generate temporary host authority keys and sign fresh ARM
 (startup) replies for all three slots, at Merkle proof depths 0 and 20. These check
 signing and verification together. The keys are test material, never deployment
-keys. Existing renewal signatures cannot be reused for a different request.
+keys. Additional authority tests exercise independent ARM/RENEW policy, withholding,
+batch/signing delays, actual canonical batching and malicious relay mutations.
+Existing renewal signatures cannot be reused for a different request. Private
+keys for the original signed examples are neither available nor assumed.
+
+Ordinary builds replay committed public inputs and require no private keys or
+signing service. `make regenerate-reference-fixtures` intentionally generates new
+independent test keys, discards private material, cross-checks the signatures with
+the supplied Python verifier and updates public fixtures/hashes. Regeneration is
+not byte-identical: fresh keys/signatures change. Replaying a committed corpus is
+deterministic. It never changes the pinned original files under `docs/validation/`.
 
 A **Merkle proof** shows that a particular grant belongs to an authority's signed
 batch. A **nonce** is a per-round challenge intended to be freshly random, binding
@@ -207,15 +250,18 @@ physical randomness.
 | `baseline` | Are the normative source files unchanged, the implementation fixed at 3/2, and the fixture OTP header supported? The full suite also runs the original Python review validation. |
 | `tool-regressions` | Do unsupported profiles and source changes fail? In the full suite, do TLS trust, download diagnostics, logging, failure status, timeouts, empty selection, retention and clean behavior work? |
 | `sim-report` | Does the actual CLI produce correct JSON and deterministic event times, reject invalid inputs/modes, and return the right exit status? |
+| `reference-fixtures` | Do all R02 artifact hashes, public input bindings and Merkle roots match? The full suite cross-checks every new signature with the supplied Python verifier. |
+| `reference-report` | Do all six stateful scenarios replay identically, expose real state/lease decisions, reject false expectations, and retain request traces even for invalid evidence? |
 
-Currently the full suite contains 13 C++ cases (169 assertions) and 24 Python tool
-regressions, in addition to review/CLI checks. The quick suite runs 12 C++ cases
+Currently the full suite contains 32 C++ cases and 27 Python tool
+regressions, in addition to review/corpus/CLI checks. The quick suite runs 28 C++ cases
 and 12 source/profile regressions. It still checks all 28 NIST outcomes, but skips
 the slower fresh-key signing case and the second Python cryptographic cross-check.
 Counts will grow as implementation progresses; saved logs record what executed.
 
 These are **software tests**. Current results do not exercise an RTL controller,
-actual SPI wiring, physical permit guards, or a complete two-of-three lease system.
+actual SPI wiring or physical permit guards. The two-of-three lease system is
+modeled in C++; its correctness remains to be established independently in RTL.
 The [implementation plan](docs/IMPLEMENTATION_PLAN.md) describes those next steps.
 
 ## Where are my results?
@@ -238,6 +284,9 @@ test-results/<timestamp>-full-release-<unique>/
   tool-regressions/collector-regressions/
   sim-report/output.log              CLI test summary
   sim-report/cli-artifacts/          Each CLI stdout/stderr, commands and JSON reports
+  reference-fixtures/output.log      R02 public corpus and Python crypto cross-check
+  reference-report/output.log        Stateful CLI scenario results and artifact paths
+  reference-report/reference-replays-*/  State/lease/event JSON and each replay's streams
 ```
 
 Start with `runner.log` or `summary.json`, then inspect the failed group's
@@ -289,9 +338,16 @@ Delete them only when you choose `make clean-results` or `make clean`. The test
 runner never calls either target on your checkout. Clean-target tests use an
 isolated scratch directory.
 
-## Reading the simulation report
+## Reading the simulation reports
 
-The CLI test saves a `reference-report.json` under its `cli-artifacts/` directory.
+`reins-reference` emits `mode=reference-device`, the actual controller state and
+modeled permit, pending context, committed issue/expiry, remaining lease ticks,
+receive outcome and ordered semantic events. `authorization_checked=true` means
+the **software** device's final gates ran; it is not RTL or physical evidence.
+Device reset withdraws permission, and entropy hold preserves only an already
+healthy lease until its original expiry. No incoming message is a KILL command.
+
+The original `reins-sim` CLI test saves `reference-report.json` under `cli-artifacts/`.
 It reports four software verification calls for the two supplied renewal replies.
 With pass delays of 7 and 11 ticks, completion times are `[7, 18, 25, 36]`.
 
@@ -314,6 +370,7 @@ Makefile                   Build, test and clean entry points
 sim/include/reins/         C++ interfaces (.h)
 sim/src/                   Software implementation (.cc)
 sim/tests/                 Directed C++ tests (.cc)
+sim/fixtures/              New pinned public R02 inputs, manifest and semantic scripts
 tools/                     Dependency/input preparation and retained test runner
 tools/tests/               Source/profile/collector regression tests
 docs/validation/           Original public fixtures and review code

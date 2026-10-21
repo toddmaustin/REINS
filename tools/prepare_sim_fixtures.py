@@ -6,9 +6,11 @@ import json
 from pathlib import Path
 
 from check_baseline import ROOT, check_baseline
+from reference_fixtures import load as load_reference
 
 
 def main():
+    """Parse output location and derive baseline/R02 binary fixtures without editing sources."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
@@ -25,6 +27,7 @@ def main():
     output.mkdir(parents=True, exist_ok=True)
 
     def write(name, value):
+        """Write hexadecimal value to the derived binary fixture named name."""
         (output / name).write_bytes(bytes.fromhex(value))
 
     write("otp.bin", signed["otp"])
@@ -40,6 +43,14 @@ def main():
         write(f"{name}-context.bin", case.get("context", ""))
         index.append(f"{name} {int(case['expected'])} {int(case['interface'] == 'internal')}")
     (output / "nist-index.txt").write_text("\n".join(index) + "\n")
+    reference = load_reference()
+    write("r02-otp.bin", reference["otp"])
+    reference_index = []
+    for record in reference["records"]:
+        for field in ["request", "reply", "root"]:
+            write(f"r02-{record['name']}-{field}.bin", record[field])
+        reference_index.append(f"{record['name']} {record['slot']} {record['depth']}")
+    (output / "r02-index.txt").write_text("\n".join(reference_index) + "\n")
     (output / "ready.stamp").write_text("Pinned public fixtures; no private keys.\n")
 
 

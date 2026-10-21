@@ -5,6 +5,9 @@ The supported subset is fixed at **three authorities and a two-authority quorum*
 The manifest and source checks enforce the development profile declaration and
 the supplied fixture's OTP profile header. Full configuration validity and runtime
 profile rejection in RTL remain later implementation work.
+The R02 C++ model now performs the digital configuration checks and rejects
+non-3/2 provisioning itself; its physical commissioning/startup inputs are modeled
+events, not qualified OTP, reset, clock or entropy hardware.
 
 ## Supported digital implementation
 

@@ -7,10 +7,13 @@
 #include <openssl/evp.h>
 #include <openssl/params.h>
 #include <openssl/sha.h>
+#include <openssl/opensslv.h>
 #include <stdexcept>
 #include <string_view>
 
 namespace reins::sim {
+static_assert(OPENSSL_VERSION_MAJOR==3 && OPENSSL_VERSION_MINOR==5 && OPENSSL_VERSION_PATCH==7,
+              "the independent reference backend is pinned to OpenSSL 3.5.7");
 namespace {
 constexpr auto algorithm = "SLH-DSA-SHA2-128s";
 constexpr std::size_t signature_bytes = 7856;
@@ -76,12 +79,13 @@ bool slh_verify(std::span<const std::uint8_t> message,
                 std::span<const std::uint8_t> context, bool internal) {
     if (signature.size() != signature_bytes || public_key.size() != 32 || context.size() > 255)
         return false;
+    require(OpenSSL_version_num()==OPENSSL_VERSION_NUMBER,"runtime OpenSSL must match pinned 3.5.7 headers");
     ERR_clear_error();
-    Key key(EVP_PKEY_new_raw_public_key_ex(nullptr, algorithm, nullptr,
+    Key key(EVP_PKEY_new_raw_public_key_ex(nullptr, algorithm, "provider=default",
                                          public_key.data(), public_key.size()), EVP_PKEY_free);
     require(bool(key), "load SLH-DSA public key (OpenSSL 3.5+ default provider required)");
-    Context ctx(EVP_PKEY_CTX_new_from_pkey(nullptr, key.get(), nullptr), EVP_PKEY_CTX_free);
-    Signature alg(EVP_SIGNATURE_fetch(nullptr, algorithm, nullptr), EVP_SIGNATURE_free);
+    Context ctx(EVP_PKEY_CTX_new_from_pkey(nullptr, key.get(), "provider=default"), EVP_PKEY_CTX_free);
+    Signature alg(EVP_SIGNATURE_fetch(nullptr, algorithm, "provider=default"), EVP_SIGNATURE_free);
     require(bool(ctx) && bool(alg), "create SLH-DSA verifier");
     int encoding = internal ? 0 : 1;
     std::uint8_t empty_context{};
@@ -103,6 +107,7 @@ bool slh_verify(std::span<const std::uint8_t> message,
 
 // Hash the bytes supplied in data using the host SHA-256 implementation.
 Hash sha256(std::span<const std::uint8_t> data) {
+    require(OpenSSL_version_num()==OPENSSL_VERSION_NUMBER,"runtime OpenSSL must match pinned 3.5.7 headers");
     Hash result{};
     require(SHA256(data.data(), data.size(), result.data()) != nullptr, "SHA-256");
     return result;
@@ -158,7 +163,8 @@ struct TestAuthority::Impl {
     Key key{nullptr, EVP_PKEY_free};
     // Generate one ephemeral host-only authority keypair; takes no parameters.
     Impl() {
-        Context ctx(EVP_PKEY_CTX_new_from_name(nullptr, algorithm, nullptr), EVP_PKEY_CTX_free);
+        require(OpenSSL_version_num()==OPENSSL_VERSION_NUMBER,"runtime OpenSSL must match pinned 3.5.7 headers");
+        Context ctx(EVP_PKEY_CTX_new_from_name(nullptr, algorithm, "provider=default"), EVP_PKEY_CTX_free);
         require(bool(ctx), "create test authority key generator");
         require(EVP_PKEY_keygen_init(ctx.get()) == 1, "initialize test authority key generator");
         EVP_PKEY* generated = nullptr;
@@ -186,8 +192,8 @@ PublicKey TestAuthority::public_key() const {
 // Sign root using this test key, pure SLH-DSA encoding and an empty context.
 Bytes TestAuthority::sign_root(const Hash& root) const {
     const auto message = root_message(root);
-    Context ctx(EVP_PKEY_CTX_new_from_pkey(nullptr, impl_->key.get(), nullptr), EVP_PKEY_CTX_free);
-    Signature alg(EVP_SIGNATURE_fetch(nullptr, algorithm, nullptr), EVP_SIGNATURE_free);
+    Context ctx(EVP_PKEY_CTX_new_from_pkey(nullptr, impl_->key.get(), "provider=default"), EVP_PKEY_CTX_free);
+    Signature alg(EVP_SIGNATURE_fetch(nullptr, algorithm, "provider=default"), EVP_SIGNATURE_free);
     require(bool(ctx) && bool(alg), "create test signer");
     int encoding = 1;
     std::uint8_t empty_context{};
