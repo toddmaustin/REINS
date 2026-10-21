@@ -140,18 +140,95 @@ repairing or substituting it.
 | `AuthorityPolicy` | Independent ARM/RENEW permissions, withholding, batch delay and signing delay |
 | `SignedReply`, `RelayPacket` | Approved public bytes/readiness versus arbitrary transport bytes/destination/delivery time |
 
+## Where requests are constructed and delivered
+
+Request construction lives in [`reference_device.cc`](src/reference_device.cc).
+The device publishes a coherent request through `Device::request(slot)`; the test
+harness reads that API and delivers the bytes to the selected authority:
+
+1. **Establish the round.** `Device::Impl::start_round(r)` records the round
+   number, request kind, issue tick, response deadline and proposed lease expiry.
+   WAIT_ARM rounds request ARM; RUNNING rounds request RENEW.
+2. **Publish after entropy qualification.** `Device::entropy(event)` checks the
+   event's generation, round, health, sample timing and nonce freshness. On
+   success it stores `pending->nonce` and emits `request_published`.
+3. **Read the slot's request.** `Device::request(slot)` returns `std::nullopt`
+   unless that slot has a live published round. Otherwise it calls
+   `make_request(config, kind, slot, round, nonce)`, which builds the canonical
+   128-byte message: header/type/slot, provisioned device and policy identifiers,
+   round number, nonce and zeroed reserved fields. Reading a request does not
+   transmit it or advance time.
+4. **Ask the authority.** The harness passes the bytes to
+   [`Authority::batch(requests, now)`](src/reference_authority.cc). Each authority
+   applies its own registration and ARM/RENEW/withholding policy before approving
+   leaves and signing a batch root.
+5. **Deliver and verify the reply.** The harness can enqueue `SignedReply::reply`
+   in `Relay`, respecting `SignedReply::ready_at` for an honest delivery, or call
+   `Device::upload` directly. The reply then follows the device's receive,
+   two-pass verification and final voting rules.
+
+The live-authority tests show the request-to-authority handoff in
+[`LiveRig::approve(slot)`](tests/reference_tests.cc):
+
+```cc
+const auto request = device.request(slot);
+if (!request) return {};
+return authorities[slot].batch({*request}, device.snapshot().tick);
+```
+
+This excerpt is the body of that helper; `slot` selects authority 0, 1 or 2, and
+the return value contains its approved signed replies. The relay models reply
+delivery; request delivery is an explicit harness operation. There is no network
+or pin-level SPI request transmitter in the current software model.
+
+The scenario CLI takes a different input path: its `reply` command loads an
+already signed public fixture and calls `Device::upload`. It still exercises the
+device's current request binding and lease gates, but does not contact a live
+authority or sign a new response during replay. The explicit
+[`reference_fixture_generator.cc`](src/reference_fixture_generator.cc) program
+constructs requests with `make_request` and signs them with test authorities when
+creating that public corpus.
+
 ## Where device state and lease information live
 
-[`Device::Impl`](src/reference_device.cc) owns all volatile model state in host
-memory. `state` is the operational FSM; `committed_issue` and `expiry` define the
-active execution lease. `pending` contains the current round, kind, nonce,
-I/B/E and distinct-vote bitmap. `receive` owns the one logical buffer and its
-captured context. `snapshot()` returns values without exposing mutable ownership.
+Each [`reference::Device`](include/reins/reference.h) owns a private
+`std::unique_ptr<Impl>`. Its [`Device::Impl`](src/reference_device.cc) stores the
+simulated hardware state in that instance's C++ host memory:
+
+| Information | Fields in `Device::Impl` |
+|---|---|
+| Operational state | `state`, the device's finite-state machine |
+| Active execution lease | `committed_issue` and `expiry` |
+| Provisioned lease duration, round period and response window | `config->timing.lease`, `.period` and `.window`, decoded from OTP |
+| Pending round and proposed lease | `pending->round`, `kind`, `nonce`, `issue`, `deadline` and `expiry` |
+| Distinct authority votes | `pending->votes`, a three-bit slot bitmap |
+| Entropy qualification and history | `hold`, `cold_pending` and `last_nonce` |
+| Provisioned configuration and lifecycle closure | `config` and `closure`; these model OTP and remain across resets of the same device object |
+| Absolute and local run time | `tick`, `origin` and `run_started`; local `now()` is `tick-origin` during a run |
+| Round schedule and identities | `next_round`, `generation`, `round` and `next_token` |
+| Receive job and captured reply bytes | `receive`, including its token, start tick, captured `VerificationInput`, buffer offset, verifier token and first-pass result |
+| Verification scheduling | `verifier`, the device's `VerifierService` instance |
+| Inspectable evidence | `log`, the ordered semantic events; `outcome` and `last_token` retain receive status after a job finishes |
 
 The states are UNPROVISIONED, CLOSED_INIT, WAIT_ARM, RUNNING, STOPPING, STOPPED and
-FAULT. Only a two-slot ARM quorum enters RUNNING. `permit` is derived from RUNNING
-and the live committed expiry, while `remaining` saturates at zero. It is distinct
-from the lower-level verifier's `busy()` ownership indicator.
+FAULT. Only a two-slot ARM quorum enters RUNNING. There is no separate `armed`
+Boolean: `Snapshot::permit` is true only when `state == State::running`, an active
+`expiry` exists and `now() < expiry`. The lower-level verifier's `busy()` instead
+reports job ownership.
+
+The model stores the committed issue and expiry, rather than decrementing a lease
+counter every simulated tick. `Snapshot::remaining` is computed as `expiry-now()`
+while the lease is live, and is zero otherwise. `pending->expiry` is only a
+proposal; it cannot replace the active `expiry` until a quorum passes the gates
+described below.
+
+`Device::snapshot()` returns a value copy of the current state, permit, pending
+context, lease values, remaining ticks and receive status. Changing that copy does
+not change the device. [`report_json(device)`](src/reference_scenario.cc) serializes
+the snapshot and semantic events for inspection. Saved JSON reports are
+observations, not the live state store or a checkpoint that restores permission.
+Destroying a device object releases its in-memory state; scenario replay
+reconstructs a run from provisioning inputs and timestamped events.
 
 ### Provisioning, reset and entropy
 
@@ -192,6 +269,10 @@ live-context check: generation, round/kind/nonce, selected slot, hold, state,
 `now < B`, and `now < current_expiry` when already RUNNING. Duplicates do not add
 votes. The second distinct vote commits `committed_issue=I`, `expiry=E` and
 `remaining=E-now`. Incoming traffic and partial votes cannot extend that lease.
+This update occurs in `Device::Impl::completed()` after the distinct-slot bitmap
+reaches quorum. Thus expiry is anchored to the round's issue tick, not the arrival
+time of the second signature. `Device::apply_at()` processes expiry while advancing
+time; `advance_to()` calls it without an external input at the target tick.
 
 Expiry withdraws permit at the boundary and enters STOPPING, invalidating jobs
 and the run. `complete_stop(true)` represents trusted physical acknowledgement and
@@ -477,7 +558,7 @@ configuration, including unsupported modes or invalid tick arguments.
 | `state`, `permit`, `entropy_hold`, `closed` | Actual software controller and authorization/lifecycle state |
 | `tick`, `run_tick`, `generation`, `round` | Absolute simulation time and volatile run-relative identity |
 | `request_ready`, `votes`, `issue`, `deadline`, `proposed_expiry` | Pending context; proposals are not active leases |
-| `committed_issue`, `lease_expiry`, `remaining` | Active lease in **local run ticks**, or null when none; remaining saturates at zero |
+| `committed_issue`, `lease_expiry`, `remaining` | Active lease in **local run ticks**; issue/expiry are null when absent, and remaining is zero without a live lease |
 | `receive_token`, `receive_outcome`, `receive_offset` | One receive job and its retained completed status |
 | `events` | Ordered semantic transitions with time, identity, kind and detail; no host timing noise |
 | `authorization_checked`, `rtl_cycles` | True for software final gates, null for unimplemented RTL measurements |
