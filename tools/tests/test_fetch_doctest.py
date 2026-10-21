@@ -23,6 +23,7 @@ PAYLOAD = b"local HTTPS dependency test\n"
 class DownloadTrustTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        """Start cls's loopback HTTPS server and create its retained artifact directory."""
         parent = Path(os.environ.get("REINS_TEST_OUTPUT_DIR", ROOT / "test-results"))
         parent = parent / "download-regressions"
         parent.mkdir(parents=True, exist_ok=True)
@@ -30,12 +31,14 @@ class DownloadTrustTests(unittest.TestCase):
 
         class Handler(BaseHTTPRequestHandler):
             def do_GET(self):
+                """Reply to this handler's GET request with the fixed public test payload."""
                 self.send_response(200)
                 self.send_header("Content-Length", str(len(PAYLOAD)))
                 self.end_headers()
                 self.wfile.write(PAYLOAD)
 
             def log_message(self, format_string, *args):
+                """Retain the server log entry produced by applying args to format_string."""
                 with (cls.output / "server.log").open("a") as log:
                     log.write(format_string % args + "\n")
 
@@ -51,10 +54,12 @@ class DownloadTrustTests(unittest.TestCase):
         cls.addClassCleanup(server.shutdown)
 
     def setUp(self):
+        """Create the retained output directory for this individual test case."""
         self.artifacts = self.output / self._testMethodName
         self.artifacts.mkdir()
 
     def run_python(self, program, *, trusted=False, url=None):
+        """Run program under -E against url (default: local server); trusted selects its CA."""
         environment = dict(os.environ)
         for name in ["SSL_CERT_FILE", "SSL_CERT_DIR"]:
             environment.pop(name, None)
@@ -73,10 +78,12 @@ class DownloadTrustTests(unittest.TestCase):
         return result.returncode, out.read_bytes(), err.read_text()
 
     def cli_program(self):
+        """Return child code invoking the fetch CLI with isolated URL/cache arguments."""
         return ("import sys; from pathlib import Path; from tools import fetch_doctest as fetch; "
                 "fetch.URL = sys.argv[1]; fetch.ROOT = Path(sys.argv[2]); sys.exit(fetch.cli())")
 
     def test_untrusted_issuer_fails_with_actionable_cli_error(self):
+        """Require rejection and useful diagnostics for the untrusted local test issuer."""
         code, output, error = self.run_python(self.cli_program())
         self.assertEqual(code, 1)
         self.assertEqual(output, b"")
@@ -88,6 +95,7 @@ class DownloadTrustTests(unittest.TestCase):
         self.assertFalse((self.artifacts / ".deps").exists())
 
     def test_trusted_bundle_is_honored_under_python_E(self):
+        """Confirm SSL_CERT_FILE trusts the local CA even when Python uses -E."""
         code, output, error = self.run_python(
             "import sys; from tools.fetch_doctest import download_archive; "
             "sys.stdout.buffer.write(download_archive(sys.argv[1]))", trusted=True)
@@ -96,6 +104,7 @@ class DownloadTrustTests(unittest.TestCase):
         self.assertEqual(error, "")
 
     def test_trusted_issuer_still_rejects_wrong_hostname(self):
+        """Require hostname verification even after explicitly trusting the test CA."""
         # Only 127.0.0.1 appears in the certificate; localhost must be rejected.
         code, _, error = self.run_python(self.cli_program(), trusted=True,
                                         url=self.url.replace("127.0.0.1", "localhost"))
@@ -105,6 +114,7 @@ class DownloadTrustTests(unittest.TestCase):
         self.assertFalse((self.artifacts / ".deps").exists())
 
     def test_verified_cache_does_not_need_tls_configuration(self):
+        """Reuse validated cached files without downloading or reading a missing CA file."""
         files = {"doctest/doctest.h": b"cached header\n", "LICENSE.txt": b"cached license\n"}
         destination = self.artifacts / ".deps/doctest-2.4.12"
         for name, contents in files.items():

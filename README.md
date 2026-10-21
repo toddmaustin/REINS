@@ -208,7 +208,7 @@ physical randomness.
 | `tool-regressions` | Do unsupported profiles and source changes fail? In the full suite, do TLS trust, download diagnostics, logging, failure status, timeouts, empty selection, retention and clean behavior work? |
 | `sim-report` | Does the actual CLI produce correct JSON and deterministic event times, reject invalid inputs/modes, and return the right exit status? |
 
-Currently the full suite contains 13 C++ cases (164 assertions) and 24 Python tool
+Currently the full suite contains 13 C++ cases (169 assertions) and 24 Python tool
 regressions, in addition to review/CLI checks. The quick suite runs 12 C++ cases
 and 12 source/profile regressions. It still checks all 28 NIST outcomes, but skips
 the slower fresh-key signing case and the second Python cryptographic cross-check.
@@ -244,6 +244,40 @@ Start with `runner.log` or `summary.json`, then inspect the failed group's
 `output.log`. Test stdout and stderr are both saved. The JSON records executed,
 failed, timed-out and unrun groups separately. The JUnit file includes group output;
 individual C++ assertions are in the detailed C++ log.
+
+### Reading the examples in a test log
+
+Before each signed REINS response check, `sim-directed/output.log` prints a
+`[REINS INPUT]` block, including cases that should be rejected. It shows:
+
+- The scenario and expected outcome, followed by the actual verdict.
+- Every request byte in an offset-labelled hex dump, plus decoded type, slot,
+  device, policy, round, nonce and reserved fields. Short requests are marked
+  truncated and still printed before they are rejected.
+- The captured job identity, configuration digest, selected public key, reply
+  length, leaf index and Merkle proof depth.
+
+For example, a changed request nonce leaves the old reply bound to the original
+request. The log shows the changed nonce before the check and the resulting
+rejection afterwards. An expected rejection means the test passed.
+
+Other examples include expected/actual NIST outcomes, independently supplied and
+computed Merkle roots, and `[TIMELINE]` / `[CANCEL]` entries. Timeline entries show
+event ticks, job tokens, run/round/slot identity, pass number, verdict, cancellation,
+ownership and verification-call counts. This makes it possible to follow how an
+old cancelled result arrives while a newer job stays busy.
+
+The CLI checks save the same request/event trace in each replay's
+`sim-report/cli-artifacts/*.stderr.log`. To see one directly after building:
+
+```sh
+build/release/reins-sim --fixtures build/release/fixtures --trace-inputs
+```
+
+With `--trace-inputs`, readable details go to stderr and the JSON report stays on
+stdout. Without that flag the CLI keeps its existing JSON-only behavior. These
+traces describe public test material and cryptographic evidence; they do not show
+an RTL vote or permit decision.
 
 Collector regression tests deliberately create failures/timeouts to verify the
 reporting system. Their nested reports under `collector-regressions/` are expected

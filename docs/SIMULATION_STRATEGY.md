@@ -103,6 +103,14 @@ delivery, zero-latency ordering, overflow and host-generated ARM replies.
 The CLI tests verify deterministic simulated time, JSON/file agreement, nonzero
 failure status for corrupted replies, and rejection of unavailable modes/options.
 
+Signed-response checks print the actual captured request before verification,
+including expected rejection cases, then report actual evidence verdicts.
+The bounds-aware diagnostic decoder prints all request bytes and labels missing
+fields rather than validating or repairing them. Directed logs also explain NIST
+outcomes, root comparisons, mutations and event/cancellation timelines. CLI tests
+enable `--trace-inputs` and retain the request/event trace on stderr while stdout
+remains the JSON report. Diagnostics do not change cryptographic acceptance.
+
 The `make sanitize-tests` target instruments this project's C++ with AddressSanitizer and
 UndefinedBehaviorSanitizer. It does not instrument the separately installed
 OpenSSL library or establish physical fault safety.

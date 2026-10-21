@@ -19,6 +19,7 @@ FILES = {
 
 
 def digest(data):
+    """Return the lowercase SHA-256 hex digest of the bytes in data."""
     return hashlib.sha256(data).hexdigest()
 
 
@@ -27,6 +28,7 @@ class DownloadError(RuntimeError):
 
 
 def download_archive(url):
+    """Download url with standard TLS trust and explain certificate/network failures."""
     try:
         with urllib.request.urlopen(url, timeout=60) as response:
             return response.read()
@@ -52,6 +54,7 @@ def download_archive(url):
 
 
 def main():
+    """Install the pinned header/license from a verified cache or download; no parameters."""
     destination = ROOT / ".deps/doctest-2.4.12"
     if all((destination / name).is_file() for name in FILES):
         for name, expected in FILES.items():
@@ -84,6 +87,7 @@ def main():
 
 
 def cli():
+    """Run installation, returning a nonzero exit status for download errors; no parameters."""
     try:
         main()
     except DownloadError as error:
