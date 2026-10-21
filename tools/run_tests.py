@@ -190,8 +190,8 @@ def run_suite(suite, configuration, output_root, steps, *, build=None, cwd=ROOT,
     return code, directory
 
 
-def suite_steps(suite, build_dir, test_filter):
-    """Select suite's logged commands using build_dir binaries and optional test_filter."""
+def suite_steps(suite, build_dir, test_filter, make_command="make"):
+    """Select suite's commands using build_dir, optional test_filter and make_command for RTL lint."""
     python = [sys.executable, "-E", "-s", "-B"]
     baseline = python + [str(ROOT / "tools/check_baseline.py")]
     if suite != "quick":
@@ -212,6 +212,11 @@ def suite_steps(suite, build_dir, test_filter):
         if test_filter:
             cpp += ["--test-case=" + test_filter]
         steps.insert(0, Step("sim-directed", cpp, count_kind="doctest"))
+        rtl = [str(build_dir / "sha256-rtl/reins-sha256-tests"), "--no-colors", "--duration"]
+        if suite == "quick":
+            rtl += ["--test-case-exclude=*extended*"]
+        steps.insert(1, Step("sha256-rtl", rtl, count_kind="doctest"))
+        steps.insert(1, Step("rtl-lint", shlex.split(make_command)+["--no-print-directory", "rtl-lint"]))
         steps.append(Step("sim-report", python + [str(ROOT / "tools/test_sim_report.py"),
             "--executable", str(build_dir / "reins-sim"), "--fixtures", str(build_dir / "fixtures")]))
         steps.append(Step("reference-report", python + [str(ROOT / "tools/test_reference_report.py"),
@@ -237,7 +242,7 @@ def main():
     build = None if args.suite == "baseline" else Step("build",
         shlex.split(args.make_command) + ["--no-print-directory", "-j" + args.jobs, "build"], timeout=300)
     code, _ = run_suite(args.suite, args.configuration, ROOT / "test-results",
-        suite_steps(args.suite, build_dir, args.test_filter), build=build, environment=environment,
+        suite_steps(args.suite, build_dir, args.test_filter, args.make_command), build=build, environment=environment,
         build_config=build_dir / "build-config.json")
     return code
 
