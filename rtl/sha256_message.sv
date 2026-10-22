@@ -19,7 +19,9 @@ module sha256_message #(
     input  logic         rsp_ready_i,  // Consumer accepts the response on valid && ready.
     output logic [255:0] rsp_digest_o, // SHA-256 digest, or zero when rsp_error_o != 0.
     output logic [31:0]  rsp_tag_o,    // Captured request identity.
-    output logic [1:0]   rsp_error_o   // 0=success, 1=length, 2=input stall, 3=control.
+    output logic [1:0]   rsp_error_o,  // 0=success, 1=length, 2=input stall, 3=control.
+    output logic         compression_start_o, // Passive actual compression acceptance, not message-level intent.
+    output logic         compression_complete_o // Passive actual compression completion.
 );
     localparam logic [255:0] IV = 256'h6a09e667bb67ae853c6ef372a54ff53a510e527f9b05688c1f83d9ab5be0cd19;
     typedef enum logic [2:0] {IDLE, LOAD, PAD, SUBMIT, WAIT_RESULT, REPLY} state_t;
@@ -35,7 +37,6 @@ module sha256_message #(
     logic core_req_ready, core_rsp_valid;
     logic [255:0] core_result;
     logic [31:0] unused_core_tag;     // Identity is already held in the outer request.
-    logic unused_core_start, unused_core_done; // Optional diagnostics, not control inputs.
 
     assign req_ready_o = rst_ni && state_q==IDLE;
     assign byte_ready_o = rst_ni && state_q==LOAD;
@@ -45,7 +46,7 @@ module sha256_message #(
         .req_ready_o(core_req_ready), .req_state_i(chain_q), .req_block_i(block_q),
         .req_tag_i(rsp_tag_o), .rsp_valid_o(core_rsp_valid), .rsp_ready_i(state_q==WAIT_RESULT),
         .rsp_state_o(core_result), .rsp_tag_o(unused_core_tag),
-        .start_o(unused_core_start), .complete_o(unused_core_done)
+        .start_o(compression_start_o), .complete_o(compression_complete_o)
     );
 
     always_ff @(posedge clk_i) begin

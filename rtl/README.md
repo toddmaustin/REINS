@@ -18,6 +18,10 @@ and memory-backed verification tests. R08 wraps it in the complete current
 local guards, representative work/transaction generators and trusted stop
 completion derived from actual modeled cells and queues. See the
 [R08 enforcement profile](../docs/R08_ENDPOINT_ENFORCEMENT.md).
+R09 adds independent expected-grant/configuration/Merkle stages, each with its own
+real SHA core and fresh sealed-memory proof reads. The
+[R09 guide](../docs/R09_MERKLE.md) defines exact framing, evidence/provenance,
+construction and hand-off checks, and the software SLH signature boundary.
 
 ## Files and architecture
 
@@ -98,6 +102,7 @@ it never substitutes a whole-message hash for this operation.
 | `rsp_valid_o`, `rsp_ready_i` | Retained message completion, including failures |
 | `rsp_digest_o[255:0]`, `rsp_tag_o[31:0]` | Big-endian digest and captured tag; digest is zero on an error |
 | `rsp_error_o[1:0]` | 0 success; 1 excessive length; 2 missing-byte timeout; 3 invalid control state fallback |
+| `compression_start_o`, `compression_complete_o` | Passive physical compression acceptance/completion pulses; R09 audits actual work independently of message completion |
 | `MAX_MESSAGE_BYTES` | Default 9,216; a transaction bound, not a receive-SRAM implementation |
 | `MAX_INPUT_STALL` | Default 1,024 consecutive clocks awaiting a byte; must be positive |
 
@@ -133,7 +138,7 @@ make tests
 make sanitize-tests JOBS=2
 ```
 
-`make rtl-build` builds the SHA, R05, R06 controller and R05/R06 integration test executables, including the C++ oracle
+`make rtl-build` builds all eleven SHA and R05–R09 component/integration test executables, including the C++ oracle
 objects needed by R05; `make software-build` builds the independent software
 simulator. Normal build includes all of them. Builds
 enable SystemVerilog assertions, fatal RTL lint warnings and line coverage.
@@ -358,3 +363,33 @@ exact timing inequalities, OTP limitations, reset/rearm ordering, management
 boundary, fault scope and physical qualification requirements. The RTL models
 local enforcement; it does not establish real oscillator independence, physical
 stop delays or synthesis preservation.
+
+## R09 expected-grant and Merkle stages
+
+| Production file | Interface and ownership |
+|---|---|
+| [`reins_expected_grant.sv`](reins_expected_grant.sv) | Combinational 128-byte grant from local typed D/C, request kind, slot, round and nonce; no received-body input |
+| [`reins_merkle_pass.sv`](reins_merkle_pass.sv) | Fresh OTP/context capture, own real SHA, configuration binding, proof parsing, leaf/node construction and tagged root/message/key evidence |
+| [`reins_merkle_pair.sv`](reins_merkle_pair.sv) | Two independent engines; protected lane selection and exclusive read ownership over the one R07 sealed SRAM |
+
+Each start captures the current checked 272-byte OTP and local immutable request.
+The selected lane recomputes `C_cfg`, constructs the complete local grant and
+hashes `00 || REINS-AUTH-v2 || grant || C_cfg`. It reads the four-byte index and
+bottom-up siblings at addresses 7856 onward, sampling every byte twice, then
+hashes each `01 || left || right` parent. Actual sealed length alone determines
+depth 0–20; unused index bits must be zero. Last-leaf padding is an authority-side
+tree rule; the wire carries no batch count and padded membership is valid.
+
+Each engine has its own SHA wrapper/core, complementary state/metadata,
+independent byte/operation audits and a separately checked SHA-result hand-off.
+The output is `REINS-BATCH-v2 || root`, selected OTP public key and full job
+provenance. It is **candidate evidence**, not a vote. Cancellation/context change
+invalidates held results and scrubs scratch. Integrity alarms are sticky across
+cancel; the R05/R06 caller retains system reset, timeout and acceptance ownership.
+
+Run `make r09-unit-tests` for vectors, faults and seeded fuzz; `make r09-tests`
+also clocks real signed ARM/RENEW through the complete device. Both are included
+in normal builds/tests. The integration adapter verifies actual RTL outputs with
+host SLH-DSA, leaving full signature hardware and protected acceptance to R10a–c.
+See [R09_MERKLE.md](../docs/R09_MERKLE.md) for every port/code, exact framing,
+pass independence, saved reports, timing measurements and remaining limits.

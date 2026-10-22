@@ -75,6 +75,7 @@ module reins_entropy (
         return raw_b_q[383-8*(int'(address)-76) -: 8];
     endfunction
     // Dedicated conditioner SHA; reset atomically cancels any old draw's completion.
+    logic unused_compression_start, unused_compression_complete; // Passive core events unused by this client.
     sha256_message #(.MAX_MESSAGE_BYTES(124)) conditioner (
         .clk_i(clk_i), .rst_ni(por_ni && !cold_reset_i && !warm_reset_i && !cancel_i && !run_start_i && !new_draw &&
             (!hold_q || cold_pending_q) && !(monitor_i && source_failure_i) && !draw_expired),
@@ -82,7 +83,8 @@ module reins_entropy (
         .req_length_i(32'd124), .req_tag_i(32'h454e5431),
         .byte_valid_i(phase_q==HASH_BYTES), .byte_ready_o(sha_byte_ready), .byte_i(frame_byte(index_q)),
         .rsp_valid_o(sha_rsp_valid), .rsp_ready_i(phase_q==HASH_RESULT),
-        .rsp_digest_o(sha_digest), .rsp_tag_o(sha_tag), .rsp_error_o(sha_error)
+        .rsp_digest_o(sha_digest), .rsp_tag_o(sha_tag), .rsp_error_o(sha_error),
+        .compression_start_o(unused_compression_start), .compression_complete_o(unused_compression_complete)
     );
     always_ff @(posedge clk_i) begin
         if (!por_ni) begin

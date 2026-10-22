@@ -71,6 +71,7 @@ module reins_config (
         end
     end
     // Dedicated configuration SHA: no arbitration or verification-pass sharing.
+    logic unused_compression_start, unused_compression_complete; // Passive core events unused by this client.
     sha256_message #(.MAX_MESSAGE_BYTES(272)) hasher (
         .clk_i(clk_i), .rst_ni(rst_ni && macro_integrity_i),
         .req_valid_i(phase_q==HASH_REQUEST), .req_ready_o(sha_req_ready),
@@ -78,7 +79,8 @@ module reins_config (
         .byte_valid_i(phase_q==HASH_BYTES), .byte_ready_o(sha_byte_ready),
         .byte_i(octet({23'b0,index_q})), .rsp_valid_o(sha_rsp_valid),
         .rsp_ready_i(phase_q==HASH_RESULT), .rsp_digest_o(sha_digest),
-        .rsp_tag_o(sha_tag), .rsp_error_o(sha_error)
+        .rsp_tag_o(sha_tag), .rsp_error_o(sha_error),
+        .compression_start_o(unused_compression_start), .compression_complete_o(unused_compression_complete)
     );
     always_ff @(posedge clk_i) begin
         if (!rst_ni) begin

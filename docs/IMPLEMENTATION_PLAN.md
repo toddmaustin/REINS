@@ -10,8 +10,10 @@ reference milestone are implemented. R04 SHA-256, R05 configuration/reset/time/
 entropy, R06 operational controller and R07 SPI/sealed receive RTL are implemented
 with Verilator tests. R08 now adds dynamic dual permit rails, independent local
 guards and modeled endpoint isolation/queue containment, with trusted stop
-completion and live management. R07 includes an independent byte-level C++ oracle, actual
-memory-backed host verification and real R05/R06/R07 pin integration. Remaining RTL milestones
+completion and live management. R09 adds independent per-pass expected grants,
+configuration binding and Merkle reconstruction with real SHA-256. R07 includes
+an independent byte-level C++ oracle, actual memory-backed host verification and
+real R05/R06/R07 pin integration. Remaining RTL milestones
 are open; software/Python validation is not evidence that their RTL exists.
 
 Section 1 is established by [IMPLEMENTATION_SCOPE.md](IMPLEMENTATION_SCOPE.md),
@@ -335,6 +337,18 @@ physical implementation assumptions behind the modeled delays.
 
 ### PR 09 — Expected-grant construction and Merkle verification
 
+**Status: implemented digitally, with host SLH-DSA verification of the actual
+RTL-produced message and key.** See the [R09 architecture/evidence guide](R09_MERKLE.md),
+[RTL sources](../rtl/README.md#r09-expected-grant-and-merkle-stages) and
+[C++ harness](../sim/README.md#r09-local-grants-and-merkle-state).
+Two separate SHA engines rehash OTP and reconstruct local grants/proofs afresh.
+Tests cover supplied/R02 records, signed depths 0–20, last-leaf padded batches,
+canonical parsing, independent block/read observations, both-lane construction/
+hand-off faults, cancellation and seeded fuzz. Canonical altered proofs produce
+a candidate root and fail the original signature; padded membership remains valid.
+Full hardware SLH verification and the protected two-pass acceptance join remain
+R10a–R10c; this stage never awards a vote by itself.
+
 **Deliver:** independent local expected-grant construction per verification pass,
 configuration binding, leaf/node domain separation, canonical proof parsing, and
 bottom-up reconstruction using real SHA-256. The reply remains signature, index,
@@ -536,8 +550,8 @@ behavior; and measure environmental/fault coverage and the actual stop bound.
 Sharing SHA hardware or broadening N/Q is a later change requiring renewed
 performance, fault, and regression evidence.
 
-**Next development action: PR 09.** Implement expected-grant construction and
-Merkle verification using actual SHA-256, preserving the independent two-pass
-acceptance boundary and R08 endpoint enforcement.
+**Next development action: PR 10a.** Implement FIPS 205 addressing, pure/empty-context
+framing and WOTS+, preserving R09's independently reconstructed messages and keys,
+the two-pass acceptance boundary and R08 endpoint enforcement.
 Keep R03 protected primitives and general internal fault campaigns explicitly
 deferred until their implementation and integration are resumed.
