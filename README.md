@@ -22,8 +22,12 @@ passes; integration tests connect the actual R05/R06 hardware. **R07 adds pin-le
 mode-0 SPI and one sealed receive memory**: exact envelopes, atomic public reads,
 powered-context tokens, sequential reception, native time budgets and ECC/address/
 owner checks. Both software verification passes read the actual sealed RTL memory.
-R03 protected primitives and general fault-injection infrastructure are deferred.
-Signature-verification RTL and physical enforcement remain later work. These tests do not
+**R08 adds dynamic permit rails and local endpoint enforcement**: three representative
+compute/outbound endpoints, six independent local guard clocks, serial isolation
+cells, queue containment and internally certified stop completion. SPI management
+remains live while protected work is stopped. R03 protected primitives and general
+fault-injection infrastructure are deferred. Signature-verification RTL and
+physical qualification remain later work. These tests do not
 prove physical clock, randomness, isolation or fault-resistance properties.
 See the [RTL guide](rtl/README.md) for interfaces and hashing tests.
 The [R05 platform profile](docs/R05_PLATFORM_PROFILE.md) explains which digital
@@ -32,6 +36,8 @@ The [R06 controller guide](docs/R06_CONTROLLER.md) explains state ownership,
 the verification boundary, timing priority and stateful fuzzing.
 The [R07 SPI/receive guide](docs/R07_SPI_RECEIVE.md) documents the transport,
 memory protection, result codes, pin drivers, fault tests and retained evidence.
+The [R08 enforcement guide](docs/R08_ENDPOINT_ENFORCEMENT.md) explains the dual
+guards, queue/stop ordering, 1.1 ms modeled bound and required physical assumptions.
 
 ## Start here
 
@@ -57,7 +63,7 @@ and keeps the logs for inspection.
 | Trusted CA certificates | Let Python verify HTTPS when downloading the test dependency |
 | pkg-config | Finds the installed OpenSSL headers and library |
 | OpenSSL **3.5 or newer development package** | Independent SHA-256 / FIPS 205 SLH-DSA backend, with the default provider's SLH-DSA support |
-| Verilator **5+** | Compiles and runs the SHA-256, R05, R06 and R07 component/integration RTL with assertions and line coverage; tested with **5.008 and 5.032** |
+| Verilator **5+** | Compiles and runs the SHA-256, R05, R06, R07 and R08 component/integration RTL with assertions and line coverage; tested with **5.008 and 5.032** |
 
 OpenSSL's development package includes headers and `libcrypto`, not just the
 `openssl` executable. Many older systems supply OpenSSL 3.0 or 3.4, which do not
@@ -165,13 +171,15 @@ installing cached files too. A failed download requires no `make clean`.
 
 | Command | What it does |
 |---|---|
-| `make build` | Builds the C++ simulators/tests, verified inputs and all seven Verilator component/integration test executables |
+| `make build` | Builds the C++ simulators/tests, verified inputs and all nine Verilator component/integration test executables |
 | `make software-build` | Builds only the independent C++ simulators/tests and input data |
 | `make rtl-build` | Builds all assertion/coverage-enabled RTL test executables and required C++ oracle objects |
 | `make rtl-lint` | Checks production RTL with assertions and with `SYNTHESIS` defined, independently of the simulation top |
 | `make quick-tests` | Builds as needed and runs bounded directed checks, including R05 signed-lease examples; skips extended fuzz and the larger software host-signing cases |
 | `make tests` | Builds as needed and runs all current software, RTL component/integration, stateful fuzz and infrastructure checks |
 | `make r07-tests` | Builds/runs just the SPI/controller, full R05/R06/R07 integration and protected-memory tests, retaining all outputs |
+| `make r08-tests` | Builds/runs local multi-clock enforcement and full-device signed-quorum/expiry/management tests, retaining all outputs |
+| `make r08-unit-tests` | Runs local guard, clock, queue, fault and seeded fuzz tests; useful for focused sanitizer checks |
 | `make baseline-tests` | Runs source/fixture/tool checks using only Python; no C++ build or OpenSSL package needed |
 | `make sanitize-tests` | Builds/runs the full suite with C++ address/undefined-behavior sanitizers |
 | `make regenerate-reference-fixtures` | Explicitly generates new public R02 keys/signatures and provenance; changes tracked fixtures |
@@ -209,6 +217,22 @@ make r07-tests TEST_FILTER='*atomic*,*budget*'
 REINS_R07_SEED=12345 make r07-tests
 REINS_R07_TRACE=1 make RTL_TRACE=1 r07-tests
 ```
+
+For endpoint enforcement development:
+
+```sh
+make r08-tests
+make r08-unit-tests TEST_FILTER='*permissive*,*clock corners*'
+REINS_R08_SEED=12345 make r08-unit-tests
+make SANITIZE=1 r08-unit-tests
+REINS_R08_TRACE=1 make RTL_TRACE=1 r08-tests
+```
+
+`r08-unit-tests` avoids long signature transfers; its independent clocks, route
+jitter, stateful fuzz and final receiver observations still exercise actual RTL.
+`r08-tests` additionally runs the real OTP/time/entropy/SPI/controller composition
+and real software verification over sealed RTL memory. Test inputs and timing
+measurements are saved with the results. See the [R08 guide](docs/R08_ENDPOINT_ENFORCEMENT.md).
 
 R07 tests clock every SPI bit and transfer complete signatures, so even directed
 tests can take several minutes. `quick-tests` excludes extended fuzzing, while
@@ -260,6 +284,13 @@ protected codewords. Its **9,216-byte payload capacity** uses 33,408 bytes of
 codeword storage with full row/owner tags and ECC; those bits are additional
 protection overhead, with one payload array. See the
 [simulator state guide](sim/README.md#r07-spi-and-receive-state).
+
+R08's [`reins_device_enforced`](rtl/reins_device_enforced.sv) derives trusted stop
+completion from actual modeled isolation-cell readbacks and empty queues; the
+host cannot acknowledge stop. Local guard/actuator state lives in six independent
+clock domains, while outbound queues and the stop monitor use the always-on
+clock. A fresh ARM needs completed closure and two fresh transitions per guard.
+See [R08 state and enforcement](sim/README.md#r08-endpoint-enforcement-state).
 
 ## What are fixtures?
 
@@ -327,6 +358,8 @@ physical randomness.
 | `r07-integration` | Do actual R05/R06/R07 components perform pin-level ARM/RENEW using real conditioned nonces, preserve closed OTP through reset, reject old tokens and withdraw permit during an active SPI transaction on a sensor alarm? |
 | `r07-memory` | Do all 116 single-bit and 6,670 distinct two-bit codeword faults fail, together with wrong-row/stale-owner substitution, bounds/address/control corruption and sealed write attempts? |
 | `rtl-lint` | Do the standalone production modules pass fatal-warning lint/elaboration with assertions and with simulation assertions excluded for synthesis? |
+| `r08-rtl` | Do actual protected clocks and final outbound effects stop within the real-time bound across clock corners, jitter, static ties, frozen source, permissive guard/control faults and stateful fuzz? |
+| `r08-integration` | Does a real signed quorum enable work, expire into trusted physical stop, preserve live SPI management and permit fresh ARM only after closure? Are unsupported OTP delay promises rejected? |
 | `baseline` | Are the normative source files unchanged, the implementation fixed at 3/2, and the fixture OTP header supported? The full suite also runs the original Python review validation. |
 | `tool-regressions` | Do unsupported profiles and source changes fail? In the full suite, do TLS trust, download diagnostics, logging, failure status, timeouts, empty selection, retention and clean behavior work? |
 | `sim-report` | Does the actual CLI produce correct JSON and deterministic event times, reject invalid inputs/modes, and return the right exit status? |
@@ -335,21 +368,25 @@ physical randomness.
 
 Currently the full suite contains 32 software C++ cases, 9 SHA-256 and 18 R05 RTL
 C++ cases, 21 R06 controller cases, 3 R05/R06 integration cases, 30 R07 pin/controller
-cases, 2 R07 integration cases, 4 memory cases and 30 Python tool regressions,
+cases, 2 R07 integration cases, 4 memory cases, 13 R08 enforcement cases,
+2 R08 integration cases and 30 Python tool regressions,
 in addition to review/corpus/CLI checks.
 The quick suite runs 28 software, 8 SHA-256, 17 R05, 20 R06 controller and 3
-R05/R06 integration cases, 29 R07 pin/controller cases, both R07 integration cases
-and all 4 memory cases, plus 12 source/profile regressions. It still
+R05/R06 integration cases, 29 R07 pin/controller cases, both R07 integration cases,
+all 4 memory cases, 12 R08 enforcement cases and both R08 integration cases,
+plus 12 source/profile regressions. It still
 checks all 28 NIST outcomes, but skips
 the slower fresh-key signing case and the second Python cryptographic cross-check.
 Counts will grow as implementation progresses; saved logs record what executed.
 
-The seven RTL groups exercise **actual hardware on Verilator**. R06 controller
+The nine RTL groups exercise **actual hardware on Verilator**. R06 controller
 tests use actual independently computed host signature verification and compare
 semantic outcomes to the C++ model. Integration additionally exercises real R05
 configuration hashing, source conditioning and trusted time. R07 adds actual
 mode-0 pins, transaction handling and sealed receive-memory accesses. Full RTL
-signature verification and physical guards remain later work. Mirrored/sparse digital
+signature verification and physical guard qualification remain later work.
+R08 now models separate local guards/cells and observes actual outbound effects;
+its delay assumptions still require platform evidence. Mirrored/sparse digital
 checks do not establish R03's physical fault protections.
 The [implementation plan](docs/IMPLEMENTATION_PLAN.md) describes those next steps.
 
@@ -384,6 +421,8 @@ test-results/<timestamp>-full-release-<unique>/
   r07-rtl/events.jsonl             Every SPI exchange and public fuzz inputs/seed/summary
   r07-rtl/performance.json         Actual clocks, real passes, ownership, versions and throughput
   r07-integration/                 Actual R05/R06/R07 logs/events/performance/coverage
+  r08-rtl/                         Independent clock/route/fault actions, work/effects and coverage
+  r08-integration/                 Signed quorum, stop latency, live management and fresh ARM
   r07-memory/                      Exhaustive ECC and address/seal/control fault evidence
   rtl-lint/output.log               Standalone production/assertion/synthesis-path lint
   baseline/output.log               Source/profile and review checks

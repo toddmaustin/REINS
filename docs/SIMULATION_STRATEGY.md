@@ -26,6 +26,11 @@ C++ byte-transaction oracle. Its production composition includes actual R05/R06;
 each software verification pass reads the real sealed array afresh. See
 [R07_SPI_RECEIVE.md](R07_SPI_RECEIVE.md) for interfaces, snapshot/result decisions,
 native time budgets, fault cases and evidence limits.
+R08 adds dynamic rails, independently clocked local guards, real protected clock/
+outbound generators and actual stop completion. The independent C++ oracle checks
+semantic real-time deadlines and final effects without copying guard microstates.
+See [R08_ENDPOINT_ENFORCEMENT.md](R08_ENDPOINT_ENFORCEMENT.md) for clock/route bounds,
+queue containment, live management and physical qualification assumptions.
 
 ## Boundaries and APIs
 
@@ -124,6 +129,8 @@ independent Python outcomes anchor the C++ implementation.
 | RTL R06 platform | Actual R05/R06 composition on Verilator with software verification | Real configuration/source/SHA/time startup and controller integration; no physical qualification or RTL signature verifier |
 | RTL R07 SPI | Actual pin/receive/controller RTL with independent byte oracle | Exact envelopes/snapshots/tokens/offsets, native budgets, cancellation races, byte fuzz and both-pass write inhibition |
 | RTL R07 platform | Actual R05/R06/R07 composition with memory-backed software verification | Real conditioned nonces and pin-level ARM/RENEW, closed OTP/reset and sensor fail-off; no full RTL signature computation |
+| RTL R08 enforcement | Eleven-clock event-driven bank with independent real-time C++ oracle | Actual protected clock edges and final outbound effects, six guards, jitter/corners, static ties, frozen source, single permissive faults, queue/reset controls and stateful fuzz |
+| RTL R08 complete device | Actual R05 through R08, host crypto over real sealed SRAM | Signed quorum/expiry, trusted closure, live SPI management, fresh ARM, sensor withdrawal and incompatible OTP timing |
 | RTL R07 memory | Isolated exact-production SRAM wrapper | Exhaustive single/double codeword errors, address/owner substitution and seal/control checks in declared digital fault domains |
 | Crypto control | Deferred until measurements justify a software SHA compression backend | Later: real sequencing with abstracted compression datapath |
 | Full RTL | SHA primitive available; pending Merkle/SLH-DSA RTL and protected acceptance | Later: actual complete digital crypto/control and cycle measurements |

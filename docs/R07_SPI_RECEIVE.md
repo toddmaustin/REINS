@@ -111,7 +111,7 @@ flowchart LR
     R05["R05 config / entropy / trusted time"] --> RX
     R05 --> C
     RX --> S["Atomic public snapshots / MISO"]
-    L --> G["R08 endpoint guards: later milestone"]
+    L --> G["R08 endpoint guards and trusted stop"]
 ```
 
 `reins_device_spi` remains an internal device component. Physical pads, OTP/SRAM
@@ -356,8 +356,9 @@ coverage, electrical pad timing, four-state initialization, synthesis/layout
 preservation, resistance to faults in the checker itself or a silicon stopping
 bound. Passing two host-backed passes does not qualify safe hardware sharing.
 
-Continue with R08 local endpoint guards and trusted completed-stop enforcement,
-then full hardware verification. Resume deferred R03 capture/replica/fan-out/
+R08 now supplies [local endpoint guards and trusted stop completion](R08_ENDPOINT_ENFORCEMENT.md),
+with live pin-level management while protected work is stopped. Continue with
+full hardware verification. Resume deferred R03 capture/replica/fan-out/
 common-path fault work before claiming protected physical acceptance. SRAM/OTP
 macros, clock/entropy/sensor profiles, CDC and physical isolation still require
 platform qualification.

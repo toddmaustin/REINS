@@ -3,6 +3,7 @@
 #include "reins/r06_test_support.h"
 #include "reins/spi.h"
 #include "reins/spi_driver.h"
+#include "reins/local_clock_driver.h"
 namespace reins::sim::r07_test {
 using namespace reference;
 using namespace r06_test;
@@ -32,6 +33,7 @@ struct HardwareJob {
 template<class Dut> class PinBench {
 public:
     static constexpr bool platform=requires(Dut value) { value.factory_image_i; };
+    static constexpr bool enforced=requires(Dut value) { value.guard_clock_a_i; };
     VerilatedContext context;
     Dut dut{&context};
     Corpus& fixtures;
@@ -49,14 +51,21 @@ public:
     unsigned ai=0, bi=0;
     std::uint64_t published_round=0;
     std::function<void()> edge_action; // Optional simulation-only race stimulus, applied just before a sampled clock.
+    std::unique_ptr<LocalClockDriver<Dut>> local_clocks; // R08 only: independent guard edges between monitor edges.
 #if VM_TRACE_FST
     std::unique_ptr<VerilatedFstC> trace;
 #endif
-    // Initialize all pins and independently qualify config/startup using records.
-    explicit PinBench(Corpus& records=corpus()):fixtures(records) {
-        context.traceEverOn(true); dut.clk_i=0; dut.por_ni=0; dut.stop_ack_i=0;
+    // Initialize pins from records; auto_start selects whether to perform qualified startup immediately.
+    explicit PinBench(Corpus& records=corpus(), bool auto_start=true):fixtures(records) {
+        context.traceEverOn(true); dut.clk_i=0; dut.por_ni=0;
+        if constexpr (requires { dut.stop_ack_i; }) dut.stop_ack_i=0;
+        if constexpr (enforced) {
+            dut.endpoint_por_ni=0; dut.outbound_ready_i=7;
+            local_clocks=std::make_unique<LocalClockDriver<Dut>>(dut,context);
+        }
         if constexpr (platform) {
-            dut.cold_reset_i=0; dut.warm_reset_i=0; dut.startup_i=0; dut.physical_enable_i=1; dut.stopped_i=1;
+            dut.cold_reset_i=0; dut.warm_reset_i=0; dut.startup_i=0; dut.physical_enable_i=1;
+            if constexpr (requires { dut.stopped_i; }) dut.stopped_i=1;
             dut.config_write_i=0; dut.config_check_i=0; dut.config_close_i=0; dut.config_address_i=0; dut.config_data_i=0;
             pack(dut.factory_image_i,fixtures.config.otp); dut.macro_integrity_i=1;
             dut.reference_a_i=0; dut.reference_b_i=0; dut.timing_healthy_i=1; dut.sensor_healthy_i=1; dut.integrity_alarm_i=0;
@@ -76,14 +85,16 @@ public:
         pack(dut.completion_request_i,Bytes(128)); pack(dut.completion_config_digest_i,Bytes(32));
         dut.read_valid_i=0; dut.read_address_i=0; dut.read_address_inverse_i=0x3fff;
 #if VM_TRACE_FST
-        if (std::getenv("REINS_R07_TRACE") && !evidence.traced) {
+        if (std::getenv(enforced ? "REINS_R08_TRACE" : "REINS_R07_TRACE") && !evidence.traced) {
             trace=std::make_unique<VerilatedFstC>(); dut.trace(trace.get(),8);
-            trace->open((evidence.directory/"r07.fst").c_str()); evidence.traced=true;
+            trace->open((evidence.directory/(enforced ? "r08.fst" : "r07.fst")).c_str()); evidence.traced=true;
         }
 #endif
         REQUIRE(reference.program(fixtures.config.otp,true,true)); REQUIRE(reference.close(true,true)); reference.reset(Reset::cold);
-        idle(3); dut.por_ni=1; idle(48);
-        startup();
+        idle(3); dut.por_ni=1;
+        if constexpr (enforced) dut.endpoint_por_ni=1;
+        idle(enforced ? 256 : 48);
+        if (auto_start) startup();
     }
     // Preserve coverage/waveforms and balance any deliberately abandoned verifier ownership.
     ~PinBench() {
@@ -98,7 +109,8 @@ public:
     void settle() { Verilated::threadContextp(&context); dut.clk_i=0; dut.eval(); }
     // Start actual R05 qualification, or its abstracted equivalent using a fresh nonce domain.
     void startup(unsigned domain=1) {
-        dut.stop_ack_i=1; idle(1); dut.stop_ack_i=0;
+        if constexpr (requires { dut.stop_ack_i; }) { dut.stop_ack_i=1; idle(1); dut.stop_ack_i=0; }
+        else idle(1); // R08 can acknowledge only from actual endpoint closure and queue containment.
         REQUIRE(dut.restart_ready_o);
         if constexpr (platform) {
             dut.startup_i=1; idle(1); dut.startup_i=0;
@@ -168,11 +180,14 @@ public:
             // Retain both clock phases, so bounded waveforms show actual edges.
             if (trace && clocks<=16384) trace->dump(context.time());
 #endif
-            context.timeInc(1); dut.clk_i=1; dut.eval();
+            if constexpr (enforced) local_clocks->advance(125);
+            else context.timeInc(1);
+            dut.clk_i=1; dut.eval();
 #if VM_TRACE_FST
             if (trace && clocks<=16384) trace->dump(context.time());
 #endif
-            context.timeInc(1);
+            if constexpr (enforced) local_clocks->advance(125);
+            else context.timeInc(1);
             absolute=target;
             if (!was_owned && dut.receive_owned_o) begin_tick=absolute;
             if constexpr (platform) {
