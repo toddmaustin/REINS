@@ -9,6 +9,7 @@ module reins_entropy (
     input logic source_failure_i,              // Immediate digital health/availability failure.
     input logic run_start_i,                   // Full OTP/time/source startup checks have passed.
     input logic [63:0] now_i, generation_i, window_i, // Trusted local time, identity and W.
+    input logic tick_i,                       // This monitor edge advances trusted time by one.
     input logic draw_valid_i,                  // Trusted R06 request for a subsequent round.
     output logic draw_ready_o, draw_rejected_o,// Capture availability / invalid schedule diagnostic.
     input logic [63:0] draw_round_i, draw_issue_i, // Caller supplies the fixed R06 issue schedule.
@@ -44,7 +45,8 @@ module reins_entropy (
 
     // A fresh draw must finish within its fixed window. Detect expiration at
     // the live boundary as well as storing it, including a concurrent reset.
-    assign draw_expired=active_q && phase_q!=IDLE && phase_q!=PUBLISHED && now_i>=deadline_q;
+    assign draw_expired=active_q && phase_q!=IDLE && phase_q!=PUBLISHED &&
+        ({1'b0,now_i}+65'(tick_i))>={1'b0,deadline_q};
     assign hold_o=hold_q || (monitor_i && source_failure_i) || draw_expired;
     assign cold_eligible_o=cold_pending_q;
     assign startup_allowed_o=!hold_q || cold_pending_q;

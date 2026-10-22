@@ -18,7 +18,9 @@ RTL SHA-256 instances. The [platform profile](R05_PLATFORM_PROFILE.md) records
 trusted technology interfaces, deterministic source settings, exact conditioner
 framing, retained reset history and evidence limits. A signed C++ reference quorum
 supplies a trusted internal lease to test its RTL health/expiry gate; the actual
-vote/commit controller remains R06 work.
+vote/commit controller is now implemented by R06. See [R06_CONTROLLER.md](R06_CONTROLLER.md)
+for the executable fast-controller boundary, fixed timing, mirrored state and
+semantic comparisons. The production R05/R06 composition owns its lease internally.
 
 ## Boundaries and APIs
 
@@ -63,8 +65,8 @@ permission. A future RTL consumer must independently check live generation,
 slot/context, entropy hold, state, `now < B`, and current expiry at vote update.
 
 The service intentionally can deliver cryptographically valid evidence exactly
-at or after a deadline. The current tests establish this timing capability;
-rejection by real RTL remains a controller integration test in a later milestone.
+at or after a deadline. R06 now exercises those results against real RTL final
+deadline/current-expiry gates, including before/at/after equality cases.
 
 `sim/include/reins/reference.h` adds `Device`, `Authority`, `Relay` and their
 semantic data types. `Device` consumes actual service completions and applies
@@ -113,12 +115,15 @@ independent Python outcomes anchor the C++ implementation.
 | Reference | R02 device, authority, relay and cryptographic scheduling models | Software authorization/lease/stop evidence and semantic replay; no RTL or physical enforcement |
 | RTL SHA-256 | R04 compression and bounded message wrapper on Verilator | Real SHA datapath, padding/chaining, handshake counts, cycles and host throughput; no REINS acceptance controller |
 | RTL R05 | Configuration/reset/time/entropy components on Verilator | Real OTP checking/hash, fresh conditioning, digital health/hold/reset history, independent time and internal lease gate; no physical entropy or RTL quorum controller |
-| Fast control | Pending controller/SPI/guard RTL and simulation wrapper | Later: real control with software cryptography |
+| Fast control | R06 controller on Verilator; qualified platform inputs and two real host crypto passes | Real requests/rounds/votes/leases/cancellation and C++ semantic/stateful comparisons; R05 platform internals abstracted |
+| RTL R06 platform | Actual R05/R06 composition on Verilator with software verification | Real configuration/source/SHA/time startup and controller integration; no physical qualification or RTL signature verifier |
 | Crypto control | Deferred until measurements justify a software SHA compression backend | Later: real sequencing with abstracted compression datapath |
 | Full RTL | SHA primitive available; pending Merkle/SLH-DSA RTL and protected acceptance | Later: actual complete digital crypto/control and cycle measurements |
 | RTL fault | Pending fault-site implementation | Later: declared implementation-level injection evidence |
 
-Unavailable CLI modes fail with status 2. There is no silent fallback to software.
+These new modes identify test-executable reports; the existing `reins-sim` CLI
+still accepts only its reference mode. Unavailable CLI modes fail with status 2.
+There is no silent fallback to software.
 Production RTL will not contain a simulation-verifier bypass. Optional compression
 acceleration, real SPI ARM benchmarks and full production-timing RTL runs remain
 with the components they require. R04/05 component tests already provide optional

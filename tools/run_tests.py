@@ -220,6 +220,12 @@ def suite_steps(suite, build_dir, test_filter, make_command="make"):
         if suite == "quick":
             r05 += ["--test-case-exclude=*extended*"]
         steps.insert(2, Step("r05-rtl", r05, count_kind="doctest"))
+        r06 = [str(build_dir / "r06-rtl/reins-r06-tests"), "--no-colors", "--duration"]
+        if suite == "quick":
+            r06 += ["--test-case-exclude=*extended*"]
+        steps.insert(3, Step("r06-rtl", r06, count_kind="doctest"))
+        steps.insert(4, Step("r06-integration", [str(build_dir / "r06-integration/reins-r06-integration-tests"),
+            "--no-colors", "--duration"], count_kind="doctest"))
         steps.insert(1, Step("rtl-lint", shlex.split(make_command)+["--no-print-directory", "rtl-lint"]))
         steps.append(Step("sim-report", python + [str(ROOT / "tools/test_sim_report.py"),
             "--executable", str(build_dir / "reins-sim"), "--fixtures", str(build_dir / "fixtures")]))
@@ -229,6 +235,7 @@ def suite_steps(suite, build_dir, test_filter, make_command="make"):
 
 
 def main():
+    """Parse process arguments and run the selected logged Make suite; no formal parameters."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--suite", choices=["quick", "full", "baseline"], default="full")
     parser.add_argument("--configuration", choices=["release", "sanitize"], default="release")
@@ -244,7 +251,7 @@ def main():
     for name in ["MAKEFLAGS", "MFLAGS", "MAKEOVERRIDES"]:
         environment.pop(name, None)
     build = None if args.suite == "baseline" else Step("build",
-        shlex.split(args.make_command) + ["--no-print-directory", "-j" + args.jobs, "build"], timeout=300)
+        shlex.split(args.make_command) + ["--no-print-directory", "-j" + args.jobs, "build"], timeout=600)
     code, _ = run_suite(args.suite, args.configuration, ROOT / "test-results",
         suite_steps(args.suite, build_dir, args.test_filter, args.make_command), build=build, environment=environment,
         build_config=build_dir / "build-config.json")

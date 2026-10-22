@@ -6,8 +6,9 @@ fault injection. Develop it in the pull-request order below. Each PR must provid
 local build and test commands and evidence for the behavior it introduces.
 
 This document is the development roadmap. The fixed scope and PR 02 software
-reference milestone are implemented. R04 SHA-256 and R05 configuration/reset/time/
-entropy RTL are implemented with Verilator tests. The remaining RTL milestones
+reference milestone are implemented. R04 SHA-256, R05 configuration/reset/time/
+entropy and R06 operational controller RTL are implemented with Verilator tests.
+R06 includes C++ semantic comparisons and real R05/R06 integration. Remaining RTL milestones
 are open; software/Python validation is not evidence that their RTL exists.
 
 Section 1 is established by [IMPLEMENTATION_SCOPE.md](IMPLEMENTATION_SCOPE.md),
@@ -256,6 +257,16 @@ an existing healthy lease to its original expiry on entropy hold, while general
 integrity/timing/sensor faults withdraw permit immediately.
 
 ### PR 06 — Lease, round, request, and quorum controller
+
+**Status: implemented for digital simulation with software-backed verification.**
+See the [controller/evidence guide](R06_CONTROLLER.md). R06 owns actual RTL
+pending/vote/lease state and connects internally to R05. Fast controller tests
+perform two real software verification passes and compare meaningful behavior
+against the C++ model; integration tests include real R05 SHA/time/source startup.
+Pending/job/context state has digital complemented checks and the FSM is sparse;
+R03 independent physical capture, protected fan-out/placement and general internal
+fault campaigns remain deferred. R07 receive memory/SPI and real verifier hardware
+remain separate milestones.
 
 **Deliver:** the operational FSM, exact 128-byte slot requests, one protected pending
 context, distinct-vote bitmap, fixed-issue lease commit, redundant age/remaining
@@ -507,7 +518,7 @@ behavior; and measure environmental/fault coverage and the actual stop bound.
 Sharing SHA hardware or broadening N/Q is a later change requiring renewed
 performance, fault, and regression evidence.
 
-**Next development action: PR 06.** Build the lease, fixed-round, request and
-quorum controller against the independent reference model and R04/05 components.
+**Next development action: PR 07.** Connect exact SPI envelopes and the single
+sealed receive SRAM/token lifecycle to the R06 controller/verifier boundary.
 Keep R03 protected primitives and general internal fault campaigns explicitly
 deferred until their implementation and integration are resumed.

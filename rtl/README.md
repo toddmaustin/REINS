@@ -6,6 +6,11 @@ R05 uses that hashing core for public OTP validation and fresh two-source entrop
 conditioning, with configuration lifecycle, reset/startup, independent trusted
 time and a health/expiry gate. The [R05 profile](../docs/R05_PLATFORM_PROFILE.md)
 fully documents its technology interfaces, raw sample counts/cutoffs and framing.
+R06 now supplies the actual operational quorum/lease controller and connects that
+R05 gate internally. Its [controller guide](../docs/R06_CONTROLLER.md) describes
+the exact request/job interfaces, tick priority, mirrored state and independent
+age/remaining checks. Signature verification is software-backed in these tests;
+real verifier hardware and R03 physical protections remain later work.
 
 ## Files and architecture
 
@@ -121,7 +126,7 @@ make tests
 make sanitize-tests JOBS=2
 ```
 
-`make rtl-build` builds the SHA and R05 test executables, including the C++ oracle
+`make rtl-build` builds the SHA, R05, R06 controller and R05/R06 integration test executables, including the C++ oracle
 objects needed by R05; `make software-build` builds the independent software
 simulator. Normal build includes all of them. Builds
 enable SystemVerilog assertions, fatal RTL lint warnings and line coverage.
@@ -226,7 +231,7 @@ Actual power loss loses that volatile history while preserving the modeled OTP.
 An **entropy hold** blocks fresh authorization and invalidates pending work while
 letting a previously healthy lease expire at its original deadline. General
 timing, sensor or integrity alarms withdraw permission immediately. R05's lease
-ports are an internal interface for the future R06 vote/commit controller; they
+ports are an internal interface connected to the R06 vote/commit controller; they
 are not an authorization command or a host bypass. The R05 component cannot
 authorize execution on its own.
 
@@ -244,3 +249,39 @@ settings**: passing tests supplies no evidence of physical entropy, source
 independence, clock floor or actual stop latency. Production integration must
 replace/qualify the physical OTP, reset, reference, source, sensor and enforcement
 interfaces. R03 protected replicas/internal fault campaigns remain deferred.
+
+## R06 operational controller and R05 composition
+
+| Module | State and role |
+|---|---|
+| [`reins_round_schedule.sv`](reins_round_schedule.sv) | Exact checked `(r-1)*P`, I+W, I+L and next issue |
+| [`reins_lease_check.sv`](reins_lease_check.sv) | Independent age/remaining consistency, complemented values and strict expiry |
+| [`reins_controller.sv`](reins_controller.sv) | Sparse operational FSM, mirrored pending/job contexts, 128-byte requests, distinct bitmap, fixed-issue commits, down-counter and cancellation |
+| [`reins_device_control.sv`](reins_device_control.sv) | Production R05/R06 composition with internally owned lease, scheduled draws and trusted completed-stop restart |
+
+The simulation-only [`r06_test_top.sv`](../sim/rtl/r06_test_top.sv) drives qualified
+platform inputs and the internal software-verifier boundary. The separate
+[`r06_integration_top.sv`](../sim/rtl/r06_integration_top.sv) exercises real R05
+configuration/source/time/SHA startup plus R06. Their C++ drivers submit actual
+immutable job bytes to two independently computed software verification passes;
+the real controller checks full identity, hold, current deadline/expiry and
+distinct votes at the final boundary. Only a valid second distinct vote commits.
+
+An advancing trusted tick is included in the edge's deadline/expiry checks.
+Nonce delay, partial votes and verifier backpressure cannot move I/B/E. A completed
+trusted stop precedes every fresh run; a host startup request cannot acknowledge
+physical stopping. Pending work is canceled before ownership can be reused, and
+stale completions cannot release a new job or add votes. Actual power loss may
+reuse internal IDs, so fresh nonce qualification remains essential.
+
+Run `make tests` for directed tests plus 24 seeded stateful trials comparing the
+real controller to C++ requests/votes/leases. `REINS_R06_SEED=12345 make tests`
+replays another stream; `REINS_R06_TRACE=1 make RTL_TRACE=1 quick-tests` saves
+bounded FST traces. Both groups retain public job inputs, event/replay records,
+coverage, tool/mode/seed and ownership/performance measurements.
+
+The [R06 guide](../docs/R06_CONTROLLER.md) documents all interfaces and evidence
+limits. Digital mirrors and sparse encodings do not establish synthesis-preserved
+independent replicas, common fan-out fault containment or physical enforcement.
+R03 remains deferred; actual SPI/SRAM, signature hardware and guards remain later
+milestones. These production components are not a finished chip top.

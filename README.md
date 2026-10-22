@@ -14,13 +14,19 @@ and a C++ Verilator harness** with message padding, directed tests, seeded fuzz,
 interface-corruption checks and measured cycles/throughput. **R05 adds configuration,
 reset, timing and entropy-control RTL**: physically interlocked public OTP,
 permanent closure, startup qualification, fresh two-source SHA conditioning,
-retained nonce-repeat checks and sticky entropy hold. R03 protected
-primitives and general fault-injection infrastructure are deferred. The REINS
-controller and signature-verification RTL remain later work. These tests do not
+retained nonce-repeat checks and sticky entropy hold. **R06 adds the operational
+RTL controller**: exact slot requests, scheduled ARM/RENEW rounds, distinct votes,
+fixed-issue leases, independent age/remaining checks, cancellation and trusted
+completed-stop restart. Tests compare against C++ using two real host verification
+passes; integration tests connect the actual R05/R06 hardware. R03 protected
+primitives and general fault-injection infrastructure are deferred. Signature-
+verification RTL, SPI and physical enforcement remain later work. These tests do not
 prove physical clock, randomness, isolation or fault-resistance properties.
 See the [RTL guide](rtl/README.md) for interfaces and hashing tests.
 The [R05 platform profile](docs/R05_PLATFORM_PROFILE.md) explains which digital
 checks are implemented and which timing/entropy inputs need physical evidence.
+The [R06 controller guide](docs/R06_CONTROLLER.md) explains state ownership,
+the verification boundary, timing priority and stateful fuzzing.
 
 ## Start here
 
@@ -154,12 +160,12 @@ installing cached files too. A failed download requires no `make clean`.
 
 | Command | What it does |
 |---|---|
-| `make build` | Builds the C++ simulators/tests, prepares input data, and builds the Verilated SHA-256 and R05 tests |
+| `make build` | Builds the C++ simulators/tests, verified inputs and Verilator SHA-256/R05/R06 component and integration tests |
 | `make software-build` | Builds only the independent C++ simulators/tests and input data |
-| `make rtl-build` | Builds the assertion/coverage-enabled SHA-256 and R05 Verilator test executables and their required C++ oracle objects |
+| `make rtl-build` | Builds all assertion/coverage-enabled RTL test executables and required C++ oracle objects |
 | `make rtl-lint` | Checks production RTL with assertions and with `SYNTHESIS` defined, independently of the simulation top |
 | `make quick-tests` | Builds as needed and runs bounded directed checks, including R05 signed-lease examples; skips extended fuzz and the larger software host-signing cases |
-| `make tests` | Builds as needed and runs all current software, SHA-256/R05 RTL and infrastructure checks |
+| `make tests` | Builds as needed and runs all current software, RTL component/integration, stateful fuzz and infrastructure checks |
 | `make baseline-tests` | Runs source/fixture/tool checks using only Python; no C++ build or OpenSSL package needed |
 | `make sanitize-tests` | Builds/runs the full suite with C++ address/undefined-behavior sanitizers |
 | `make regenerate-reference-fixtures` | Explicitly generates new public R02 keys/signatures and provenance; changes tracked fixtures |
@@ -216,10 +222,12 @@ the script language, architecture and state/lease field definitions.
 
 The R05 RTL stores configuration, startup state, local time and entropy history
 in the registers described in [sim/README.md](sim/README.md#r05-platform-control-and-state).
-It gates a trusted internal lease supplied at the future R06 boundary. The actual
-armed/vote/committed-lease registers still belong to R06; R05 cannot authorize
-execution on its own. Predictable test-source bits exercise the digital path
-without establishing physical randomness.
+[`reins_controller`](rtl/reins_controller.sv) now owns the actual RTL WAIT_ARM/
+RUNNING state, pending context/vote bitmap, committed issue/expiry and remaining
+down-counter. [`reins_device_control`](rtl/reins_device_control.sv) wires that
+lease internally to R05's health/time gate. R05 alone still cannot authorize
+execution. Predictable test-source bits exercise the digital path without
+establishing physical randomness.
 
 ## What are fixtures?
 
@@ -281,6 +289,8 @@ physical randomness.
 | `sim-directed` | Do known signatures verify, tampered data fail, configuration/request/key bindings hold, and simulated jobs obey timing, cancellation and immutable-input rules? |
 | `sha256-rtl` | Do actual clocked compression and message-padding RTL match published answers and OpenSSL, including arbitrary states, boundaries, seeded fuzz, backpressure, cancellation and interface corruption? |
 | `r05-rtl` | Do OTP validation/closure, cold/warm resets, independent time, raw health, fresh conditioned nonces and retained repeat checks behave correctly? Does hold preserve an already authorized lease to its original expiry while general alarms withdraw it immediately? |
+| `r06-rtl` | Does the real controller match the C++ model for exact requests, every quorum pair, wrong contexts, fixed timing, cancellation/stop priority, identity limits and seeded stateful traffic? Signature verification uses real host software. |
+| `r06-integration` | Does actual R05 OTP/source/SHA/time startup connect to R06 ARM/RENEW leases, preserve old expiry on hold, stop before restart, and recover from general faults only through cold qualification? |
 | `rtl-lint` | Do the standalone production modules pass fatal-warning lint/elaboration with assertions and with simulation assertions excluded for synthesis? |
 | `baseline` | Are the normative source files unchanged, the implementation fixed at 3/2, and the fixture OTP header supported? The full suite also runs the original Python review validation. |
 | `tool-regressions` | Do unsupported profiles and source changes fail? In the full suite, do TLS trust, download diagnostics, logging, failure status, timeouts, empty selection, retention and clean behavior work? |
@@ -289,19 +299,20 @@ physical randomness.
 | `reference-report` | Do all six stateful scenarios replay identically, expose real state/lease decisions, reject false expectations, and retain request traces even for invalid evidence? |
 
 Currently the full suite contains 32 software C++ cases, 9 SHA-256 and 18 R05 RTL
-C++ cases and 30 Python tool regressions, in addition to review/corpus/CLI checks.
-The quick suite runs 28 software, 8 SHA-256 and 17 R05 cases, plus 12
-source/profile regressions. It still
+C++ cases, 21 R06 controller cases, 3 R05/R06 integration cases and 30 Python
+tool regressions, in addition to review/corpus/CLI checks.
+The quick suite runs 28 software, 8 SHA-256, 17 R05, 20 R06 controller and 3
+integration cases, plus 12 source/profile regressions. It still
 checks all 28 NIST outcomes, but skips
 the slower fresh-key signing case and the second Python cryptographic cross-check.
 Counts will grow as implementation progresses; saved logs record what executed.
 
-The `sha256-rtl` and `r05-rtl` groups exercise **actual hardware on Verilator**.
-R05 includes real RTL configuration/entropy SHA instances and compares its lease
-health/time gate with a signed quorum in the C++ reference model. The vote/lease
-controller, actual SPI wiring and physical permit guards remain later work.
-The complete two-of-three lease system is modeled in C++; its correctness remains
-to be established independently in RTL.
+The four RTL groups exercise **actual hardware on Verilator**. R06 controller
+tests use actual independently computed host signature verification and compare
+semantic outcomes to the C++ model. Integration additionally exercises real R05
+configuration hashing, source conditioning and trusted time. Full RTL signature
+verification, SPI and physical guards remain later work. Mirrored/sparse digital
+checks do not establish R03's physical fault protections.
 The [implementation plan](docs/IMPLEMENTATION_PLAN.md) describes those next steps.
 
 ## Where are my results?
@@ -326,6 +337,11 @@ test-results/<timestamp>-full-release-<unique>/
   r05-rtl/conditioner-events.jsonl  Actual public source frames and conditioned nonces
   r05-rtl/performance.json         Profile/seed, SHA ownership, clocks and throughput
   r05-rtl/coverage/                Per-model line coverage; optional r05.fst alongside
+  r06-rtl/output.log               Controller directed/stateful-fuzz checks and requests
+  r06-rtl/events.jsonl             Public jobs, latencies, RTL/comparison/fuzz events
+  r06-rtl/performance.json         Fast-control mode, real pass counts, seed and ownership
+  r06-rtl/coverage/                Per-model coverage; optional r06.fst alongside
+  r06-integration/                 Actual R05/R06 integration logs/events/performance/coverage
   rtl-lint/output.log               Standalone production/assertion/synthesis-path lint
   baseline/output.log               Source/profile and review checks
   baseline/review-package/          Retained generated review records (full suite)
