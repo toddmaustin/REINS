@@ -339,16 +339,24 @@ TEST_CASE("R06: every reset indication masks a healthy permit before the next cl
         CHECK_FALSE(bench.dut.request_valid_o); bench.step(); CHECK_FALSE(bench.dut.permit_o);
     }
 }
+// Probe scheduled arithmetic across 32/64-bit boundaries and check state-code separation; no parameters.
 TEST_CASE("R06: checked full-width round arithmetic and sparse operational codes") {
     Bench bench;
     struct Input { Tick round,period,window,lease; bool valid; };
-    const std::array<Input,9> inputs{{{1,40,30,200,true},{2,40,30,200,true},{0,40,30,200,false},
+    const std::array<Input,12> inputs{{{1,40,30,200,true},{2,40,30,200,true},{0,40,30,200,false},
         {UINT64_MAX,40,30,200,false},{2,UINT64_MAX-1,1,UINT64_MAX,false},
-        {1,4,5,10,false},{1,4,0,10,false},{1,4,4,10,true},{UINT64_MAX,1,1,2,false}}};
+        {1,4,5,10,false},{1,4,0,10,false},{1,4,4,10,true},{UINT64_MAX,1,1,2,false},
+        {(Tick{1}<<32)+1,40,30,200,true},{UINT64_MAX-1,1,1,2,true},
+        {(Tick{1}<<32)+1,Tick{1}<<32,1,(Tick{1}<<32)+1,false}}};
     for (auto item:inputs) {
         bench.dut.math_round_i=item.round; bench.dut.math_period_i=item.period; bench.dut.math_window_i=item.window; bench.dut.math_lease_i=item.lease; bench.settle();
         CHECK(bool(bench.dut.math_valid_o)==item.valid);
-        if (item.valid) { CHECK(bench.dut.math_issue_o==(item.round-1)*item.period); CHECK(bench.dut.math_expiry_o==bench.dut.math_issue_o+item.lease); }
+        if (item.valid) {
+            CHECK(bench.dut.math_issue_o==(item.round-1)*item.period);
+            CHECK(bench.dut.math_deadline_o==bench.dut.math_issue_o+item.window);
+            CHECK(bench.dut.math_expiry_o==bench.dut.math_issue_o+item.lease);
+            CHECK(bench.dut.math_next_o==bench.dut.math_issue_o+item.period);
+        }
     }
     const std::array<unsigned,7> codes{0x0f,0x33,0x55,0x66,0x99,0xaa,0xcc};
     for (unsigned a:codes) for (unsigned b:codes) if (a!=b) CHECK(std::popcount(a^b)>=4);

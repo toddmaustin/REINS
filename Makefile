@@ -111,30 +111,32 @@ $(BUILD_DIR)/reins-reference: $(LIB_OBJECTS) $(REFERENCE_OBJECT)
 $(BUILD_DIR)/reins-generate-fixtures: $(LIB_OBJECTS) $(GENERATOR_OBJECT)
 	$(CXX) $^ $(PROJECT_LDFLAGS) $(LDFLAGS) $(OPENSSL_LIBS) $(LDLIBS) -o $@
 
+# Verilator --build launches recursive Make. The '+' keeps the parent jobserver
+# descriptors open through Verilator, including with GNU Make's pipe jobserver.
 $(RTL_BINARY): $(RTL_SOURCES) sim/tests/sha256_rtl_tests.cc Makefile $(DOCTEST_HEADER) $(BUILD_DIR)/build-config.json | check-tools check-rtl-tools verify-deps
 	@mkdir -p $(RTL_DIR)
-	$(VERILATOR) --cc --exe --build -j 2 --assert --coverage-line $(RTL_TRACE_FLAGS) -Wall --top-module sha256_test_top \
+	+$(VERILATOR) --cc --exe --build -j 2 --assert --coverage-line $(RTL_TRACE_FLAGS) -Wall --top-module sha256_test_top \
 	  --Mdir $(RTL_DIR) -o reins-sha256-tests $(RTL_SOURCES) $(abspath sim/tests/sha256_rtl_tests.cc) \
 	  -CFLAGS '-std=c++20 -Wall -Wextra $(OPT_FLAGS) $(OPENSSL_CFLAGS) -isystem $(abspath $(DOCTEST_DIR)) $(CXXFLAGS)' \
 	  -LDFLAGS '$(PROJECT_LDFLAGS) $(LDFLAGS) $(OPENSSL_LIBS) $(LDLIBS)'
 
 $(R05_BINARY): $(R05_SOURCES) sim/tests/r05_rtl_tests.cc Makefile $(LIB_OBJECTS) $(DOCTEST_HEADER) $(BUILD_DIR)/build-config.json | check-tools check-rtl-tools verify-deps
 	@mkdir -p $(R05_DIR)
-	$(VERILATOR) --cc --exe --build -j 2 --assert --coverage-line $(RTL_TRACE_FLAGS) -Wall --top-module r05_test_top \
+	+$(VERILATOR) --cc --exe --build -j 2 --assert --coverage-line $(RTL_TRACE_FLAGS) -Wall --top-module r05_test_top \
 	  --Mdir $(R05_DIR) -o reins-r05-tests $(R05_SOURCES) $(abspath sim/tests/r05_rtl_tests.cc) \
 	  -CFLAGS '-std=c++20 -Wall -Wextra $(OPT_FLAGS) $(OPENSSL_CFLAGS) -I$(abspath sim/include) -isystem $(abspath $(DOCTEST_DIR)) $(CXXFLAGS)' \
 	  -LDFLAGS '$(abspath $(LIB_OBJECTS)) $(PROJECT_LDFLAGS) $(LDFLAGS) $(OPENSSL_LIBS) $(LDLIBS)'
 
 $(R06_BINARY): $(R06_CORE) sim/rtl/r06_test_top.sv sim/tests/r06_rtl_tests.cc sim/include/reins/r06_test_support.h Makefile $(LIB_OBJECTS) $(DOCTEST_HEADER) $(BUILD_DIR)/build-config.json | check-tools check-rtl-tools verify-deps
 	@mkdir -p $(R06_DIR)
-	$(VERILATOR) --cc --exe --build -j 2 --assert --coverage-line --output-split 10000 --output-split-cfuncs 500 $(RTL_TRACE_FLAGS) -Wall --top-module r06_test_top \
+	+$(VERILATOR) --cc --exe --build -j 2 --assert --coverage-line --output-split 10000 --output-split-cfuncs 500 $(RTL_TRACE_FLAGS) -Wall --top-module r06_test_top \
 	  --Mdir $(R06_DIR) -o reins-r06-tests $(R06_CORE) sim/rtl/r06_test_top.sv $(abspath sim/tests/r06_rtl_tests.cc) \
 	  -CFLAGS '-std=c++20 -Wall -Wextra $(OPT_FLAGS) $(OPENSSL_CFLAGS) -I$(abspath sim/include) -isystem $(abspath $(DOCTEST_DIR)) $(CXXFLAGS)' \
 	  -LDFLAGS '$(abspath $(LIB_OBJECTS)) $(PROJECT_LDFLAGS) $(LDFLAGS) $(OPENSSL_LIBS) $(LDLIBS)'
 
 $(R06_INTEGRATION_BINARY): $(R05_SOURCES) $(R06_PRODUCTION) sim/rtl/r06_integration_top.sv sim/tests/r06_integration_tests.cc sim/include/reins/r06_test_support.h Makefile $(LIB_OBJECTS) $(DOCTEST_HEADER) $(BUILD_DIR)/build-config.json | check-tools check-rtl-tools verify-deps
 	@mkdir -p $(R06_INTEGRATION_DIR)
-	$(VERILATOR) --cc --exe --build -j 2 --assert --coverage-line --output-split 10000 --output-split-cfuncs 500 $(RTL_TRACE_FLAGS) -Wall --top-module r06_integration_top \
+	+$(VERILATOR) --cc --exe --build -j 2 --assert --coverage-line --output-split 10000 --output-split-cfuncs 500 $(RTL_TRACE_FLAGS) -Wall --top-module r06_integration_top \
 	  --Mdir $(R06_INTEGRATION_DIR) -o reins-r06-integration-tests rtl/sha256_compress.sv rtl/sha256_message.sv $(R05_PRODUCTION) $(R06_PRODUCTION) \
 	  sim/rtl/reins_otp_model.sv sim/rtl/r06_integration_top.sv $(abspath sim/tests/r06_integration_tests.cc) \
 	  -CFLAGS '-std=c++20 -Wall -Wextra $(OPT_FLAGS) $(OPENSSL_CFLAGS) -I$(abspath sim/include) -isystem $(abspath $(DOCTEST_DIR)) $(CXXFLAGS)' \

@@ -6,9 +6,11 @@ module reins_round_schedule (
     output logic valid_o,                                 // All arithmetic and timing ordering valid.
     output logic [63:0] issue_o, deadline_o, expiry_o, next_issue_o // I/B/E and next scheduled issue.
 );
+    logic [63:0] previous_round;                         // Keep subtraction at the round counter's width.
     logic [127:0] product;                               // Full product detects multiplication overflow.
     logic [64:0] deadline_sum, expiry_sum, next_sum;      // Carry must never become a wrapped tick.
-    assign product=128'(round_i-64'd1)*128'(period_i);
+    assign previous_round=round_i-64'd1;                 // Round zero is rejected below, including underflow.
+    assign product={64'b0,previous_round}*{64'b0,period_i};
     assign issue_o=product[63:0];
     assign deadline_sum={1'b0,issue_o}+{1'b0,window_i};
     assign expiry_sum={1'b0,issue_o}+{1'b0,lease_i};
