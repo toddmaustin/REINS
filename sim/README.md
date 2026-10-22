@@ -28,6 +28,11 @@ generators, with actual clock/receiver observation and trusted stop completion.
 Its [enforcement guide](../docs/R08_ENDPOINT_ENFORCEMENT.md) specifies timing,
 queue containment and management operation. These are digital simulation results,
 not electrical or physical qualification.
+R09 adds independent local expected-grant/configuration/Merkle RTL for both passes.
+Its C++ harness checks every actual SHA block/chaining state and verifies the
+actual RTL-produced root message/key using host SLH-DSA. The
+[R09 guide](../docs/R09_MERKLE.md) describes exact framing, last-leaf padding,
+construction/hand-off fault tests and the remaining signature hardware work.
 
 This directory contains the simulator: `src/` holds implementation files,
 `include/reins/` holds interfaces, and `tests/` holds C++ tests. All commands below
@@ -76,6 +81,11 @@ These are the C++ source/header files in `sim/`:
 |---|---|---|
 | [`sim/include/reins/simulation.h`](include/reins/simulation.h) | Public data types and APIs shared by the CLI, tests and future simulation drivers | `VerificationInput`, `JobTag`, `Verdict`, `Latency`, `Completion`, `VerifierService`, `TestAuthority` |
 | [`sim/src/crypto.cc`](src/crypto.cc) | Fixed-profile framing, grant construction, SHA-256, Merkle reconstruction, host SLH-DSA verification and test signing | `verify_reply`, `expected_batch_root`, `root_message`, `sha256`, `backend_version`, `TestAuthority`, `algorithm_test::verify` |
+| [`sim/include/reins/r09_test_support.h`](include/reins/r09_test_support.h) | Independent OpenSSL frame/block/state oracle and exact production memory driver | `Bench`, expected leaf/blocks, per-pass provenance/count/address checks, public evidence and real signature validation |
+| [`sim/tests/r09_rtl_tests.cc`](tests/r09_rtl_tests.cc) | Nine real-SHA grant/Merkle directed/fault/fuzz cases | Supplied/R02 corpus, all depths, last-leaf batches, malformed proofs/context, thirty construction/transfer faults and 160-action seeded replay |
+| [`sim/tests/r09_integration_tests.cc`](tests/r09_integration_tests.cc) | Actual R05–R09 composition with host SLH verification of actual RTL message/key | Signed ARM/RENEW, wrong proof rejection, cancellation during reconstruction and local endpoint enforcement |
+| [`sim/rtl/r09_test_top.sv`](rtl/r09_test_top.sv) | Exact production Merkle pair and sealed SRAM | Passive physical SHA requests/completions, address observations and simulation-only constructor/hand-off faults |
+| [`sim/rtl/r09_integration_top.sv`](rtl/r09_integration_top.sv) | Complete device plus fresh OTP/context-fed Merkle pair | Shared actual sealed memory, protected R06 provenance, R05 integrity alarms and no manual stop acknowledgement |
 | [`sim/src/verifier_service.cc`](src/verifier_service.cc) | Immutable job capture, single live ownership, scheduled passes, cancellation and event delivery | `submit`, `advance_to`, `cancel`, `busy`, `now`, `verification_calls` |
 | [`sim/src/main.cc`](src/main.cc) | Command-line parsing, sequential fixture replay, optional diagnostics, JSON reporting and exit status | `main`; local tick parser and JSON string helper |
 | [`sim/include/reins/fixture_io.h`](include/reins/fixture_io.h) | Bounded binary fixture loading and per-slot request/tag preparation | `fixture::read`, `fixture::load` |
@@ -153,6 +163,8 @@ build/<configuration>/r07-integration/reins-r07-integration-tests  Actual R05/R0
 build/<configuration>/r07-memory/reins-r07-memory-tests  Exact production memory wrapper; exhaustive ECC/control faults
 build/<configuration>/r08-rtl/reins-r08-tests           Independent-clock local guards/queues/effects and fault fuzz
 build/<configuration>/r08-integration/reins-r08-integration-tests  Signed quorum through actual dynamic endpoint isolation
+build/<configuration>/r09-rtl/reins-r09-tests           Independent local grants/configuration/proofs with real SHA
+build/<configuration>/r09-integration/reins-r09-integration-tests  Signed SPI ARM/RENEW with real Merkle and host SLH
 ```
 
 The configuration is `release` or `sanitize`. The two small I/O/diagnostic headers
@@ -248,6 +260,48 @@ The full-device cases print every signed request before its response upload.
 Normal `quick-tests` includes directed and integration cases; `tests` also runs
 the extended 96-episode fault/clock stream. Tests do not establish physical
 clock floors, metastability coverage, cell mapping or a silicon stop bound.
+
+### R09 local grants and Merkle state
+
+The RTL Merkle engines store their working state in each instance of
+[`reins_merkle_pass`](../rtl/reins_merkle_pass.sv): fresh OTP/request/provenance
+captures; configuration hash; constructed grant; leaf/current parent/sibling;
+index, level and stream/read positions; complementary metadata; physical SHA
+operation counts; and the held message/key evidence. There are two distinct
+instances, each with its own real SHA wrapper/core. Cancellation, reset and result
+consumption erase the scratch. No lease or vote is stored here: R06 still owns
+the armed state, pending round, bitmap and committed execution lease.
+
+[`Bench`](include/reins/r09_test_support.h) loads complete replies through the
+actual sole R07 SRAM write port and seals them before processing. It independently
+pads each expected configuration/leaf/node message with OpenSSL compression state,
+then compares every physical core block and input chaining state. It checks exact
+read addresses, fresh per-pass inputs, start/completion counts and provenance.
+All depths 0–20 and non-power-of-two last-leaf padding are exercised. A root from
+a changed but canonical proof is tested against the original signature, rather
+than rejected by an invented expected-root input.
+
+For integration, [`PinBench::merkle_pass`](include/reins/r07_test_support.h)
+starts the selected lane and captures its **actual** root message/key. It then
+reads the sealed signature afresh and calls `verify_root_signature`, which
+performs pure/empty-context host SLH verification without reconstructing a
+software replacement root. Both completions still pass through R06's live
+context/deadline gates. The integration top supplies current R05 OTP, protected
+R06 job fields and actual sealed-memory reads; integrity alarms feed R05.
+
+```sh
+make r09-unit-tests
+make r09-tests
+REINS_R09_SEED=12345 make r09-unit-tests
+make SANITIZE=1 r09-unit-tests
+REINS_R09_TRACE=1 make RTL_TRACE=1 r09-unit-tests
+```
+
+Both suites retain request dumps, public input/events, measurements and per-model
+coverage. The thirty fault cases target grant construction and Merkle transfers
+in both lanes, including coherent value/complement changes. Optional FST is
+bounded. Full SLH hardware and protected two-pass acceptance remain R10a–R10c;
+see the [R09 guide](../docs/R09_MERKLE.md) for interface/error codes and limits.
 
 ### R07 SPI and receive state
 
@@ -563,6 +617,12 @@ raise exceptions rather than being reported as successful evidence.
 `expected_batch_root` exposes the same grant/Merkle construction for independent
 root comparisons and test signing. It throws on invalid framing.
 
+`verify_root_signature(message, signature, public_key)` instead verifies an actual
+46-byte root message and 32-byte key through the same fixed pure/empty-context
+gate. It checks the application label and lengths, and performs no Merkle work.
+R09 tests use this API for actual RTL outputs; software root reconstruction is a
+separate comparison oracle and cannot supply the primary signature verdict.
+
 This low-level function does not authorize a lease. `Configuration::parse` and
 `Device` add digital provisioning, round, hold and live authorization checks.
 Physical integrity, sensors and clock/entropy qualification remain platform work.
@@ -852,6 +912,8 @@ For the full `make tests` suite, the main paths are:
 | `r07-memory/` | Exhaustive ECC bit-case counts, row/owner/control/seal results, actual clock counts and per-model coverage |
 | `r08-rtl/` | Independent clock/route profiles, fault actions, work/effect observations, actual closure and optional bounded FST |
 | `r08-integration/` | Complete-device signed inputs, actual stop latency, live management/fresh ARM, coverage and real verification counts |
+| `r09-rtl/` | Public OTP/request/reply inputs, physical compression events, leaf/root/cycle/read counts, seed/throughput, per-model coverage and optional FST |
+| `r09-integration/` | Actual R05–R09 signed inputs, host signatures over RTL outputs, cancellation/stop results, performance and coverage |
 | `rtl-lint/output.log` | Standalone production-module checks with assertions and with `SYNTHESIS` defined |
 | `sim-report/output.log` | CLI scenario expectations and observed status |
 | `sim-report/cli-artifacts/` | Individual CLI stdout/stderr, command records, JSON and negative-case inputs |
@@ -890,7 +952,8 @@ control and a documented trusted internal lease gate. R06 implements the quorum/
 lease controller and actual R05 composition with software-backed verification.
 R07 adds pin-level SPI and protected sealed-memory reception, including actual
 fresh memory reads in each host pass. R08 supplies dynamic permit, dual local
-guards, queue containment and actual stop completion. Merkle/SLH-DSA hardware,
+guards, queue containment and actual stop completion. R09 implements independent
+local grants/configuration/Merkle hashing in each pass. SLH-DSA hardware,
 R03 internal fault campaigns and physical
 qualification remain separate work. Passing SHA tests does not establish safe
 sharing between verification passes. The software mutation/stale/stall cases

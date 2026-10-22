@@ -33,6 +33,7 @@ struct HardwareJob {
 template<class Dut> class PinBench {
 public:
     static constexpr bool platform=requires(Dut value) { value.factory_image_i; };
+    static constexpr bool merkle=requires(Dut value) { value.merkle_req_valid_i; };
     static constexpr bool enforced=requires(Dut value) { value.guard_clock_a_i; };
     VerilatedContext context;
     Dut dut{&context};
@@ -63,6 +64,9 @@ public:
             dut.endpoint_por_ni=0; dut.outbound_ready_i=7;
             local_clocks=std::make_unique<LocalClockDriver<Dut>>(dut,context);
         }
+        if constexpr (merkle) {
+            dut.merkle_req_valid_i=0; dut.merkle_req_pass_i=1; dut.merkle_rsp_ready_i=0; dut.merkle_cancel_i=0;
+        }
         if constexpr (platform) {
             dut.cold_reset_i=0; dut.warm_reset_i=0; dut.startup_i=0; dut.physical_enable_i=1;
             if constexpr (requires { dut.stopped_i; }) dut.stopped_i=1;
@@ -85,9 +89,9 @@ public:
         pack(dut.completion_request_i,Bytes(128)); pack(dut.completion_config_digest_i,Bytes(32));
         dut.read_valid_i=0; dut.read_address_i=0; dut.read_address_inverse_i=0x3fff;
 #if VM_TRACE_FST
-        if (std::getenv(enforced ? "REINS_R08_TRACE" : "REINS_R07_TRACE") && !evidence.traced) {
+        if (std::getenv(merkle ? "REINS_R09_TRACE" : enforced ? "REINS_R08_TRACE" : "REINS_R07_TRACE") && !evidence.traced) {
             trace=std::make_unique<VerilatedFstC>(); dut.trace(trace.get(),8);
-            trace->open((evidence.directory/(enforced ? "r08.fst" : "r07.fst")).c_str()); evidence.traced=true;
+            trace->open((evidence.directory/(merkle ? "r09.fst" : enforced ? "r08.fst" : "r07.fst")).c_str()); evidence.traced=true;
         }
 #endif
         REQUIRE(reference.program(fixtures.config.otp,true,true)); REQUIRE(reference.close(true,true)); reference.reset(Reset::cold);
@@ -263,9 +267,33 @@ public:
         const auto result=exchange(spi_frame(0x22,slot,be(token,8))); REQUIRE(result.back()==0);
         finish_tick=absolute; REQUIRE(dut.sealed_o); REQUIRE(job); REQUIRE(job->owned);
     }
+    struct MerkleEvidence { unsigned error; Bytes message,key,root; };
+    // Run pass_number's actual independent RTL grant/configuration/Merkle lane over fresh sealed SRAM bytes.
+    MerkleEvidence merkle_pass(unsigned pass_number) {
+        REQUIRE(job); auto captured=job->input; captured.reply=uploaded_reply;
+        diagnostic::write_input(std::cout,captured,"R09 independent RTL Merkle pass "+std::to_string(pass_number),"actual local leaf/root; software checks only pure empty-context SLH-DSA");
+        dut.merkle_req_pass_i=pass_number; dut.merkle_req_valid_i=1; settle(); REQUIRE(dut.merkle_req_ready_o);
+        idle(1); dut.merkle_req_valid_i=0;
+        for (unsigned count=0;count<16000 && !dut.merkle_rsp_valid_o && !dut.fault_o;count++) idle(1);
+        REQUIRE(dut.merkle_rsp_valid_o); REQUIRE_FALSE(dut.merkle_fault_o);
+        REQUIRE(dut.merkle_pass_o==pass_number); REQUIRE(dut.merkle_run_o==job->input.tag.run_generation);
+        REQUIRE(dut.merkle_round_o==job->input.tag.round); REQUIRE(dut.merkle_token_o==job->token);
+        REQUIRE(dut.merkle_epoch_o==job->epoch); REQUIRE(dut.merkle_slot_o==job->input.tag.slot);
+        MerkleEvidence result{dut.merkle_error_o,unpack(dut.merkle_message_o,46),unpack(dut.merkle_key_o,32),unpack(dut.merkle_root_o,32)};
+        if (!result.error) {
+            CHECK(result.root==bytes(expected_batch_root(captured))); CHECK(unpack(dut.merkle_config_o,32)==bytes(sha256(captured.otp)));
+            const auto expected=8+2*((uploaded_reply.size()-7860)/32);
+            CHECK(dut.merkle_starts_o==expected); CHECK(dut.merkle_completions_o==expected);
+        }
+        evidence.events<<"{\"event\":\"rtl_merkle_pass\",\"pass\":"<<pass_number<<",\"root\":\""<<hex(result.root)
+            <<"\",\"error\":"<<result.error<<",\"compressions\":"<<dut.merkle_starts_o<<"}\n";
+        dut.merkle_rsp_ready_i=1; idle(1); dut.merkle_rsp_ready_i=0; idle(1); return result;
+    }
     // Read a complete actual sealed reply and independently verify pass_number, optionally withholding its result.
     Verdict pass(unsigned pass_number, bool deliver=true) {
         REQUIRE(job); const auto before=writes; Bytes reply;
+        std::optional<MerkleEvidence> actual_merkle;
+        if constexpr (merkle) actual_merkle=merkle_pass(pass_number);
         dut.read_valid_i=1;
         for (unsigned offset=0;offset<dut.receive_total_o;offset++) {
             dut.read_address_i=offset; dut.read_address_inverse_i=(~offset)&0x3fff; settle();
@@ -274,7 +302,11 @@ public:
         dut.read_valid_i=0; settle(); CHECK(reply==uploaded_reply); CHECK(writes==before);
         auto input=job->input; input.reply=std::move(reply);
         diagnostic::write_input(std::cout,input,"R07 actual sealed SRAM pass "+std::to_string(pass_number),"independent software cryptography over fresh DUT read bytes");
-        const auto verdict=verify_reply(input); ++evidence.passes;
+        Verdict verdict;
+        if constexpr (merkle) verdict=actual_merkle->error ? Verdict::format_error :
+            verify_root_signature(actual_merkle->message,std::span(input.reply).first(7856),actual_merkle->key);
+        else verdict=verify_reply(input);
+        ++evidence.passes;
         if (deliver) complete(*job,pass_number,verdict);
         return verdict;
     }

@@ -41,6 +41,10 @@ Hash sha256(std::span<const std::uint8_t> data);
 Hash expected_batch_root(const VerificationInput& input);
 // Construct the domain-separated message to sign for root.
 Bytes root_message(const Hash& root);
+// Verify signature over the 46-byte domain-separated message under public_key,
+// using only production pure mode and empty context; no Merkle reconstruction occurs here.
+Verdict verify_root_signature(std::span<const std::uint8_t> message,
+    std::span<const std::uint8_t> signature, std::span<const std::uint8_t> public_key);
 // Report the host crypto library's runtime version.
 std::string backend_version();
 

@@ -25,7 +25,10 @@ owner checks. Both software verification passes read the actual sealed RTL memor
 **R08 adds dynamic permit rails and local endpoint enforcement**: three representative
 compute/outbound endpoints, six independent local guard clocks, serial isolation
 cells, queue containment and internally certified stop completion. SPI management
-remains live while protected work is stopped. R03 protected primitives and general
+remains live while protected work is stopped. **R09 adds expected-grant and Merkle
+RTL**: each pass independently constructs its local grant, hashes all public OTP,
+reads the sealed proof and reconstructs its root with its own real SHA-256 core.
+Tests verify the actual RTL message/key using host SLH-DSA. R03 protected primitives and general
 fault-injection infrastructure are deferred. Signature-verification RTL and
 physical qualification remain later work. These tests do not
 prove physical clock, randomness, isolation or fault-resistance properties.
@@ -38,6 +41,8 @@ The [R07 SPI/receive guide](docs/R07_SPI_RECEIVE.md) documents the transport,
 memory protection, result codes, pin drivers, fault tests and retained evidence.
 The [R08 enforcement guide](docs/R08_ENDPOINT_ENFORCEMENT.md) explains the dual
 guards, queue/stop ordering, 1.1 ms modeled bound and required physical assumptions.
+The [R09 Merkle guide](docs/R09_MERKLE.md) explains exact framing, per-pass state,
+last-leaf padding, independent byte/block checks and the remaining signature boundary.
 
 ## Start here
 
@@ -63,7 +68,7 @@ and keeps the logs for inspection.
 | Trusted CA certificates | Let Python verify HTTPS when downloading the test dependency |
 | pkg-config | Finds the installed OpenSSL headers and library |
 | OpenSSL **3.5 or newer development package** | Independent SHA-256 / FIPS 205 SLH-DSA backend, with the default provider's SLH-DSA support |
-| Verilator **5+** | Compiles and runs the SHA-256, R05, R06, R07 and R08 component/integration RTL with assertions and line coverage; tested with **5.008 and 5.032** |
+| Verilator **5+** | Compiles and runs the SHA-256 and R05–R09 component/integration RTL with assertions and line coverage; tested with **5.008 and 5.032** |
 
 OpenSSL's development package includes headers and `libcrypto`, not just the
 `openssl` executable. Many older systems supply OpenSSL 3.0 or 3.4, which do not
@@ -171,7 +176,7 @@ installing cached files too. A failed download requires no `make clean`.
 
 | Command | What it does |
 |---|---|
-| `make build` | Builds the C++ simulators/tests, verified inputs and all nine Verilator component/integration test executables |
+| `make build` | Builds the C++ simulators/tests, verified inputs and all eleven Verilator component/integration test executables |
 | `make software-build` | Builds only the independent C++ simulators/tests and input data |
 | `make rtl-build` | Builds all assertion/coverage-enabled RTL test executables and required C++ oracle objects |
 | `make rtl-lint` | Checks production RTL with assertions and with `SYNTHESIS` defined, independently of the simulation top |
@@ -180,6 +185,8 @@ installing cached files too. A failed download requires no `make clean`.
 | `make r07-tests` | Builds/runs just the SPI/controller, full R05/R06/R07 integration and protected-memory tests, retaining all outputs |
 | `make r08-tests` | Builds/runs local multi-clock enforcement and full-device signed-quorum/expiry/management tests, retaining all outputs |
 | `make r08-unit-tests` | Runs local guard, clock, queue, fault and seeded fuzz tests; useful for focused sanitizer checks |
+| `make r09-tests` | Runs real-SHA local grant/Merkle tests and signed SPI/full-device integration, retaining all outputs |
+| `make r09-unit-tests` | Runs grant/proof vectors, both-lane construction/hand-off faults and seeded fuzz without long SPI transfers |
 | `make baseline-tests` | Runs source/fixture/tool checks using only Python; no C++ build or OpenSSL package needed |
 | `make sanitize-tests` | Builds/runs the full suite with C++ address/undefined-behavior sanitizers |
 | `make regenerate-reference-fixtures` | Explicitly generates new public R02 keys/signatures and provenance; changes tracked fixtures |
@@ -234,12 +241,27 @@ jitter, stateful fuzz and final receiver observations still exercise actual RTL.
 and real software verification over sealed RTL memory. Test inputs and timing
 measurements are saved with the results. See the [R08 guide](docs/R08_ENDPOINT_ENFORCEMENT.md).
 
+For expected-grant and Merkle hardware development:
+
+```sh
+make r09-tests
+REINS_R09_SEED=12345 make r09-unit-tests
+make SANITIZE=1 r09-unit-tests
+REINS_R09_TRACE=1 make RTL_TRACE=1 r09-unit-tests
+```
+
+The reply contains a signature, index and siblings. R09 constructs the grant
+locally; it receives no grant body. Its root is a candidate until the signature
+verifies. The C++ harness checks every actual SHA block/chaining state and uses
+host SLH-DSA to check the actual RTL-produced message and selected key. See the
+[R09 guide](docs/R09_MERKLE.md) for interfaces, rejection cases and saved evidence.
+
 R07 tests clock every SPI bit and transfer complete signatures, so even directed
 tests can take several minutes. `quick-tests` excludes extended fuzzing, while
 keeping the pin-level directed, integration and exhaustive ECC checks. The
 collector allows twenty minutes for the build and each release R07 controller/
 integration group. Sanitizers also instrument generated RTL, so those groups
-allow two hours; use `make SANITIZE=1 r07-tests TEST_FILTER='*atomic*,*signed*'`
+and the sanitizer build allow two hours; use `make SANITIZE=1 r07-tests TEST_FILTER='*atomic*,*signed*'`
 for focused controller checks. Integration/memory groups still run in full.
 Timeout diagnostics are retained too.
 
@@ -360,6 +382,8 @@ physical randomness.
 | `rtl-lint` | Do the standalone production modules pass fatal-warning lint/elaboration with assertions and with simulation assertions excluded for synthesis? |
 | `r08-rtl` | Do actual protected clocks and final outbound effects stop within the real-time bound across clock corners, jitter, static ties, frozen source, permissive guard/control faults and stateful fuzz? |
 | `r08-integration` | Does a real signed quorum enable work, expire into trusted physical stop, preserve live SPI management and permit fresh ARM only after closure? Are unsupported OTP delay promises rejected? |
+| `r09-rtl` | Do independently constructed grants/configuration hashes and every physical SHA block match software, for the supplied/R02 corpus, depths 0–20, last-leaf padding, malformed proofs, construction/hand-off faults and seeded fuzz? |
+| `r09-integration` | Do signed ARM/RENEW quorums work through actual R05–R09 hardware, with host SLH verification of the actual RTL message/key, rejection of wrong paths and cancellation during reconstruction? |
 | `baseline` | Are the normative source files unchanged, the implementation fixed at 3/2, and the fixture OTP header supported? The full suite also runs the original Python review validation. |
 | `tool-regressions` | Do unsupported profiles and source changes fail? In the full suite, do TLS trust, download diagnostics, logging, failure status, timeouts, empty selection, retention and clean behavior work? |
 | `sim-report` | Does the actual CLI produce correct JSON and deterministic event times, reject invalid inputs/modes, and return the right exit status? |
@@ -369,17 +393,18 @@ physical randomness.
 Currently the full suite contains 32 software C++ cases, 9 SHA-256 and 18 R05 RTL
 C++ cases, 21 R06 controller cases, 3 R05/R06 integration cases, 30 R07 pin/controller
 cases, 2 R07 integration cases, 4 memory cases, 13 R08 enforcement cases,
-2 R08 integration cases and 30 Python tool regressions,
+2 R08 integration cases, 9 R09 Merkle cases, 2 R09 integration cases and 30 Python tool regressions,
 in addition to review/corpus/CLI checks.
 The quick suite runs 28 software, 8 SHA-256, 17 R05, 20 R06 controller and 3
 R05/R06 integration cases, 29 R07 pin/controller cases, both R07 integration cases,
-all 4 memory cases, 12 R08 enforcement cases and both R08 integration cases,
+all 4 memory cases, 12 R08 enforcement cases, both R08 integration cases,
+8 R09 Merkle cases and both R09 integration cases,
 plus 12 source/profile regressions. It still
 checks all 28 NIST outcomes, but skips
 the slower fresh-key signing case and the second Python cryptographic cross-check.
 Counts will grow as implementation progresses; saved logs record what executed.
 
-The nine RTL groups exercise **actual hardware on Verilator**. R06 controller
+The eleven RTL groups exercise **actual hardware on Verilator**. R06 controller
 tests use actual independently computed host signature verification and compare
 semantic outcomes to the C++ model. Integration additionally exercises real R05
 configuration hashing, source conditioning and trusted time. R07 adds actual
@@ -388,6 +413,8 @@ signature verification and physical guard qualification remain later work.
 R08 now models separate local guards/cells and observes actual outbound effects;
 its delay assumptions still require platform evidence. Mirrored/sparse digital
 checks do not establish R03's physical fault protections.
+R09 adds real configuration/leaf/node hashing independently in each pass; full
+SLH-DSA hardware and complete protected acceptance integration remain R10a–R10c.
 The [implementation plan](docs/IMPLEMENTATION_PLAN.md) describes those next steps.
 
 ## Where are my results?
@@ -423,6 +450,10 @@ test-results/<timestamp>-full-release-<unique>/
   r07-integration/                 Actual R05/R06/R07 logs/events/performance/coverage
   r08-rtl/                         Independent clock/route/fault actions, work/effects and coverage
   r08-integration/                 Signed quorum, stop latency, live management and fresh ARM
+  r09-rtl/                         Local grant/configuration/proof inputs, actual SHA events and fault/fuzz evidence
+  r09-rtl/events.jsonl             Public replies, physical starts and per-result leaf/root/cycle/read counts
+  r09-rtl/performance.json         Seed, actual clocks and simulator throughput; coverage and optional FST alongside
+  r09-integration/                 Actual R05–R09 signed ARM/RENEW, host SLH over RTL outputs and cancellation
   r07-memory/                      Exhaustive ECC and address/seal/control fault evidence
   rtl-lint/output.log               Standalone production/assertion/synthesis-path lint
   baseline/output.log               Source/profile and review checks

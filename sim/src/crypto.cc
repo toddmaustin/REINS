@@ -153,13 +153,21 @@ Bytes root_message(const Hash& root) {
     return message;
 }
 
+// Verify signature over exactly the REINS batch message under public_key; malformed message/signature/key lengths fail.
+Verdict verify_root_signature(std::span<const std::uint8_t> message,
+    std::span<const std::uint8_t> signature, std::span<const std::uint8_t> public_key) {
+    constexpr std::string_view label="REINS-BATCH-v2";
+    if (message.size()!=46 || signature.size()!=signature_bytes || public_key.size()!=32 ||
+        !std::equal(label.begin(),label.end(),message.begin())) return Verdict::format_error;
+    return slh_verify(message,signature,public_key,{},false) ? Verdict::verified : Verdict::signature_error;
+}
+
 // Verify input's reply against its captured request and provisioned slot key.
 Verdict verify_reply(const VerificationInput& input) {
     if (!valid_framing(input)) return Verdict::format_error;
     const auto root = expected_batch_root(input);
     const auto key = std::span(input.otp).subspan(144 + 48 * input.tag.slot, 32);
-    return slh_verify(root_message(root), std::span(input.reply).first(signature_bytes),
-                      key, {}, false) ? Verdict::verified : Verdict::signature_error;
+    return verify_root_signature(root_message(root),std::span(input.reply).first(signature_bytes),key);
 }
 
 // Report the actual runtime OpenSSL backend; takes no parameters.

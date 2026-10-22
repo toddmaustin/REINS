@@ -31,6 +31,11 @@ outbound generators and actual stop completion. The independent C++ oracle check
 semantic real-time deadlines and final effects without copying guard microstates.
 See [R08_ENDPOINT_ENFORCEMENT.md](R08_ENDPOINT_ENFORCEMENT.md) for clock/route bounds,
 queue containment, live management and physical qualification assumptions.
+R09 adds **rtl-r09-merkle** and **rtl-r09-platform**: independent local grant
+construction, fresh configuration binding and bottom-up Merkle proofs through real
+SHA-256 in each lane. Host SLH-DSA verifies the actual RTL message and key, rather
+than a software-reconstructed replacement. See [R09_MERKLE.md](R09_MERKLE.md) for
+canonical parsing, last-leaf padding, block/read audits and fault evidence.
 
 ## Boundaries and APIs
 
@@ -54,6 +59,10 @@ flowchart LR
   root, and verifies the actual signature under the selected OTP key. It returns
   format/signature/verified evidence. It does not check complete OTP policy,
   current lease/state/health, trusted entropy, or physical lifecycle closure.
+- `verify_root_signature` checks an actual 46-byte `REINS-BATCH-v2 || root`
+  message, 7,856-byte signature and 32-byte key through the fixed production
+  pure/empty-context signature gate. It performs no software Merkle reconstruction;
+  R09 tests supply actual RTL message/key outputs to this API.
 - `VerifierService::submit` copies the entire input and its run/round/slot tag,
   allocates a unique nonzero token, and schedules two verification events. Later
   caller mutations cannot alter either pass. A second live job is rejected.
@@ -131,9 +140,11 @@ independent Python outcomes anchor the C++ implementation.
 | RTL R07 platform | Actual R05/R06/R07 composition with memory-backed software verification | Real conditioned nonces and pin-level ARM/RENEW, closed OTP/reset and sensor fail-off; no full RTL signature computation |
 | RTL R08 enforcement | Eleven-clock event-driven bank with independent real-time C++ oracle | Actual protected clock edges and final outbound effects, six guards, jitter/corners, static ties, frozen source, single permissive faults, queue/reset controls and stateful fuzz |
 | RTL R08 complete device | Actual R05 through R08, host crypto over real sealed SRAM | Signed quorum/expiry, trusted closure, live SPI management, fresh ARM, sensor withdrawal and incompatible OTP timing |
+| RTL R09 Merkle | Two independent real-SHA grant/configuration/proof lanes and exact sealed SRAM | Supplied/R02 corpus, depths 0–20, last-leaf padding, canonical parsing, actual block/state/read checks, construction/hand-off faults and seeded fuzz |
+| RTL R09 integration | Actual R05–R09 composition with host SLH over RTL-produced message/key | Signed ARM/RENEW, selected key binding, wrong-path signature rejection, abort during reconstruction and enforced endpoints |
 | RTL R07 memory | Isolated exact-production SRAM wrapper | Exhaustive single/double codeword errors, address/owner substitution and seal/control checks in declared digital fault domains |
 | Crypto control | Deferred until measurements justify a software SHA compression backend | Later: real sequencing with abstracted compression datapath |
-| Full RTL | SHA primitive available; pending Merkle/SLH-DSA RTL and protected acceptance | Later: actual complete digital crypto/control and cycle measurements |
+| Full RTL | SHA and independent grant/Merkle stages available; pending SLH-DSA RTL and protected acceptance | Later: actual complete digital crypto/control and cycle measurements |
 | RTL fault | Pending fault-site implementation | Later: declared implementation-level injection evidence |
 
 These new modes identify test-executable reports; the existing `reins-sim` CLI

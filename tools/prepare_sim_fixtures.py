@@ -31,6 +31,8 @@ def main():
         (output / name).write_bytes(bytes.fromhex(value))
 
     write("otp.bin", signed["otp"])
+    vectors=json.loads((source / "REINS_validation_vectors.json").read_text())
+    write("validation-leaf-0.bin",vectors["slot0_leaf"])
     write("request.bin", signed["request"])
     for batch in signed["batches"]:
         write(f"reply-{batch['slot']}.bin", batch["reply"])

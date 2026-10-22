@@ -66,6 +66,12 @@ R08_BINARY := $(BUILD_DIR)/r08-rtl/reins-r08-tests
 R08_INTEGRATION_DIR := $(abspath $(BUILD_DIR)/r08-integration)
 R08_INTEGRATION_BINARY := $(BUILD_DIR)/r08-integration/reins-r08-integration-tests
 R08_HEADERS := sim/include/reins/r08_test_support.h sim/include/reins/enforcement.h sim/include/reins/local_clock_driver.h sim/include/reins/r06_test_support.h sim/include/reins/r07_test_support.h
+R09_PRODUCTION := rtl/reins_expected_grant.sv rtl/reins_merkle_pass.sv rtl/reins_merkle_pair.sv
+R09_DIR := $(abspath $(BUILD_DIR)/r09-rtl)
+R09_BINARY := $(BUILD_DIR)/r09-rtl/reins-r09-tests
+R09_INTEGRATION_DIR := $(abspath $(BUILD_DIR)/r09-integration)
+R09_INTEGRATION_BINARY := $(BUILD_DIR)/r09-integration/reins-r09-integration-tests
+R09_HEADERS := sim/include/reins/r09_test_support.h sim/include/reins/r06_test_support.h sim/include/reins/fixture_io.h
 BASELINE_INPUTS := docs/implementation_baseline.json $(wildcard docs/REINS*) $(wildcard docs/validation/*) $(wildcard sim/fixtures/*) third_party/crypto-backend.json
 
 # Pass only explicit build settings to the logged recursive build. The runner
@@ -74,13 +80,17 @@ export CXX PYTHON PKG_CONFIG SANITIZE CPPFLAGS CXXFLAGS LDFLAGS LDLIBS
 export PROJECT_CPPFLAGS PROJECT_CXXFLAGS PROJECT_LDFLAGS OPENSSL_LIBS
 export VERILATOR RTL_TRACE
 
-.PHONY: r08-build r08-unit-build r08-tests r08-unit-tests build software-build rtl-build r07-build rtl-lint check-tools check-rtl-tools verify-deps quick-tests tests r07-tests baseline-tests sanitize-tests regenerate-reference-fixtures clean clean-results clean-deps help FORCE
+.PHONY: r09-build r09-unit-build r09-tests r09-unit-tests r08-build r08-unit-build r08-tests r08-unit-tests build software-build rtl-build r07-build rtl-lint check-tools check-rtl-tools verify-deps quick-tests tests r07-tests baseline-tests sanitize-tests regenerate-reference-fixtures clean clean-results clean-deps help FORCE
 
 build: software-build rtl-build
 
 software-build: $(BUILD_DIR)/reins-sim $(BUILD_DIR)/reins-reference $(BUILD_DIR)/reins-sim-tests $(BUILD_DIR)/fixtures/ready.stamp
 
-rtl-build: $(R08_BINARY) $(R08_INTEGRATION_BINARY) $(RTL_BINARY) $(R05_BINARY) $(R06_BINARY) $(R06_INTEGRATION_BINARY) $(R07_BINARY) $(R07_INTEGRATION_BINARY) $(R07_MEMORY_BINARY)
+rtl-build: $(R09_BINARY) $(R09_INTEGRATION_BINARY) $(R08_BINARY) $(R08_INTEGRATION_BINARY) $(RTL_BINARY) $(R05_BINARY) $(R06_BINARY) $(R06_INTEGRATION_BINARY) $(R07_BINARY) $(R07_INTEGRATION_BINARY) $(R07_MEMORY_BINARY)
+
+r09-build: $(R09_BINARY) $(R09_INTEGRATION_BINARY)
+
+r09-unit-build: $(R09_BINARY)
 
 r08-build: $(R08_BINARY) $(R08_INTEGRATION_BINARY)
 
@@ -101,6 +111,8 @@ rtl-lint: check-rtl-tools
 
 	$(VERILATOR) --lint-only -Wall --assert --top-module reins_device_enforced rtl/sha256_compress.sv rtl/sha256_message.sv $(R05_PRODUCTION) $(R06_PRODUCTION) $(R07_PRODUCTION) $(R08_PRODUCTION)
 	$(VERILATOR) --lint-only -Wall -DSYNTHESIS --top-module reins_device_enforced rtl/sha256_compress.sv rtl/sha256_message.sv $(R05_PRODUCTION) $(R06_PRODUCTION) $(R07_PRODUCTION) $(R08_PRODUCTION)
+	$(VERILATOR) --lint-only -Wall --assert --top-module reins_merkle_pair rtl/sha256_compress.sv rtl/sha256_message.sv $(R09_PRODUCTION)
+	$(VERILATOR) --lint-only -Wall -DSYNTHESIS --top-module reins_merkle_pair rtl/sha256_compress.sv rtl/sha256_message.sv $(R09_PRODUCTION)
 
 check-rtl-tools:
 	@$(PYTHON) -c 'import re, subprocess, sys; version=subprocess.check_output(sys.argv[1:]+["--version"], text=True); print(version, end=""); match=re.match(r"Verilator ([0-9]+)\.", version); sys.exit(0 if match and int(match[1])>=5 else "Verilator 5+ required")' $(VERILATOR)
@@ -207,6 +219,21 @@ $(R08_INTEGRATION_BINARY): $(R05_SOURCES) $(R06_PRODUCTION) $(R07_PRODUCTION) $(
 	  -CFLAGS '-std=c++20 -Wall -Wextra $(OPT_FLAGS) $(OPENSSL_CFLAGS) -I$(abspath sim/include) -isystem $(abspath $(DOCTEST_DIR)) $(CXXFLAGS)' \
 	  -LDFLAGS '$(abspath $(LIB_OBJECTS)) $(PROJECT_LDFLAGS) $(LDFLAGS) $(OPENSSL_LIBS) $(LDLIBS)'
 
+$(R09_BINARY): rtl/sha256_compress.sv rtl/sha256_message.sv $(R09_PRODUCTION) rtl/reins_receive_sram.sv sim/rtl/r09_test_top.sv sim/tests/r09_rtl_tests.cc $(R09_HEADERS) Makefile $(LIB_OBJECTS) $(DOCTEST_HEADER) $(BUILD_DIR)/fixtures/ready.stamp $(BUILD_DIR)/build-config.json | check-tools check-rtl-tools verify-deps
+	@mkdir -p $(R09_DIR)
+	+$(VERILATOR) --cc --exe --build -j 2 --assert --coverage-line --output-split 10000 --output-split-cfuncs 500 $(RTL_TRACE_FLAGS) -Wall --top-module r09_test_top \
+	  --Mdir $(R09_DIR) -o reins-r09-tests rtl/sha256_compress.sv rtl/sha256_message.sv $(R09_PRODUCTION) rtl/reins_receive_sram.sv sim/rtl/r09_test_top.sv $(abspath sim/tests/r09_rtl_tests.cc) \
+	  -CFLAGS '-std=c++20 -Wall -Wextra $(OPT_FLAGS) $(OPENSSL_CFLAGS) -I$(abspath sim/include) -isystem $(abspath $(DOCTEST_DIR)) -DREINS_FIXTURE_DIR=\"$(abspath $(BUILD_DIR)/fixtures)\" $(CXXFLAGS)' \
+	  -LDFLAGS '$(abspath $(LIB_OBJECTS)) $(PROJECT_LDFLAGS) $(LDFLAGS) $(OPENSSL_LIBS) $(LDLIBS)'
+
+$(R09_INTEGRATION_BINARY): $(R05_SOURCES) $(R06_PRODUCTION) $(R07_PRODUCTION) $(R08_PRODUCTION) $(R09_PRODUCTION) sim/rtl/r09_integration_top.sv sim/tests/r09_integration_tests.cc $(R09_HEADERS) $(R08_HEADERS) Makefile $(LIB_OBJECTS) $(DOCTEST_HEADER) $(BUILD_DIR)/build-config.json | check-tools check-rtl-tools verify-deps
+	@mkdir -p $(R09_INTEGRATION_DIR)
+	+$(VERILATOR) --cc --exe --build -j 2 --timescale 1ns/1ns --assert --coverage-line --output-split 10000 --output-split-cfuncs 500 $(RTL_TRACE_FLAGS) -Wall --top-module r09_integration_top \
+	  --Mdir $(R09_INTEGRATION_DIR) -o reins-r09-integration-tests rtl/sha256_compress.sv rtl/sha256_message.sv $(R05_PRODUCTION) $(R06_PRODUCTION) $(R07_PRODUCTION) $(R08_PRODUCTION) $(R09_PRODUCTION) \
+	  sim/rtl/reins_otp_model.sv sim/rtl/r09_integration_top.sv $(abspath sim/tests/r09_integration_tests.cc) \
+	  -CFLAGS '-std=c++20 -Wall -Wextra $(OPT_FLAGS) $(OPENSSL_CFLAGS) -I$(abspath sim/include) -isystem $(abspath $(DOCTEST_DIR)) $(CXXFLAGS)' \
+	  -LDFLAGS '$(abspath $(LIB_OBJECTS)) $(PROJECT_LDFLAGS) $(LDFLAGS) $(OPENSSL_LIBS) $(LDLIBS)'
+
 regenerate-reference-fixtures: $(BUILD_DIR)/reins-generate-fixtures
 	$(PYTHON) -E -s -B tools/generate_reference_fixtures.py --generator $(BUILD_DIR)/reins-generate-fixtures
 
@@ -228,6 +255,12 @@ r08-tests:
 r08-unit-tests:
 	+$(PYTHON) -E -s -B tools/run_tests.py --suite r08-unit --configuration $(CONFIGURATION) --build-dir $(BUILD_DIR) --make-command '$(MAKE)' --jobs $(JOBS) --test-filter '$(TEST_FILTER)'
 
+r09-tests:
+	+$(PYTHON) -E -s -B tools/run_tests.py --suite r09 --configuration $(CONFIGURATION) --build-dir $(BUILD_DIR) --make-command '$(MAKE)' --jobs $(JOBS) --test-filter '$(TEST_FILTER)'
+
+r09-unit-tests:
+	+$(PYTHON) -E -s -B tools/run_tests.py --suite r09-unit --configuration $(CONFIGURATION) --build-dir $(BUILD_DIR) --make-command '$(MAKE)' --jobs $(JOBS) --test-filter '$(TEST_FILTER)'
+
 baseline-tests:
 	$(PYTHON) -E -s -B tools/run_tests.py --suite baseline --configuration $(CONFIGURATION) --build-dir $(BUILD_DIR)
 
@@ -244,12 +277,14 @@ clean-deps:
 	rm -rf -- .deps
 
 help:
-	@echo 'make build          Build C++ CLIs/tests and all nine Verilator test executables (default)'
+	@echo 'make build          Build C++ CLIs/tests and all eleven Verilator test executables (default)'
 	@echo 'make rtl-build      Build RTL component/integration tests and C++ oracle objects'
 	@echo 'make rtl-lint       Check standalone production RTL with/without SYNTHESIS'
 	@echo 'make software-build Build only the independent C++ simulator and tests'
 	@echo 'make quick-tests    Build and run fast checks; retain every run'
 	@echo 'make tests          Build and run all current checks; retain every run'
+	@echo 'make r09-tests      Run real-SHA grant/Merkle and complete-device tests; retain every run'
+	@echo 'make r09-unit-tests Run Merkle vectors, fault tests and seeded fuzz only; retain every run'
 	@echo 'make r08-tests      Run local enforcement and complete-device tests; retain every run'
 	@echo 'make r08-unit-tests Run local enforcement clocks/faults/fuzz only; retain every run'
 	@echo 'make r07-tests      Run SPI/controller, full-device integration and memory tests; retain every run'

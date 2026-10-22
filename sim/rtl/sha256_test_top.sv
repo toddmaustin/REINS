@@ -39,12 +39,14 @@ module sha256_test_top (
         .rsp_state_o(block_result_o), .rsp_tag_o(block_rsp_tag_o),
         .start_o(block_start_o), .complete_o(block_done_o)
     );
+    logic unused_compression_start, unused_compression_complete; // Passive core events unused by this client.
     sha256_message message (
         .clk_i(clk_i), .rst_ni(rst_ni), .req_valid_i(msg_valid_i), .req_ready_o(msg_ready_o),
         .req_length_i(msg_length_i), .req_tag_i(msg_tag_i),
         .byte_valid_i(byte_valid_i), .byte_ready_o(byte_ready_o), .byte_i(byte_i),
         .rsp_valid_o(msg_rsp_valid_o), .rsp_ready_i(msg_rsp_ready_i), .rsp_digest_o(msg_digest_o),
-        .rsp_tag_o(msg_rsp_tag_o), .rsp_error_o(msg_error_o)
+        .rsp_tag_o(msg_rsp_tag_o), .rsp_error_o(msg_error_o),
+        .compression_start_o(unused_compression_start), .compression_complete_o(unused_compression_complete)
     );
     // Observe actual handshakes and payloads independently of diagnostic pulses.
     assign observed_req_valid_o = message.core.req_valid_i;
