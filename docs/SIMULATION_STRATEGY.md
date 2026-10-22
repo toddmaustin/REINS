@@ -21,6 +21,11 @@ supplies a trusted internal lease to test its RTL health/expiry gate; the actual
 vote/commit controller is now implemented by R06. See [R06_CONTROLLER.md](R06_CONTROLLER.md)
 for the executable fast-controller boundary, fixed timing, mirrored state and
 semantic comparisons. The production R05/R06 composition owns its lease internally.
+R07 adds actual pin-level SPI, protected sealed receive SRAM and an independent
+C++ byte-transaction oracle. Its production composition includes actual R05/R06;
+each software verification pass reads the real sealed array afresh. See
+[R07_SPI_RECEIVE.md](R07_SPI_RECEIVE.md) for interfaces, snapshot/result decisions,
+native time budgets, fault cases and evidence limits.
 
 ## Boundaries and APIs
 
@@ -30,7 +35,7 @@ flowchart LR
     S --> E[Simulated completion events]
     E --> V[Independent software verification per pass]
     V --> R[Tagged cryptographic evidence]
-    R --> C[Future RTL live context and deadline gates]
+    R --> C[Implemented R06/R07 live context and deadline gates]
 ```
 
 `sim/include/reins/simulation.h` declares the supported software boundary:
@@ -117,6 +122,9 @@ independent Python outcomes anchor the C++ implementation.
 | RTL R05 | Configuration/reset/time/entropy components on Verilator | Real OTP checking/hash, fresh conditioning, digital health/hold/reset history, independent time and internal lease gate; no physical entropy or RTL quorum controller |
 | Fast control | R06 controller on Verilator; qualified platform inputs and two real host crypto passes | Real requests/rounds/votes/leases/cancellation and C++ semantic/stateful comparisons; R05 platform internals abstracted |
 | RTL R06 platform | Actual R05/R06 composition on Verilator with software verification | Real configuration/source/SHA/time startup and controller integration; no physical qualification or RTL signature verifier |
+| RTL R07 SPI | Actual pin/receive/controller RTL with independent byte oracle | Exact envelopes/snapshots/tokens/offsets, native budgets, cancellation races, byte fuzz and both-pass write inhibition |
+| RTL R07 platform | Actual R05/R06/R07 composition with memory-backed software verification | Real conditioned nonces and pin-level ARM/RENEW, closed OTP/reset and sensor fail-off; no full RTL signature computation |
+| RTL R07 memory | Isolated exact-production SRAM wrapper | Exhaustive single/double codeword errors, address/owner substitution and seal/control checks in declared digital fault domains |
 | Crypto control | Deferred until measurements justify a software SHA compression backend | Later: real sequencing with abstracted compression datapath |
 | Full RTL | SHA primitive available; pending Merkle/SLH-DSA RTL and protected acceptance | Later: actual complete digital crypto/control and cycle measurements |
 | RTL fault | Pending fault-site implementation | Later: declared implementation-level injection evidence |
@@ -125,9 +133,10 @@ These new modes identify test-executable reports; the existing `reins-sim` CLI
 still accepts only its reference mode. Unavailable CLI modes fail with status 2.
 There is no silent fallback to software.
 Production RTL will not contain a simulation-verifier bypass. Optional compression
-acceleration, real SPI ARM benchmarks and full production-timing RTL runs remain
-with the components they require. R04/05 component tests already provide optional
-bounded FST traces through the Make interface.
+acceleration and full production-timing verification RTL remain with the components
+they require. R07 measures real SPI exchanges, actual memory reads and software-backed
+authorization; these are not full-RTL SLH-DSA or physical throughput claims.
+Component/integration tests provide optional bounded FST through the Make interface.
 
 ## Reports and tests
 

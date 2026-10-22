@@ -190,9 +190,22 @@ def run_suite(suite, configuration, output_root, steps, *, build=None, cwd=ROOT,
     return code, directory
 
 
-def suite_steps(suite, build_dir, test_filter, make_command="make"):
-    """Select suite's commands using build_dir, optional test_filter and make_command for RTL lint."""
+def suite_steps(suite, build_dir, test_filter, make_command="make", configuration="release"):
+    """Select suite's commands using build_dir, test_filter, make_command and configuration's wall-time allowance."""
     python = [sys.executable, "-E", "-s", "-B"]
+    # Instrumenting generated RTL is substantially slower than native simulation;
+    # hardware tick deadlines stay identical in both configurations.
+    r07_timeout = 7200 if configuration == "sanitize" else 1200
+    if suite == "r07":
+        r07 = [str(build_dir / "r07-rtl/reins-r07-tests"), "--no-colors", "--duration"]
+        if test_filter:
+            r07 += ["--test-case=" + test_filter]
+        return [Step("r07-rtl", r07,
+                     timeout=r07_timeout, count_kind="doctest"),
+                Step("r07-integration", [str(build_dir / "r07-integration/reins-r07-integration-tests"), "--no-colors", "--duration"],
+                     timeout=r07_timeout, count_kind="doctest"),
+                Step("r07-memory", [str(build_dir / "r07-memory/reins-r07-memory-tests"), "--no-colors", "--duration"],
+                     timeout=120, count_kind="doctest")]
     baseline = python + [str(ROOT / "tools/check_baseline.py")]
     if suite != "quick":
         baseline += ["--validate-fixtures"]
@@ -226,6 +239,14 @@ def suite_steps(suite, build_dir, test_filter, make_command="make"):
         steps.insert(3, Step("r06-rtl", r06, count_kind="doctest"))
         steps.insert(4, Step("r06-integration", [str(build_dir / "r06-integration/reins-r06-integration-tests"),
             "--no-colors", "--duration"], count_kind="doctest"))
+        r07 = [str(build_dir / "r07-rtl/reins-r07-tests"), "--no-colors", "--duration"]
+        if suite == "quick":
+            r07 += ["--test-case-exclude=*extended*"]
+        steps.insert(5, Step("r07-rtl", r07, timeout=r07_timeout, count_kind="doctest"))
+        steps.insert(6, Step("r07-integration", [str(build_dir / "r07-integration/reins-r07-integration-tests"),
+            "--no-colors", "--duration"], timeout=r07_timeout, count_kind="doctest"))
+        steps.insert(7, Step("r07-memory", [str(build_dir / "r07-memory/reins-r07-memory-tests"),
+            "--no-colors", "--duration"], count_kind="doctest"))
         steps.insert(1, Step("rtl-lint", shlex.split(make_command)+["--no-print-directory", "rtl-lint"]))
         steps.append(Step("sim-report", python + [str(ROOT / "tools/test_sim_report.py"),
             "--executable", str(build_dir / "reins-sim"), "--fixtures", str(build_dir / "fixtures")]))
@@ -237,7 +258,7 @@ def suite_steps(suite, build_dir, test_filter, make_command="make"):
 def main():
     """Parse process arguments and run the selected logged Make suite; no formal parameters."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--suite", choices=["quick", "full", "baseline"], default="full")
+    parser.add_argument("--suite", choices=["quick", "full", "baseline", "r07"], default="full")
     parser.add_argument("--configuration", choices=["release", "sanitize"], default="release")
     parser.add_argument("--build-dir", type=Path, default=ROOT / "build/release")
     parser.add_argument("--make-command", default="make")
@@ -251,9 +272,10 @@ def main():
     for name in ["MAKEFLAGS", "MFLAGS", "MAKEOVERRIDES"]:
         environment.pop(name, None)
     build = None if args.suite == "baseline" else Step("build",
-        shlex.split(args.make_command) + ["--no-print-directory", "-j" + args.jobs, "build"], timeout=600)
+        shlex.split(args.make_command) + ["--no-print-directory", "-j" + args.jobs,
+            "r07-build" if args.suite == "r07" else "build"], timeout=1200)
     code, _ = run_suite(args.suite, args.configuration, ROOT / "test-results",
-        suite_steps(args.suite, build_dir, args.test_filter, args.make_command), build=build, environment=environment,
+        suite_steps(args.suite, build_dir, args.test_filter, args.make_command, args.configuration), build=build, environment=environment,
         build_config=build_dir / "build-config.json")
     return code
 

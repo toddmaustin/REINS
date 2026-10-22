@@ -39,8 +39,8 @@ top. Its verifier completion ports must be bound to the future real verifier;
 they are not host-accessible authorization inputs. Only separate simulation tops
 expose them to C++. No host-computed SHA result bypass is added to R05. Real
 configuration hashing and nonce conditioning still execute in RTL during the
-integration tests. SPI, sealed receive SRAM and the physical stop machinery remain
-R07/R08 work; SLH-DSA/Merkle hardware remains with its later milestones.
+integration tests. R07 now supplies SPI and sealed receive SRAM; physical stop
+machinery remains R08 work, and SLH-DSA/Merkle hardware remains with its later milestones.
 
 ## Operational state machine and stop boundary
 
@@ -267,7 +267,8 @@ verifier's independent sequencing, operation accounting or protected root paths.
 
 No physical entropy, absolute clock floor, sensor/OTP qualification, four-state
 startup, CDC, synthesis timing/area or physical stopping evidence is claimed.
-Proceed to R07 receive/SPI integration, then enforcement and real crypto, and
+R07 now supplies [receive/SPI integration](R07_SPI_RECEIVE.md). Proceed to R08
+endpoint enforcement and subsequent real verifier hardware, and
 resume R03 before claiming protected hardware acceptance or fault resistance.
 
 ## Validation record, 2026-10-21

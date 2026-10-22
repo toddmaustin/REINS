@@ -4,7 +4,7 @@ The REINS simulator provides executable software evidence for the fixed **N=3,
 Q=2** implementation. Its current **reference mode** performs real cryptographic
 verification on the host computer and models provisioning, reset, entropy events,
 rounds, votes, leases, receive jobs and stopping. The C++ reference model is the
-semantic oracle for future Verilator integration.
+semantic oracle for current Verilator controller/transport tests and later integration.
 R04 also adds an independent **real RTL SHA-256** test executable on Verilator.
 It does not replace the reference model's software crypto backend. The
 [RTL guide](../rtl/README.md) explains the hardware interfaces, C++ oracle,
@@ -19,6 +19,11 @@ requests/votes/leases with the independent C++ device. The
 [R06 guide](../docs/R06_CONTROLLER.md) specifies the boundary, priorities and
 stateful fuzzing; it does not claim full RTL signature verification or R03 physical
 fault protections.
+R07 adds GPIO-level mode-0 SPI, an independent C++ byte-transaction oracle,
+protected receive SRAM and an actual R05/R06/R07 composition. Each host signature
+pass reads the sealed RTL array afresh. The [R07 guide](../docs/R07_SPI_RECEIVE.md)
+describes envelopes, state ownership, memory overhead, native budgets and fault
+tests. These are digital simulation results, not electrical or physical qualification.
 
 This directory contains the simulator: `src/` holds implementation files,
 `include/reins/` holds interfaces, and `tests/` holds C++ tests. All commands below
@@ -51,8 +56,8 @@ does not simulate each instruction or hardware clock cycle of that computation.
 scenarios. `reins-sim` preserves the original low-level verification harness for
 the two supplied RENEW round-3 replies. A verified signature becomes a vote only
 after the device model checks its current context, deadlines, hold and distinct
-slot. The modeled permit is a software result. A pin-level SPI driver,
-SystemVerilog SPI/receive/physical-enforcement integration remain later milestones.
+slot. The modeled permit is a software result. R07 now supplies a GPIO-only SPI
+driver and actual SPI/receive RTL; endpoint enforcement remains a later milestone.
 R06 now supplies the real quorum/lease controller and connects the R05 startup,
 configuration, trusted time and entropy components to it.
 See the [implementation plan](../docs/IMPLEMENTATION_PLAN.md) and
@@ -60,7 +65,7 @@ See the [implementation plan](../docs/IMPLEMENTATION_PLAN.md) and
 
 ## Source map
 
-These are the nineteen current C++ source/header files in `sim/`:
+These are the C++ source/header files in `sim/`:
 
 | File | Responsibility | Main entry points |
 |---|---|---|
@@ -83,6 +88,17 @@ These are the nineteen current C++ source/header files in `sim/`:
 | [`sim/include/reins/r06_test_support.h`](include/reins/r06_test_support.h) | Shared test-only real verifier adapter, public batched authorities and evidence collector | `Corpus`, `Backend`, immutable job capture, independent per-pass verification, stale results and retained replay inputs |
 | [`sim/tests/r06_rtl_tests.cc`](tests/r06_rtl_tests.cc) | Real controller with qualified platform inputs and C++ semantic oracle | Exact requests, all quorum pairs, fixed leases, wrong contexts, deadline/stop/cancellation priority, identity limits and stateful fuzz |
 | [`sim/tests/r06_integration_tests.cc`](tests/r06_integration_tests.cc) | Actual production R05/R06 composition with host signature verification | Real OTP/source/SHA/time startup, ARM/RENEW, hold/expiry, trusted stop and cold fault recovery |
+| [`sim/include/reins/spi.h`](include/reins/spi.h) | Independent byte-level SPI oracle on the software device | `SpiMailbox`, `SpiResult`, exact `spi_frame` and command lengths |
+| [`sim/src/reference_spi.cc`](src/reference_spi.cc) | Envelope validation, atomic public/result snapshots, receive-token namespace and semantic command commits | `begin`, `byte`, `finish`, `receive_state`, `status`, `reset` |
+| [`sim/include/reins/spi_driver.h`](include/reins/spi_driver.h) | Mode-0 MSB-first GPIO driver, including fresh CS gaps after reset | `SpiDriver::select`, `bits`, `deselect`, `exchange` |
+| [`sim/include/reins/r07_test_support.h`](include/reins/r07_test_support.h) | Shared isolated/full-device harness and actual-memory verification adapter | `PinBench`, clock/reference/source driving, byte scoreboard, upload, fresh per-pass SRAM reads, race injection and comparisons |
+| [`sim/tests/r07_rtl_tests.cc`](tests/r07_rtl_tests.cc) | Basic pin protocol and signed response tests; controller test entry point | Complete public reads, transaction boundaries and one distinct vote |
+| [`sim/tests/r07_receive_tests.cc`](tests/r07_receive_tests.cc) | Detailed receive/quorum/proof checks | All quorum pairs, duplicates, withholding, canonical lengths, offsets/padding, two-pass sealing, rejected signatures/proofs |
+| [`sim/tests/r07_lifecycle_tests.cc`](tests/r07_lifecycle_tests.cc) | Native timeout and lifecycle boundaries | Five-million-tick budget, exact transaction limit, abort/expiry/reset/stale-result races and control faults |
+| [`sim/tests/r07_snapshot_tests.cc`](tests/r07_snapshot_tests.cc) | Public read coherence | Snapshots spanning rollover/quorum/entropy hold; all 248 unsupported opcodes |
+| [`sim/tests/r07_fuzz_tests.cc`](tests/r07_fuzz_tests.cc) | Seeded byte-level stateful fuzzing over signed public data | 1,000 actions, accepted/rejected chunk tracking, complete memory-backed verification and retained replay inputs |
+| [`sim/tests/r07_integration_tests.cc`](tests/r07_integration_tests.cc) | Actual R05/R06/R07 pin-level device | Real conditioned nonces, ARM/RENEW, closed OTP, warm requalification, stale tokens and a sensor alarm during SPI |
+| [`sim/tests/r07_memory_tests.cc`](tests/r07_memory_tests.cc) | Isolated exact-production memory-wrapper fault tests | Exhaustive single/double codeword errors, wrong-row/stale-owner tags, bounds/address/code/seal corruption and write inhibition |
 
 [`sim/rtl/sha256_test_top.sv`](rtl/sha256_test_top.sv) is the simulation-only top
 for [`rtl/sha256_compress.sv`](../rtl/sha256_compress.sv) and
@@ -119,6 +135,9 @@ build/<configuration>/sha256-rtl/reins-sha256-tests  Actual clocked SHA hardware
 build/<configuration>/r05-rtl/reins-r05-tests        Actual platform-control hardware tests
 build/<configuration>/r06-rtl/reins-r06-tests        Real controller / host crypto / C++ oracle
 build/<configuration>/r06-integration/reins-r06-integration-tests  Actual R05/R06 hardware / host crypto
+build/<configuration>/r07-rtl/reins-r07-tests        Actual SPI/controller/SRAM; independent byte oracle
+build/<configuration>/r07-integration/reins-r07-integration-tests  Actual R05/R06/R07; memory-backed host crypto
+build/<configuration>/r07-memory/reins-r07-memory-tests  Exact production memory wrapper; exhaustive ECC/control faults
 ```
 
 The configuration is `release` or `sanitize`. The two small I/O/diagnostic headers
@@ -172,6 +191,44 @@ each meaningful tick; it does not match microstates or internal generation
 numbers. Seeded traffic exercises delayed/invalid/duplicate jobs, cancellation,
 rollover, holds and resets. The integration executable includes real R05 SHA
 hashing and raw-source conditioning instead of abstracting those inputs.
+
+### R07 SPI and receive state
+
+The execution lease stays in R06's `issue_q`, `expiry_q` and `remaining_q`.
+R07 stores its independent receive state in `reins_spi_mailbox.owner_q` and a
+checked complemented copy. That snapshot includes the phase, SPI token, slot,
+total, accepted offset, request, run/round/job context, configuration digest and
+completed outcome. `age_q`/`age_inverse_q` count trusted ticks since BEGIN.
+`next_token_q` and its complement survive warm and retained cold resets; real
+power loss starts a new powered context.
+
+`reins_receive_sram` stores exactly one 9,216-byte **payload**, with address,
+owner and SECDED information inside the same protected array. The portable
+implementation uses 33,408 codeword bytes including protection overhead; it is
+not a qualified SRAM macro. Its sparse state/complement lock independently
+inhibits the sole write port across both passes. There is no SPI raw-memory
+read/write command or signature-verdict command.
+
+`SpiDriver` changes only CS_N, SCLK and MOSI and samples MISO. The byte oracle
+receives the independently observed transactions and compares the complete MISO
+transcript, then applies valid commands to `reference::Device`. It does not
+reproduce RTL microstates. After FINISH, `PinBench::pass` reads every byte through
+the actual checked SRAM port and runs `verify_reply`; it repeats that process
+independently for pass two. The R06 controller still checks full live context,
+time and distinct slots before voting. Comparing settled semantic outcomes allows
+the reference verifier's event delays to differ from the RTL adapter's read cycles.
+
+The fast simulation top abstracts R05's qualified inputs. The integration top
+uses actual OTP, configuration SHA, raw-source health, conditioning and trusted
+time. A third top isolates the exact memory wrapper for exhaustive fault checks;
+that test probe is not a second buffer in the device.
+
+Run `make r07-tests` for these three groups. `TEST_FILTER='*atomic*'` selects
+controller cases while retaining the integration and memory checks.
+`REINS_R07_SEED=12345` changes the fuzz stream. For optional bounded waveforms,
+run `REINS_R07_TRACE=1 make RTL_TRACE=1 r07-tests`; the first controller and
+integration models retain their first 16,384 monitor clocks. See the
+[R07 guide](../docs/R07_SPI_RECEIVE.md) for exact interfaces and limitations.
 
 Cold recognition and retention loss are deliberately separate: a cold event
 keeps previous-nonce history if power survives, while `por_ni=0` discards it.
@@ -280,8 +337,9 @@ return authorities[slot].batch({*request}, device.snapshot().tick);
 
 This excerpt is the body of that helper; `slot` selects authority 0, 1 or 2, and
 the return value contains its approved signed replies. The relay models reply
-delivery; request delivery is an explicit harness operation. There is no network
-or pin-level SPI request transmitter in the current software model.
+delivery; request delivery is an explicit harness operation. That R02 CLI path
+does not implement network or SPI transport. R07 separately supplies the pin
+driver and independent SPI oracle described above.
 
 The scenario CLI takes a different input path: its `reply` command loads an
 already signed public fixture and calls `Device::upload`. It still exercises the
@@ -461,8 +519,9 @@ accepted profile.
 ## How the event service operates
 
 `VerifierService` allows one live job at a time. This models the ownership
-boundary for the planned single-buffer backend; the C++ snapshots and event queue
-are ordinary host memory, not an implementation of the 9,216-byte receive SRAM.
+boundary for the single-buffer backend; its C++ snapshots and event queue are
+ordinary host memory. R07's separate Verilator tests implement the actual receive
+array and read its sealed bytes for every host verification pass.
 
 ### Submit and deliver a job
 
@@ -731,6 +790,9 @@ For the full `make tests` suite, the main paths are:
 | `r05-rtl/` | OTP/reset/time/entropy RTL logs, actual conditioner-frame/nonces JSONL, profile/seed/SHA ownership/performance JSON, per-model coverage and optional bounded FST |
 | `r06-rtl/` | Fast-control logs, public OTP/request/reply/latency events, semantic comparisons, fuzz actions, real software pass counts, seed/ownership/performance, coverage and optional FST |
 | `r06-integration/` | Actual R05/R06 platform/controller logs, host verification jobs, mode/measurements, coverage and optional FST |
+| `r07-rtl/` | GPIO transcript for every exchange, public fuzz corpus/seed/actions, native-budget/race results, actual memory-backed pass counts, coverage and optional FST |
+| `r07-integration/` | Actual R05/R06/R07 pin-level ARM/RENEW, reset/OTP/sensor cases, public events, real pass counts, coverage and optional FST |
+| `r07-memory/` | Exhaustive ECC bit-case counts, row/owner/control/seal results, actual clock counts and per-model coverage |
 | `rtl-lint/output.log` | Standalone production-module checks with assertions and with `SYNTHESIS` defined |
 | `sim-report/output.log` | CLI scenario expectations and observed status |
 | `sim-report/cli-artifacts/` | Individual CLI stdout/stderr, command records, JSON and negative-case inputs |
@@ -767,7 +829,9 @@ primitive and bounded message wrapper with actual RTL fuzz/interface checks.
 R05 builds on it with digital startup, configuration, timing and fresh entropy
 control and a documented trusted internal lease gate. R06 implements the quorum/
 lease controller and actual R05 composition with software-backed verification.
-Merkle/SLH-DSA hardware, receive/SPI/enforcement integration, R03 internal fault campaigns and physical
+R07 adds pin-level SPI and protected sealed-memory reception, including actual
+fresh memory reads in each host pass. Merkle/SLH-DSA hardware, endpoint enforcement,
+R03 internal fault campaigns and physical
 qualification remain separate work. Passing SHA tests does not establish safe
 sharing between verification passes. The software mutation/stale/stall cases
 establish only their declared software behaviors.

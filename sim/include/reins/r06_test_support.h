@@ -180,17 +180,24 @@ template<class Dut> void clear_verifier(Dut& dut) {
 // coverage, replay seed and measurements; return failure on ownership imbalance.
 inline int run(int argc, char** argv, const char* mode) {
     try {
+        const bool r07=std::string_view(mode).find("r07")!=std::string_view::npos;
+        const char* label=r07 ? "R07" : "R06";
+        const char* seed_variable=r07 ? "REINS_R07_SEED" : "REINS_R06_SEED";
+        const char* trace_variable=r07 ? "REINS_R07_TRACE" : "REINS_R06_TRACE";
+        if (r07) evidence.seed=0x5245494e5307ULL;
         const char* directory=std::getenv("REINS_TEST_OUTPUT_DIR");
         evidence.directory=directory ? std::filesystem::path(directory) : std::filesystem::path("test-results")/
             (std::string("manual-")+mode+"-"+std::to_string(std::chrono::system_clock::now().time_since_epoch().count()));
         std::filesystem::create_directories(evidence.directory/"coverage");
         std::ofstream retained(evidence.directory/"test-output.log"); Capture capture(retained);
         evidence.events.open(evidence.directory/"events.jsonl");
-        if (const char* seed=std::getenv("REINS_R06_SEED")) { std::size_t used=0; evidence.seed=std::stoull(seed,&used,0); if (used!=std::string(seed).size()) throw std::invalid_argument("invalid R06 seed"); }
+        if (const char* seed=std::getenv(seed_variable)) { std::size_t used=0; evidence.seed=std::stoull(seed,&used,0); if (used!=std::string(seed).size()) throw std::invalid_argument("invalid RTL seed"); }
 #if !VM_TRACE_FST
-        if (std::getenv("REINS_R06_TRACE")) throw std::runtime_error("R06 FST requires RTL_TRACE=1");
+        if (std::getenv(trace_variable)) throw std::runtime_error("RTL FST requires RTL_TRACE=1");
+#else
+        (void)trace_variable;
 #endif
-        std::cout<<"[R06] mode="<<mode<<"; Verilator "<<Verilated::productVersion()<<"; "<<backend_version()<<"; seed="<<evidence.seed<<'\n';
+        std::cout<<'['<<label<<"] mode="<<mode<<"; Verilator "<<Verilated::productVersion()<<"; "<<backend_version()<<"; seed="<<evidence.seed<<'\n';
         const auto started=std::chrono::steady_clock::now(); doctest::Context tests; tests.applyCommandLine(argc,argv);
         int result=tests.run(); const bool balanced=evidence.starts==evidence.completed+evidence.canceled;
         if (!balanced) { std::cout<<"FAIL: real verifier job ownership did not balance\n"; result=1; }
@@ -204,7 +211,7 @@ inline int run(int argc, char** argv, const char* mode) {
         std::cout.flush(); capture.restore(); retained.close(); std::ifstream replay(evidence.directory/"test-output.log"); std::cout<<replay.rdbuf(); return result;
     } catch (const std::exception& error) {
         std::ofstream log(evidence.directory/"harness-error.log",std::ios::app); log<<error.what()<<'\n';
-        std::cerr<<"R06 harness: "<<error.what()<<'\n'; return 2;
+        std::cerr<<"RTL harness: "<<error.what()<<'\n'; return 2;
     }
 }
 } // namespace reins::sim::r06_test

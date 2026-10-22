@@ -11,6 +11,11 @@ R05 gate internally. Its [controller guide](../docs/R06_CONTROLLER.md) describes
 the exact request/job interfaces, tick priority, mirrored state and independent
 age/remaining checks. Signature verification is software-backed in these tests;
 real verifier hardware and R03 physical protections remain later work.
+R07 adds [mode-0 SPI and sealed receive memory](../docs/R07_SPI_RECEIVE.md), with
+an independent C++ byte oracle, native transaction/job budgets, protected ownership
+and memory-backed verification tests. The complete current composition is
+[`reins_device_spi.sv`](reins_device_spi.sv); it remains an internal component,
+with trusted verifier and technology/enforcement interfaces.
 
 ## Files and architecture
 
@@ -283,5 +288,39 @@ coverage, tool/mode/seed and ownership/performance measurements.
 The [R06 guide](../docs/R06_CONTROLLER.md) documents all interfaces and evidence
 limits. Digital mirrors and sparse encodings do not establish synthesis-preserved
 independent replicas, common fan-out fault containment or physical enforcement.
-R03 remains deferred; actual SPI/SRAM, signature hardware and guards remain later
-milestones. These production components are not a finished chip top.
+R03 remains deferred; signature hardware and guards remain later milestones.
+These production components are not a finished chip top.
+
+## R07 SPI and sealed receive memory
+
+| File | Responsibility |
+|---|---|
+| [`reins_spi_slave.sv`](reins_spi_slave.sv) | Mode-0 synchronized pad sampling, MSB-first bytes, timing/framing checks and the independent 100,000-tick transaction limit |
+| [`reins_spi_mailbox.sv`](reins_spi_mailbox.sv) | Exact eight-command table, frozen public/result snapshots, BEGIN/token/context ownership, sequential chunks, FINISH/ABORT, asynchronous outcomes and absolute 5,000,000-tick budget |
+| [`reins_receive_sram.sv`](reins_receive_sram.sv) | One 9,216-byte payload, SECDED-protected row/owner tags, checked address/control interfaces and independent seal/write inhibition |
+| [`reins_spi_control.sv`](reins_spi_control.sv) | Qualified-platform R06/R07 composition used by isolated pin tests |
+| [`reins_device_spi.sv`](reins_device_spi.sv) | Actual R05/R06/R07 composition; receive integrity feeds the general fail-off path |
+
+The pad wrapper must use `miso_o` and `miso_oe_o` to drive high impedance whenever
+CS_N is high. At the nominal simulation assignment of 4 MHz monitor / 1 MHz
+trusted reference, use at least 20 monitor clocks per phase/setup and 40 between
+selections. Physical electrical/CDC qualification remains external work.
+
+No SPI command reaches a verifier completion or acknowledges physical stop.
+Only a complete, live FINISH seals the entire reply and admits an internal R06
+job. Every accepted vote still requires two independently computed verification
+passes and R06's live context/time/distinctness checks. The SPI token is a separate
+powered-context namespace from R06's internal verifier token. Invalid or partial
+transactions cannot advance the committed byte offset; the uncommitted tail is
+overwritten on retry. Sealing blocks the sole payload write port between and
+during both passes.
+
+The [R07 guide](../docs/R07_SPI_RECEIVE.md) includes every command/result layout,
+state and token ownership, the 33,408-byte protected-codeword storage calculation,
+native timeout boundaries, error/snapshot decisions and the test evidence.
+Run `make r07-tests`; each group retains logs, public replay data, coverage and
+measurements. The isolated memory group exhausts all 116 single-bit and 6,670
+distinct double-bit codeword faults. GPIO tests add byte fuzzing, cancellation/
+reset/rollover races, seal/address/control faults and every quorum pair.
+These declared digital checks do not establish deferred R03 physical independence,
+synthesis preservation, a qualified SRAM macro or a silicon stopping bound.
