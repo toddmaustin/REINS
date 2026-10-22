@@ -7,8 +7,9 @@ local build and test commands and evidence for the behavior it introduces.
 
 This document is the development roadmap. The fixed scope and PR 02 software
 reference milestone are implemented. R04 SHA-256, R05 configuration/reset/time/
-entropy and R06 operational controller RTL are implemented with Verilator tests.
-R06 includes C++ semantic comparisons and real R05/R06 integration. Remaining RTL milestones
+entropy, R06 operational controller and R07 SPI/sealed receive RTL are implemented
+with Verilator tests. R07 includes an independent byte-level C++ oracle, actual
+memory-backed host verification and real R05/R06/R07 pin integration. Remaining RTL milestones
 are open; software/Python validation is not evidence that their RTL exists.
 
 Section 1 is established by [IMPLEMENTATION_SCOPE.md](IMPLEMENTATION_SCOPE.md),
@@ -24,8 +25,9 @@ latency/cancellation, reference-mode reporting, and local Make build/test target
 PR 02 now adds the complete software device/authority/relay behavioral model,
 state/lease reporting, pinned public replay corpus and semantic completion tests.
 Component RTL modes, real-cycle measurements and bounded FST now exist for R04/05.
-Protected hardware authorization and SPI benchmarks remain with their dependent
-development milestones. R03 protected primitives/internal fault campaigns are
+Pin-level SPI, native receive timeouts and sealed-memory fault evidence now exist
+in R07. Full verifier hardware and physical authorization/enforcement remain with
+their dependent milestones. R03 protected primitives/internal fault campaigns are
 deferred by the current development decision.
 
 ## 1. Fixed scope and source of truth
@@ -287,6 +289,13 @@ old results. Compare against the C++ model and add stateful fuzzing now.
 
 ### PR 07 — Pin-level SPI and protected sealed receive SRAM
 
+**Status: implemented as a digital research component.** See the
+[R07 guide](R07_SPI_RECEIVE.md) for interfaces, explicit result/snapshot decisions,
+payload/protection storage, simulation profile, tests and limits. Pin-level tests
+use two real independent software signature verifications over fresh sealed-memory
+reads; no SPI command can supply a verdict. Full verifier hardware, SRAM-macro
+qualification and deferred R03 physical protections remain separate work.
+
 **Deliver:** mode-0 SPI drivers and slave RTL; exact envelopes, result codes,
 atomic public reads, coherent request snapshots, and one 9,216-byte receive memory
 with declared ECC/parity and address/control protection. Implement canonical reply
@@ -518,7 +527,8 @@ behavior; and measure environmental/fault coverage and the actual stop bound.
 Sharing SHA hardware or broadening N/Q is a later change requiring renewed
 performance, fault, and regression evidence.
 
-**Next development action: PR 07.** Connect exact SPI envelopes and the single
-sealed receive SRAM/token lifecycle to the R06 controller/verifier boundary.
+**Next development action: PR 08.** Connect dynamic permit and independently
+enforcing local guards to representative protected compute/outbound endpoints,
+and derive trusted stop acknowledgement from completed enforcement.
 Keep R03 protected primitives and general internal fault campaigns explicitly
 deferred until their implementation and integration are resumed.
