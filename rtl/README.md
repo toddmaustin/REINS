@@ -13,9 +13,11 @@ age/remaining checks. Signature verification is software-backed in these tests;
 real verifier hardware and R03 physical protections remain later work.
 R07 adds [mode-0 SPI and sealed receive memory](../docs/R07_SPI_RECEIVE.md), with
 an independent C++ byte oracle, native transaction/job budgets, protected ownership
-and memory-backed verification tests. The complete current composition is
-[`reins_device_spi.sv`](reins_device_spi.sv); it remains an internal component,
-with trusted verifier and technology/enforcement interfaces.
+and memory-backed verification tests. R08 wraps it in the complete current
+[`reins_device_enforced.sv`](reins_device_enforced.sv), with independently enforcing
+local guards, representative work/transaction generators and trusted stop
+completion derived from actual modeled cells and queues. See the
+[R08 enforcement profile](../docs/R08_ENDPOINT_ENFORCEMENT.md).
 
 ## Files and architecture
 
@@ -324,3 +326,35 @@ distinct double-bit codeword faults. GPIO tests add byte fuzzing, cancellation/
 reset/rollover races, seal/address/control faults and every quorum pair.
 These declared digital checks do not establish deferred R03 physical independence,
 synthesis preservation, a qualified SRAM macro or a silicon stopping bound.
+
+## R08 dynamic permit and endpoint enforcement
+
+| File | Interface and state |
+|---|---|
+| [`reins_permit_source.sv`](reins_permit_source.sv) | Two independently qualified 500-tick transition rails; separate up/down counters and complements; withdrawal holds levels |
+| [`reins_permit_guard_a.sv`](reins_permit_guard_a.sv) | Local two-edge qualification, up-counter missing/fast-edge detector, sparse code 96/69 |
+| [`reins_permit_guard_b.sv`](reins_permit_guard_b.sv) | Separate synchronizers and down-counter detector on independent local clock; code a5/5a |
+| [`reins_endpoint_actuator.sv`](reins_endpoint_actuator.sv) | One path's protected OPEN/CLOSING/CLOSED state; isolate/reset before clock clamp; no reopening during closing |
+| [`reins_clock_isolation.sv`](reins_clock_isolation.sv) | Technology wrapper: fail-off clamp, falling-edge release, actual modeled gate readback; two serial instances per endpoint |
+| [`reins_transaction_isolation.sv`](reins_transaction_isolation.sv) | One independent final outbound cut and fresh-generation check; no downstream queue storage |
+| [`reins_endpoint_queue.sv`](reins_endpoint_queue.sv) | One-outstanding bundled mailbox and four-entry always-on queue, complementary metadata, independent purge |
+| [`reins_protected_endpoint.sv`](reins_protected_endpoint.sv) | Representative CPU/accelerator/DMA generator with two serial clock cells and two final outbound cuts |
+| [`reins_enforcement_bank.sv`](reins_enforcement_bank.sv) | Three endpoints/six local guards, fresh ARM epochs, synchronized closure/empty readback, four-sample trusted stop certificate and sticky fault |
+| [`reins_enforcement_profile.sv`](reins_enforcement_profile.sv) | Checked OTP compatibility with actual platform frequency/guard/actuation promises |
+| [`reins_device_enforced.sv`](reins_device_enforced.sv) | Complete R05/R06/R07/R08 composition; independent secondary expiry authorization; internal stop acknowledgement, live management interfaces |
+
+`guard_clock_a_i[2:0]` and `guard_clock_b_i[2:0]` are six independent protected
+always-on clocks; `raw_clock_i[2:0]` are the stoppable compute clocks. Separate
+`endpoint_por_ni` supplies asynchronous physical fail-off; `por_ni` resets the
+monitor domain. Both assert at actual power loss, while warm/cold logic events
+withdraw the source and preserve closure history. Outbound ready inputs may apply
+backpressure but cannot extend a lease or bypass either final cut. Production
+interfaces have no simulation fault-injection ports or host stop-ACK port.
+
+Run `make r08-tests` for local multi-clock plus full-device tests, or
+`make r08-unit-tests` for local directed/fault/fuzz checks. These are also included
+in normal builds/tests. The [R08 guide](../docs/R08_ENDPOINT_ENFORCEMENT.md) gives
+exact timing inequalities, OTP limitations, reset/rearm ordering, management
+boundary, fault scope and physical qualification requirements. The RTL models
+local enforcement; it does not establish real oscillator independence, physical
+stop delays or synthesis preservation.

@@ -30,7 +30,7 @@ PROJECT_CXXFLAGS := -std=c++20 -Wall -Wextra -Wpedantic -Werror $(OPT_FLAGS)
 comma := ,
 PROJECT_LDFLAGS := $(SANITIZER_LIBS) $(if $(OPENSSL_LIBDIR),-Wl$(comma)-rpath$(comma)$(OPENSSL_LIBDIR))
 
-LIB_OBJECTS := $(addprefix $(BUILD_DIR)/obj/,crypto.o verifier_service.o reference_device.o reference_authority.o reference_scenario.o reference_spi.o)
+LIB_OBJECTS := $(addprefix $(BUILD_DIR)/obj/,crypto.o verifier_service.o reference_device.o reference_authority.o reference_scenario.o reference_spi.o reference_enforcement.o)
 MAIN_OBJECT := $(BUILD_DIR)/obj/main.o
 TEST_OBJECTS := $(addprefix $(BUILD_DIR)/obj/,verifier_tests.o reference_tests.o)
 REFERENCE_OBJECT := $(BUILD_DIR)/obj/reference_main.o
@@ -59,6 +59,13 @@ R07_INTEGRATION_DIR := $(abspath $(BUILD_DIR)/r07-integration)
 R07_INTEGRATION_BINARY := $(BUILD_DIR)/r07-integration/reins-r07-integration-tests
 R07_MEMORY_DIR := $(abspath $(BUILD_DIR)/r07-memory)
 R07_MEMORY_BINARY := $(BUILD_DIR)/r07-memory/reins-r07-memory-tests
+R08_CORE := rtl/reins_permit_source.sv rtl/reins_permit_guard_a.sv rtl/reins_permit_guard_b.sv rtl/reins_endpoint_actuator.sv rtl/reins_clock_isolation.sv rtl/reins_transaction_isolation.sv rtl/reins_endpoint_queue.sv rtl/reins_protected_endpoint.sv rtl/reins_enforcement_bank.sv
+R08_PRODUCTION := $(R08_CORE) rtl/reins_enforcement_profile.sv rtl/reins_device_enforced.sv
+R08_DIR := $(abspath $(BUILD_DIR)/r08-rtl)
+R08_BINARY := $(BUILD_DIR)/r08-rtl/reins-r08-tests
+R08_INTEGRATION_DIR := $(abspath $(BUILD_DIR)/r08-integration)
+R08_INTEGRATION_BINARY := $(BUILD_DIR)/r08-integration/reins-r08-integration-tests
+R08_HEADERS := sim/include/reins/r08_test_support.h sim/include/reins/enforcement.h sim/include/reins/local_clock_driver.h sim/include/reins/r06_test_support.h sim/include/reins/r07_test_support.h
 BASELINE_INPUTS := docs/implementation_baseline.json $(wildcard docs/REINS*) $(wildcard docs/validation/*) $(wildcard sim/fixtures/*) third_party/crypto-backend.json
 
 # Pass only explicit build settings to the logged recursive build. The runner
@@ -67,13 +74,17 @@ export CXX PYTHON PKG_CONFIG SANITIZE CPPFLAGS CXXFLAGS LDFLAGS LDLIBS
 export PROJECT_CPPFLAGS PROJECT_CXXFLAGS PROJECT_LDFLAGS OPENSSL_LIBS
 export VERILATOR RTL_TRACE
 
-.PHONY: build software-build rtl-build r07-build rtl-lint check-tools check-rtl-tools verify-deps quick-tests tests r07-tests baseline-tests sanitize-tests regenerate-reference-fixtures clean clean-results clean-deps help FORCE
+.PHONY: r08-build r08-unit-build r08-tests r08-unit-tests build software-build rtl-build r07-build rtl-lint check-tools check-rtl-tools verify-deps quick-tests tests r07-tests baseline-tests sanitize-tests regenerate-reference-fixtures clean clean-results clean-deps help FORCE
 
 build: software-build rtl-build
 
 software-build: $(BUILD_DIR)/reins-sim $(BUILD_DIR)/reins-reference $(BUILD_DIR)/reins-sim-tests $(BUILD_DIR)/fixtures/ready.stamp
 
-rtl-build: $(RTL_BINARY) $(R05_BINARY) $(R06_BINARY) $(R06_INTEGRATION_BINARY) $(R07_BINARY) $(R07_INTEGRATION_BINARY) $(R07_MEMORY_BINARY)
+rtl-build: $(R08_BINARY) $(R08_INTEGRATION_BINARY) $(RTL_BINARY) $(R05_BINARY) $(R06_BINARY) $(R06_INTEGRATION_BINARY) $(R07_BINARY) $(R07_INTEGRATION_BINARY) $(R07_MEMORY_BINARY)
+
+r08-build: $(R08_BINARY) $(R08_INTEGRATION_BINARY)
+
+r08-unit-build: $(R08_BINARY)
 
 r07-build: $(R07_BINARY) $(R07_INTEGRATION_BINARY) $(R07_MEMORY_BINARY)
 
@@ -87,6 +98,9 @@ rtl-lint: check-rtl-tools
 	$(VERILATOR) --lint-only -Wall -DSYNTHESIS --top-module reins_device_control rtl/sha256_compress.sv rtl/sha256_message.sv $(R05_PRODUCTION) $(R06_PRODUCTION)
 	$(VERILATOR) --lint-only -Wall --assert --top-module reins_device_spi rtl/sha256_compress.sv rtl/sha256_message.sv $(R05_PRODUCTION) $(R06_PRODUCTION) $(R07_PRODUCTION)
 	$(VERILATOR) --lint-only -Wall -DSYNTHESIS --top-module reins_device_spi rtl/sha256_compress.sv rtl/sha256_message.sv $(R05_PRODUCTION) $(R06_PRODUCTION) $(R07_PRODUCTION)
+
+	$(VERILATOR) --lint-only -Wall --assert --top-module reins_device_enforced rtl/sha256_compress.sv rtl/sha256_message.sv $(R05_PRODUCTION) $(R06_PRODUCTION) $(R07_PRODUCTION) $(R08_PRODUCTION)
+	$(VERILATOR) --lint-only -Wall -DSYNTHESIS --top-module reins_device_enforced rtl/sha256_compress.sv rtl/sha256_message.sv $(R05_PRODUCTION) $(R06_PRODUCTION) $(R07_PRODUCTION) $(R08_PRODUCTION)
 
 check-rtl-tools:
 	@$(PYTHON) -c 'import re, subprocess, sys; version=subprocess.check_output(sys.argv[1:]+["--version"], text=True); print(version, end=""); match=re.match(r"Verilator ([0-9]+)\.", version); sys.exit(0 if match and int(match[1])>=5 else "Verilator 5+ required")' $(VERILATOR)
@@ -177,6 +191,22 @@ $(R07_MEMORY_BINARY): rtl/reins_receive_sram.sv sim/rtl/r07_memory_test_top.sv s
 	  -CFLAGS '-std=c++20 -Wall -Wextra $(OPT_FLAGS) $(OPENSSL_CFLAGS) -I$(abspath sim/include) -isystem $(abspath $(DOCTEST_DIR)) $(CXXFLAGS)' \
 	  -LDFLAGS '$(abspath $(LIB_OBJECTS)) $(PROJECT_LDFLAGS) $(LDFLAGS) $(OPENSSL_LIBS) $(LDLIBS)'
 
+# Nanosecond timebase lets independent local clock branches retain physical timing.
+$(R08_BINARY): $(R08_CORE) sim/rtl/r08_test_top.sv sim/tests/r08_rtl_tests.cc $(R08_HEADERS) Makefile $(LIB_OBJECTS) $(DOCTEST_HEADER) $(BUILD_DIR)/build-config.json | check-tools check-rtl-tools verify-deps
+	@mkdir -p $(R08_DIR)
+	+$(VERILATOR) --cc --exe --build -j 2 --timescale 1ns/1ns --assert --coverage-line --output-split 10000 --output-split-cfuncs 500 $(RTL_TRACE_FLAGS) -Wall --top-module r08_test_top \
+	  --Mdir $(R08_DIR) -o reins-r08-tests $(R08_CORE) sim/rtl/r08_test_top.sv $(abspath sim/tests/r08_rtl_tests.cc) \
+	  -CFLAGS '-std=c++20 -Wall -Wextra $(OPT_FLAGS) $(OPENSSL_CFLAGS) -I$(abspath sim/include) -isystem $(abspath $(DOCTEST_DIR)) $(CXXFLAGS)' \
+	  -LDFLAGS '$(abspath $(LIB_OBJECTS)) $(PROJECT_LDFLAGS) $(LDFLAGS) $(OPENSSL_LIBS) $(LDLIBS)'
+
+$(R08_INTEGRATION_BINARY): $(R05_SOURCES) $(R06_PRODUCTION) $(R07_PRODUCTION) $(R08_PRODUCTION) sim/rtl/r08_integration_top.sv sim/tests/r08_integration_tests.cc $(R08_HEADERS) Makefile $(LIB_OBJECTS) $(DOCTEST_HEADER) $(BUILD_DIR)/build-config.json | check-tools check-rtl-tools verify-deps
+	@mkdir -p $(R08_INTEGRATION_DIR)
+	+$(VERILATOR) --cc --exe --build -j 2 --timescale 1ns/1ns --assert --coverage-line --output-split 10000 --output-split-cfuncs 500 $(RTL_TRACE_FLAGS) -Wall --top-module r08_integration_top \
+	  --Mdir $(R08_INTEGRATION_DIR) -o reins-r08-integration-tests rtl/sha256_compress.sv rtl/sha256_message.sv $(R05_PRODUCTION) $(R06_PRODUCTION) $(R07_PRODUCTION) $(R08_PRODUCTION) \
+	  sim/rtl/reins_otp_model.sv sim/rtl/r08_integration_top.sv $(abspath sim/tests/r08_integration_tests.cc) \
+	  -CFLAGS '-std=c++20 -Wall -Wextra $(OPT_FLAGS) $(OPENSSL_CFLAGS) -I$(abspath sim/include) -isystem $(abspath $(DOCTEST_DIR)) $(CXXFLAGS)' \
+	  -LDFLAGS '$(abspath $(LIB_OBJECTS)) $(PROJECT_LDFLAGS) $(LDFLAGS) $(OPENSSL_LIBS) $(LDLIBS)'
+
 regenerate-reference-fixtures: $(BUILD_DIR)/reins-generate-fixtures
 	$(PYTHON) -E -s -B tools/generate_reference_fixtures.py --generator $(BUILD_DIR)/reins-generate-fixtures
 
@@ -191,6 +221,12 @@ tests:
 
 r07-tests:
 	+$(PYTHON) -E -s -B tools/run_tests.py --suite r07 --configuration $(CONFIGURATION) --build-dir $(BUILD_DIR) --make-command '$(MAKE)' --jobs $(JOBS) --test-filter '$(TEST_FILTER)'
+
+r08-tests:
+	+$(PYTHON) -E -s -B tools/run_tests.py --suite r08 --configuration $(CONFIGURATION) --build-dir $(BUILD_DIR) --make-command '$(MAKE)' --jobs $(JOBS) --test-filter '$(TEST_FILTER)'
+
+r08-unit-tests:
+	+$(PYTHON) -E -s -B tools/run_tests.py --suite r08-unit --configuration $(CONFIGURATION) --build-dir $(BUILD_DIR) --make-command '$(MAKE)' --jobs $(JOBS) --test-filter '$(TEST_FILTER)'
 
 baseline-tests:
 	$(PYTHON) -E -s -B tools/run_tests.py --suite baseline --configuration $(CONFIGURATION) --build-dir $(BUILD_DIR)
@@ -208,12 +244,14 @@ clean-deps:
 	rm -rf -- .deps
 
 help:
-	@echo 'make build          Build C++ CLIs/tests and all seven Verilator test executables (default)'
+	@echo 'make build          Build C++ CLIs/tests and all nine Verilator test executables (default)'
 	@echo 'make rtl-build      Build RTL component/integration tests and C++ oracle objects'
 	@echo 'make rtl-lint       Check standalone production RTL with/without SYNTHESIS'
 	@echo 'make software-build Build only the independent C++ simulator and tests'
 	@echo 'make quick-tests    Build and run fast checks; retain every run'
 	@echo 'make tests          Build and run all current checks; retain every run'
+	@echo 'make r08-tests      Run local enforcement and complete-device tests; retain every run'
+	@echo 'make r08-unit-tests Run local enforcement clocks/faults/fuzz only; retain every run'
 	@echo 'make r07-tests      Run SPI/controller, full-device integration and memory tests; retain every run'
 	@echo 'make baseline-tests Run source/fixture checks without C++ or OpenSSL'
 	@echo 'make sanitize-tests Build/run with address and undefined-behavior sanitizers'

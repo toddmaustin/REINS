@@ -23,7 +23,11 @@ R07 adds GPIO-level mode-0 SPI, an independent C++ byte-transaction oracle,
 protected receive SRAM and an actual R05/R06/R07 composition. Each host signature
 pass reads the sealed RTL array afresh. The [R07 guide](../docs/R07_SPI_RECEIVE.md)
 describes envelopes, state ownership, memory overhead, native budgets and fault
-tests. These are digital simulation results, not electrical or physical qualification.
+tests. R08 adds independently clocked local guards and protected compute/outbound
+generators, with actual clock/receiver observation and trusted stop completion.
+Its [enforcement guide](../docs/R08_ENDPOINT_ENFORCEMENT.md) specifies timing,
+queue containment and management operation. These are digital simulation results,
+not electrical or physical qualification.
 
 This directory contains the simulator: `src/` holds implementation files,
 `include/reins/` holds interfaces, and `tests/` holds C++ tests. All commands below
@@ -57,7 +61,8 @@ scenarios. `reins-sim` preserves the original low-level verification harness for
 the two supplied RENEW round-3 replies. A verified signature becomes a vote only
 after the device model checks its current context, deadlines, hold and distinct
 slot. The modeled permit is a software result. R07 now supplies a GPIO-only SPI
-driver and actual SPI/receive RTL; endpoint enforcement remains a later milestone.
+driver and actual SPI/receive RTL. R08 now supplies dynamic rails and independently
+clocked local endpoint guards with actual work/outbound observation.
 R06 now supplies the real quorum/lease controller and connects the R05 startup,
 configuration, trusted time and entropy components to it.
 See the [implementation plan](../docs/IMPLEMENTATION_PLAN.md) and
@@ -99,6 +104,14 @@ These are the C++ source/header files in `sim/`:
 | [`sim/tests/r07_fuzz_tests.cc`](tests/r07_fuzz_tests.cc) | Seeded byte-level stateful fuzzing over signed public data | 1,000 actions, accepted/rejected chunk tracking, complete memory-backed verification and retained replay inputs |
 | [`sim/tests/r07_integration_tests.cc`](tests/r07_integration_tests.cc) | Actual R05/R06/R07 pin-level device | Real conditioned nonces, ARM/RENEW, closed OTP, warm requalification, stale tokens and a sensor alarm during SPI |
 | [`sim/tests/r07_memory_tests.cc`](tests/r07_memory_tests.cc) | Isolated exact-production memory-wrapper fault tests | Exhaustive single/double codeword errors, wrong-row/stale-owner tags, bounds/address/code/seal corruption and write inhibition |
+| [`sim/include/reins/enforcement.h`](include/reins/enforcement.h) | Independent event/time enforcement oracle | Semantic ARM, withdrawal, local isolation, work/effect observation and trusted completed stop |
+| [`sim/src/reference_enforcement.cc`](src/reference_enforcement.cc) | Real-time contract and timing inequalities independent of RTL counters | Immutable per-endpoint deadlines, generation/sequence rejection, checker negative cases |
+| [`sim/include/reins/r08_test_support.h`](include/reins/r08_test_support.h) | Eleven-clock event-driven physical endpoint bench | Nanosecond event queue, independent routed fan-out delays, clock jitter, actual receiver/clock scoreboard, deterministic evidence |
+| [`sim/include/reins/local_clock_driver.h`](include/reins/local_clock_driver.h) | Six independent clocks for complete-device tests | Actual off-monitor-boundary local edges with independent phases |
+| [`sim/tests/r08_rtl_tests.cc`](tests/r08_rtl_tests.cc) | Local directed/fault tests and 96-episode stateful fuzz | Clock corners, source freeze, static/fast rails, permissive guard/control faults, queue containment and rearm ordering |
+| [`sim/tests/r08_integration_tests.cc`](tests/r08_integration_tests.cc) | Actual complete R05/R06/R07/R08 composition | Signed quorum, lease expiry, physical stop, live SPI management, fresh ARM, sensor withdrawal and unsupported OTP promises |
+| [`sim/rtl/r08_test_top.sv`](rtl/r08_test_top.sv) | Exact production enforcement bank plus simulation-only fault sites/sinks | Persistent checker faults, common control ties and independently counted final receiver effects |
+| [`sim/rtl/r08_integration_top.sv`](rtl/r08_integration_top.sv) | Enforced device with retained OTP and external receiver accounting | No manual stop acknowledgement; actual internal closure and sealed-memory host verification |
 
 [`sim/rtl/sha256_test_top.sv`](rtl/sha256_test_top.sv) is the simulation-only top
 for [`rtl/sha256_compress.sv`](../rtl/sha256_compress.sv) and
@@ -138,6 +151,8 @@ build/<configuration>/r06-integration/reins-r06-integration-tests  Actual R05/R0
 build/<configuration>/r07-rtl/reins-r07-tests        Actual SPI/controller/SRAM; independent byte oracle
 build/<configuration>/r07-integration/reins-r07-integration-tests  Actual R05/R06/R07; memory-backed host crypto
 build/<configuration>/r07-memory/reins-r07-memory-tests  Exact production memory wrapper; exhaustive ECC/control faults
+build/<configuration>/r08-rtl/reins-r08-tests           Independent-clock local guards/queues/effects and fault fuzz
+build/<configuration>/r08-integration/reins-r08-integration-tests  Signed quorum through actual dynamic endpoint isolation
 ```
 
 The configuration is `release` or `sanitize`. The two small I/O/diagnostic headers
@@ -191,6 +206,48 @@ each meaningful tick; it does not match microstates or internal generation
 numbers. Seeded traffic exercises delayed/invalid/duplicate jobs, cancellation,
 rollover, holds and resets. The integration executable includes real R05 SHA
 hashing and raw-source conditioning instead of abstracting those inputs.
+
+### R08 endpoint enforcement state
+
+The execution lease still lives in `reins_controller`; local enforcement never
+extends it. `reins_device_enforced` derives two independent authorizations and
+feeds `reins_enforcement_bank`'s dynamic source. Rail level/counter state lives in
+`reins_permit_source`; fresh-ARM epoch, actual closure history, quiet-sample count
+and sticky enforcement fault live in the bank. Every endpoint has its own A/B
+guard synchronizers/watchdogs/qualification and separate actuator OPEN/CLOSING/
+CLOSED state. Each actuator drives a distinct clock cell and final outbound cut.
+The producer's work/mailbox state uses the actual gated compute clock, while its
+four-entry queue and the stop monitor use always-on clocks.
+
+The stop certificate comes from actual modeled closed-cell readbacks and empty
+queues, then crosses into R06 as a trusted acknowledgement. `r08_integration_top`
+has no host ACK input. Ordinary SPI reads continue after protected clocks stop.
+The relay here is external C++ host logic; no new on-die management CPU or
+protected outbound bypass is modeled.
+
+`EnforcementOracle` keeps only semantic run identity, immutable real-time stop
+bounds, observed work/effect counts and last outbound sequence, in host memory.
+`r08_test_support.h` drives eleven independent clocks and per-branch routed
+transitions. It observes actual protected clock edges and final sink handshakes,
+not RTL guard counters. The six-clock `LocalClockDriver` extends the existing
+pin bench for complete-device integration. See the
+[R08 guide](../docs/R08_ENDPOINT_ENFORCEMENT.md) for the real-time inequalities,
+reset/power distinctions, interface list and physical assumptions.
+
+```sh
+make r08-tests
+make r08-unit-tests
+REINS_R08_SEED=12345 make r08-unit-tests
+make SANITIZE=1 r08-unit-tests
+REINS_R08_TRACE=1 make RTL_TRACE=1 r08-tests
+```
+
+All runs retain `events.jsonl` (clock profiles, seeds, ties, withdrawal/closure,
+work/effect totals), `performance.json`, coverage, logs and optional bounded FST.
+The full-device cases print every signed request before its response upload.
+Normal `quick-tests` includes directed and integration cases; `tests` also runs
+the extended 96-episode fault/clock stream. Tests do not establish physical
+clock floors, metastability coverage, cell mapping or a silicon stop bound.
 
 ### R07 SPI and receive state
 
@@ -793,6 +850,8 @@ For the full `make tests` suite, the main paths are:
 | `r07-rtl/` | GPIO transcript for every exchange, public fuzz corpus/seed/actions, native-budget/race results, actual memory-backed pass counts, coverage and optional FST |
 | `r07-integration/` | Actual R05/R06/R07 pin-level ARM/RENEW, reset/OTP/sensor cases, public events, real pass counts, coverage and optional FST |
 | `r07-memory/` | Exhaustive ECC bit-case counts, row/owner/control/seal results, actual clock counts and per-model coverage |
+| `r08-rtl/` | Independent clock/route profiles, fault actions, work/effect observations, actual closure and optional bounded FST |
+| `r08-integration/` | Complete-device signed inputs, actual stop latency, live management/fresh ARM, coverage and real verification counts |
 | `rtl-lint/output.log` | Standalone production-module checks with assertions and with `SYNTHESIS` defined |
 | `sim-report/output.log` | CLI scenario expectations and observed status |
 | `sim-report/cli-artifacts/` | Individual CLI stdout/stderr, command records, JSON and negative-case inputs |
@@ -830,7 +889,8 @@ R05 builds on it with digital startup, configuration, timing and fresh entropy
 control and a documented trusted internal lease gate. R06 implements the quorum/
 lease controller and actual R05 composition with software-backed verification.
 R07 adds pin-level SPI and protected sealed-memory reception, including actual
-fresh memory reads in each host pass. Merkle/SLH-DSA hardware, endpoint enforcement,
+fresh memory reads in each host pass. R08 supplies dynamic permit, dual local
+guards, queue containment and actual stop completion. Merkle/SLH-DSA hardware,
 R03 internal fault campaigns and physical
 qualification remain separate work. Passing SHA tests does not establish safe
 sharing between verification passes. The software mutation/stale/stall cases

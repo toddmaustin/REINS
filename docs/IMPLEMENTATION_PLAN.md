@@ -8,7 +8,9 @@ local build and test commands and evidence for the behavior it introduces.
 This document is the development roadmap. The fixed scope and PR 02 software
 reference milestone are implemented. R04 SHA-256, R05 configuration/reset/time/
 entropy, R06 operational controller and R07 SPI/sealed receive RTL are implemented
-with Verilator tests. R07 includes an independent byte-level C++ oracle, actual
+with Verilator tests. R08 now adds dynamic dual permit rails, independent local
+guards and modeled endpoint isolation/queue containment, with trusted stop
+completion and live management. R07 includes an independent byte-level C++ oracle, actual
 memory-backed host verification and real R05/R06/R07 pin integration. Remaining RTL milestones
 are open; software/Python validation is not evidence that their RTL exists.
 
@@ -26,7 +28,8 @@ PR 02 now adds the complete software device/authority/relay behavioral model,
 state/lease reporting, pinned public replay corpus and semantic completion tests.
 Component RTL modes, real-cycle measurements and bounded FST now exist for R04/05.
 Pin-level SPI, native receive timeouts and sealed-memory fault evidence now exist
-in R07. Full verifier hardware and physical authorization/enforcement remain with
+in R07. R08 now supplies digital endpoint enforcement and real-time clock/fault
+evidence. Full verifier hardware and physical authorization/enforcement qualification remain with
 their dependent milestones. R03 protected primitives/internal fault campaigns are
 deferred by the current development decision.
 
@@ -312,6 +315,12 @@ zero. Add byte-level fuzzing, seal/address faults, and abort/rollover/reset race
 
 ### PR 08 — Dynamic permit and local endpoint enforcement
 
+**Implemented digitally.** See the [R08 enforcement guide](R08_ENDPOINT_ENFORCEMENT.md)
+for the three-endpoint/six-guard architecture, exact 1.1 ms platform bound,
+OTP timing compatibility, internal stop certificate, live external management
+relay and reproducible directed/fault/stateful-fuzz commands. Physical clock,
+cell, reset, route and stop-bound qualification remains open.
+
 **Deliver:** permit transitions and independently enforcing local guards at every
 modeled isolation endpoint. Include representative protected compute and outbound
 transaction generators, queue containment, trusted stop completion, and a live
@@ -527,8 +536,8 @@ behavior; and measure environmental/fault coverage and the actual stop bound.
 Sharing SHA hardware or broadening N/Q is a later change requiring renewed
 performance, fault, and regression evidence.
 
-**Next development action: PR 08.** Connect dynamic permit and independently
-enforcing local guards to representative protected compute/outbound endpoints,
-and derive trusted stop acknowledgement from completed enforcement.
+**Next development action: PR 09.** Implement expected-grant construction and
+Merkle verification using actual SHA-256, preserving the independent two-pass
+acceptance boundary and R08 endpoint enforcement.
 Keep R03 protected primitives and general internal fault campaigns explicitly
 deferred until their implementation and integration are resumed.

@@ -180,11 +180,13 @@ template<class Dut> void clear_verifier(Dut& dut) {
 // coverage, replay seed and measurements; return failure on ownership imbalance.
 inline int run(int argc, char** argv, const char* mode) {
     try {
+        const bool r08=std::string_view(mode).find("r08")!=std::string_view::npos;
         const bool r07=std::string_view(mode).find("r07")!=std::string_view::npos;
-        const char* label=r07 ? "R07" : "R06";
-        const char* seed_variable=r07 ? "REINS_R07_SEED" : "REINS_R06_SEED";
-        const char* trace_variable=r07 ? "REINS_R07_TRACE" : "REINS_R06_TRACE";
-        if (r07) evidence.seed=0x5245494e5307ULL;
+        const char* label=r08 ? "R08" : r07 ? "R07" : "R06";
+        const char* seed_variable=r08 ? "REINS_R08_SEED" : r07 ? "REINS_R07_SEED" : "REINS_R06_SEED";
+        const char* trace_variable=r08 ? "REINS_R08_TRACE" : r07 ? "REINS_R07_TRACE" : "REINS_R06_TRACE";
+        if (r08) evidence.seed=0x5245494e5308ULL;
+        else if (r07) evidence.seed=0x5245494e5307ULL;
         const char* directory=std::getenv("REINS_TEST_OUTPUT_DIR");
         evidence.directory=directory ? std::filesystem::path(directory) : std::filesystem::path("test-results")/
             (std::string("manual-")+mode+"-"+std::to_string(std::chrono::system_clock::now().time_since_epoch().count()));
