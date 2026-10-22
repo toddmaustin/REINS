@@ -6,6 +6,9 @@ implemented for **N=3, Q=2**, with simulation platform identifier **1**. The
 and 12, remains normative. Profile 1 is the existing public simulation profile
 used by `reference::Configuration`; it is not a qualified silicon platform.
 The supplied specification, validation files and baseline hashes are unchanged.
+R06 now connects this component to an actual RTL operational/lease controller;
+see [R06_CONTROLLER.md](R06_CONTROLLER.md). References below to the R06 boundary
+describe the R05 component's unit-test contract and original evidence scope.
 
 ## Implementation and trust boundary
 

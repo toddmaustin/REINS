@@ -44,6 +44,12 @@ R05_PRODUCTION := rtl/reins_config.sv rtl/reins_trusted_time.sv rtl/reins_source
 R05_SOURCES := rtl/sha256_compress.sv rtl/sha256_message.sv $(R05_PRODUCTION) sim/rtl/reins_otp_model.sv sim/rtl/r05_test_top.sv
 R05_DIR := $(abspath $(BUILD_DIR)/r05-rtl)
 R05_BINARY := $(BUILD_DIR)/r05-rtl/reins-r05-tests
+R06_CORE := rtl/reins_round_schedule.sv rtl/reins_lease_check.sv rtl/reins_controller.sv
+R06_PRODUCTION := $(R06_CORE) rtl/reins_device_control.sv
+R06_DIR := $(abspath $(BUILD_DIR)/r06-rtl)
+R06_BINARY := $(BUILD_DIR)/r06-rtl/reins-r06-tests
+R06_INTEGRATION_DIR := $(abspath $(BUILD_DIR)/r06-integration)
+R06_INTEGRATION_BINARY := $(BUILD_DIR)/r06-integration/reins-r06-integration-tests
 BASELINE_INPUTS := docs/implementation_baseline.json $(wildcard docs/REINS*) $(wildcard docs/validation/*) $(wildcard sim/fixtures/*) third_party/crypto-backend.json
 
 # Pass only explicit build settings to the logged recursive build. The runner
@@ -58,7 +64,7 @@ build: software-build rtl-build
 
 software-build: $(BUILD_DIR)/reins-sim $(BUILD_DIR)/reins-reference $(BUILD_DIR)/reins-sim-tests $(BUILD_DIR)/fixtures/ready.stamp
 
-rtl-build: $(RTL_BINARY) $(R05_BINARY)
+rtl-build: $(RTL_BINARY) $(R05_BINARY) $(R06_BINARY) $(R06_INTEGRATION_BINARY)
 
 # Check production modules independently of the passive observation/test top.
 rtl-lint: check-rtl-tools
@@ -66,6 +72,8 @@ rtl-lint: check-rtl-tools
 	$(VERILATOR) --lint-only -Wall -DSYNTHESIS --top-module sha256_message rtl/sha256_compress.sv rtl/sha256_message.sv
 	$(VERILATOR) --lint-only -Wall --assert --top-module reins_platform_control rtl/sha256_compress.sv rtl/sha256_message.sv $(R05_PRODUCTION)
 	$(VERILATOR) --lint-only -Wall -DSYNTHESIS --top-module reins_platform_control rtl/sha256_compress.sv rtl/sha256_message.sv $(R05_PRODUCTION)
+	$(VERILATOR) --lint-only -Wall --assert --top-module reins_device_control rtl/sha256_compress.sv rtl/sha256_message.sv $(R05_PRODUCTION) $(R06_PRODUCTION)
+	$(VERILATOR) --lint-only -Wall -DSYNTHESIS --top-module reins_device_control rtl/sha256_compress.sv rtl/sha256_message.sv $(R05_PRODUCTION) $(R06_PRODUCTION)
 
 check-rtl-tools:
 	@$(PYTHON) -c 'import re, subprocess, sys; version=subprocess.check_output(sys.argv[1:]+["--version"], text=True); print(version, end=""); match=re.match(r"Verilator ([0-9]+)\.", version); sys.exit(0 if match and int(match[1])>=5 else "Verilator 5+ required")' $(VERILATOR)
@@ -117,6 +125,21 @@ $(R05_BINARY): $(R05_SOURCES) sim/tests/r05_rtl_tests.cc Makefile $(LIB_OBJECTS)
 	  -CFLAGS '-std=c++20 -Wall -Wextra $(OPT_FLAGS) $(OPENSSL_CFLAGS) -I$(abspath sim/include) -isystem $(abspath $(DOCTEST_DIR)) $(CXXFLAGS)' \
 	  -LDFLAGS '$(abspath $(LIB_OBJECTS)) $(PROJECT_LDFLAGS) $(LDFLAGS) $(OPENSSL_LIBS) $(LDLIBS)'
 
+$(R06_BINARY): $(R06_CORE) sim/rtl/r06_test_top.sv sim/tests/r06_rtl_tests.cc sim/include/reins/r06_test_support.h Makefile $(LIB_OBJECTS) $(DOCTEST_HEADER) $(BUILD_DIR)/build-config.json | check-tools check-rtl-tools verify-deps
+	@mkdir -p $(R06_DIR)
+	$(VERILATOR) --cc --exe --build -j 2 --assert --coverage-line --output-split 10000 --output-split-cfuncs 500 $(RTL_TRACE_FLAGS) -Wall --top-module r06_test_top \
+	  --Mdir $(R06_DIR) -o reins-r06-tests $(R06_CORE) sim/rtl/r06_test_top.sv $(abspath sim/tests/r06_rtl_tests.cc) \
+	  -CFLAGS '-std=c++20 -Wall -Wextra $(OPT_FLAGS) $(OPENSSL_CFLAGS) -I$(abspath sim/include) -isystem $(abspath $(DOCTEST_DIR)) $(CXXFLAGS)' \
+	  -LDFLAGS '$(abspath $(LIB_OBJECTS)) $(PROJECT_LDFLAGS) $(LDFLAGS) $(OPENSSL_LIBS) $(LDLIBS)'
+
+$(R06_INTEGRATION_BINARY): $(R05_SOURCES) $(R06_PRODUCTION) sim/rtl/r06_integration_top.sv sim/tests/r06_integration_tests.cc sim/include/reins/r06_test_support.h Makefile $(LIB_OBJECTS) $(DOCTEST_HEADER) $(BUILD_DIR)/build-config.json | check-tools check-rtl-tools verify-deps
+	@mkdir -p $(R06_INTEGRATION_DIR)
+	$(VERILATOR) --cc --exe --build -j 2 --assert --coverage-line --output-split 10000 --output-split-cfuncs 500 $(RTL_TRACE_FLAGS) -Wall --top-module r06_integration_top \
+	  --Mdir $(R06_INTEGRATION_DIR) -o reins-r06-integration-tests rtl/sha256_compress.sv rtl/sha256_message.sv $(R05_PRODUCTION) $(R06_PRODUCTION) \
+	  sim/rtl/reins_otp_model.sv sim/rtl/r06_integration_top.sv $(abspath sim/tests/r06_integration_tests.cc) \
+	  -CFLAGS '-std=c++20 -Wall -Wextra $(OPT_FLAGS) $(OPENSSL_CFLAGS) -I$(abspath sim/include) -isystem $(abspath $(DOCTEST_DIR)) $(CXXFLAGS)' \
+	  -LDFLAGS '$(abspath $(LIB_OBJECTS)) $(PROJECT_LDFLAGS) $(LDFLAGS) $(OPENSSL_LIBS) $(LDLIBS)'
+
 regenerate-reference-fixtures: $(BUILD_DIR)/reins-generate-fixtures
 	$(PYTHON) -E -s -B tools/generate_reference_fixtures.py --generator $(BUILD_DIR)/reins-generate-fixtures
 
@@ -145,8 +168,8 @@ clean-deps:
 	rm -rf -- .deps
 
 help:
-	@echo 'make build          Build the C++ CLIs/tests and Verilator SHA-256/R05 tests (default)'
-	@echo 'make rtl-build      Build assertion/coverage-enabled SHA-256/R05 tests and C++ oracle objects'
+	@echo 'make build          Build C++ CLIs/tests and Verilator SHA-256/R05/R06 tests (default)'
+	@echo 'make rtl-build      Build RTL component/integration tests and C++ oracle objects'
 	@echo 'make rtl-lint       Check standalone production RTL with/without SYNTHESIS'
 	@echo 'make software-build Build only the independent C++ simulator and tests'
 	@echo 'make quick-tests    Build and run fast checks; retain every run'

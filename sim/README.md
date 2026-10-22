@@ -13,6 +13,12 @@ and general internal fault injection are deferred.
 R05 adds a second Verilator executable for actual configuration/reset/time/entropy
 RTL. Its [platform profile](../docs/R05_PLATFORM_PROFILE.md) documents every
 technology boundary and the predictable digital source settings.
+R06 now adds the real operational controller and its actual R05 composition.
+Fast controller tests use two real host verification passes and compare semantic
+requests/votes/leases with the independent C++ device. The
+[R06 guide](../docs/R06_CONTROLLER.md) specifies the boundary, priorities and
+stateful fuzzing; it does not claim full RTL signature verification or R03 physical
+fault protections.
 
 This directory contains the simulator: `src/` holds implementation files,
 `include/reins/` holds interfaces, and `tests/` holds C++ tests. All commands below
@@ -46,15 +52,15 @@ scenarios. `reins-sim` preserves the original low-level verification harness for
 the two supplied RENEW round-3 replies. A verified signature becomes a vote only
 after the device model checks its current context, deadlines, hold and distinct
 slot. The modeled permit is a software result. A pin-level SPI driver,
-SystemVerilog quorum/lease controller and its Verilator integration are later
-milestones. R05 already integrates startup, configuration, trusted time and
-entropy components and tests their gate on a reference-model-authorized lease.
+SystemVerilog SPI/receive/physical-enforcement integration remain later milestones.
+R06 now supplies the real quorum/lease controller and connects the R05 startup,
+configuration, trusted time and entropy components to it.
 See the [implementation plan](../docs/IMPLEMENTATION_PLAN.md) and
 [simulation strategy](../docs/SIMULATION_STRATEGY.md).
 
 ## Source map
 
-These are the sixteen current C++ source/header files in `sim/`:
+These are the nineteen current C++ source/header files in `sim/`:
 
 | File | Responsibility | Main entry points |
 |---|---|---|
@@ -74,6 +80,9 @@ These are the sixteen current C++ source/header files in `sim/`:
 | [`sim/tests/reference_tests.cc`](tests/reference_tests.cc) | R02 completion and boundary regressions | Every quorum pair, withholding, duplicate/mixed contexts, reset/entropy, receive races, expiry and deterministic long timelines |
 | [`sim/tests/sha256_rtl_tests.cc`](tests/sha256_rtl_tests.cc) | Clocked R04 Verilator driver and independent OpenSSL scoreboard | Compression/padding known answers, arbitrary states, directed/fuzz/interface-corruption checks, measurements and retained artifacts |
 | [`sim/tests/r05_rtl_tests.cc`](tests/r05_rtl_tests.cc) | Clocked R05 platform-control driver, independent configuration/raw-health/conditioner oracles and signed reference leases | OTP closure and invalid fields, cold/warm/power history, fresh samples, hold/expiry/fault boundaries, cancellation, seeded timelines, retained evidence |
+| [`sim/include/reins/r06_test_support.h`](include/reins/r06_test_support.h) | Shared test-only real verifier adapter, public batched authorities and evidence collector | `Corpus`, `Backend`, immutable job capture, independent per-pass verification, stale results and retained replay inputs |
+| [`sim/tests/r06_rtl_tests.cc`](tests/r06_rtl_tests.cc) | Real controller with qualified platform inputs and C++ semantic oracle | Exact requests, all quorum pairs, fixed leases, wrong contexts, deadline/stop/cancellation priority, identity limits and stateful fuzz |
+| [`sim/tests/r06_integration_tests.cc`](tests/r06_integration_tests.cc) | Actual production R05/R06 composition with host signature verification | Real OTP/source/SHA/time startup, ARM/RENEW, hold/expiry, trusted stop and cold fault recovery |
 
 [`sim/rtl/sha256_test_top.sv`](rtl/sha256_test_top.sv) is the simulation-only top
 for [`rtl/sha256_compress.sv`](../rtl/sha256_compress.sv) and
@@ -90,6 +99,14 @@ also exposes passive actual-SHA observations and separate reduced-width time/raw
 health probes for exact boundary tests. Those probes cannot feed a production
 nonce or permission result.
 
+[`sim/rtl/r06_test_top.sv`](rtl/r06_test_top.sv) exposes the controller's trusted
+qualified-platform and verifier boundary **only for simulation**. It also has a
+separate reduced-limit instance and independent schedule/lease-check probes.
+[`sim/rtl/r06_integration_top.sv`](rtl/r06_integration_top.sv) instead instantiates
+actual [`reins_device_control`](../rtl/reins_device_control.sv) and retained OTP.
+That production component wires the committed lease internally to R05; no host
+lease input or software SHA bypass is introduced.
+
 The common crypto, verifier, device, authority and scenario objects are linked
 into these programs:
 
@@ -100,6 +117,8 @@ build/<configuration>/reins-sim-tests   verifier_tests.cc + reference_tests.cc
 build/<configuration>/reins-generate-fixtures  Explicit generator target only
 build/<configuration>/sha256-rtl/reins-sha256-tests  Actual clocked SHA hardware tests
 build/<configuration>/r05-rtl/reins-r05-tests        Actual platform-control hardware tests
+build/<configuration>/r06-rtl/reins-r06-tests        Real controller / host crypto / C++ oracle
+build/<configuration>/r06-integration/reins-r06-integration-tests  Actual R05/R06 hardware / host crypto
 ```
 
 The configuration is `release` or `sanitize`. The two small I/O/diagnostic headers
@@ -125,7 +144,7 @@ bytes pass digital health tests but provide **no assessed entropy**.
 | Per-source health/startup counters and failure | Two `reins_source_health` instances |
 | Fresh raw buffers, active draw/deadline, conditioned nonce | `reins_entropy` registers |
 | Previous sampled nonce, history-valid, sticky hold | `reins_entropy`; retained across warm and recognized cold events, lost on actual power loss |
-| Armed/vote/committed lease state | Still `reference::Device` in software; actual RTL state belongs to R06 |
+| Armed/vote/committed lease state | Independent `reference::Device` in software and now `reins_controller` registers in RTL |
 
 For the signed-lease examples, the harness takes the **actual RTL nonce**, asks
 two independently keyed C++ authorities to sign its requests, and sends both real
@@ -135,6 +154,24 @@ checks startup/general health, generation and current time. Permission must matc
 the reference through an entropy hold and the original expiry. This checks the
 R05 gate without claiming an implemented RTL quorum/lease controller. All signed
 requests are printed before verification, including rejected checks.
+
+R06 has its own controller tests and production composition. Its `state_q`
+distinguishes WAIT_ARM from RUNNING; `context_q` holds one round/nonce/I/B/E/kind,
+`votes_q` counts distinct authority slots, and `issue_q`/`expiry_q`/`remaining_q`
+store the committed lease. Complemented mirrors are checked digitally. A separate
+lease checker compares issue age against the saturating remaining counter.
+Run/token/job identities persist through logic resets, and old completions must
+match the full immutable request/context before voting. These checks are not a
+substitute for deferred R03 physical capture/replica/fan-out protections.
+
+The R06 adapter captures actual RTL job pins and the actual untrusted reply,
+then performs two complete host verifications. The RTL separately owns live
+acceptance, deadlines, bitmap and commit. `r06_rtl_tests.cc` compares settled
+requests, votes, permit and issue/expiry/remaining against the C++ device after
+each meaningful tick; it does not match microstates or internal generation
+numbers. Seeded traffic exercises delayed/invalid/duplicate jobs, cancellation,
+rollover, holds and resets. The integration executable includes real R05 SHA
+hashing and raw-source conditioning instead of abstracting those inputs.
 
 Cold recognition and retention loss are deliberately separate: a cold event
 keeps previous-nonce history if power survives, while `por_ni=0` discards it.
@@ -541,6 +578,10 @@ For the SHA harness, `REINS_SHA_SEED=12345 make tests` replays a chosen fuzz see
 `REINS_SHA_TRACE=1 make RTL_TRACE=1 quick-tests` saves a bounded FST waveform.
 For R05, use `REINS_R05_SEED=12345 make tests` and
 `REINS_R05_TRACE=1 make RTL_TRACE=1 quick-tests` respectively.
+For R06, use `REINS_R06_SEED=12345 make tests` and
+`REINS_R06_TRACE=1 make RTL_TRACE=1 quick-tests`. Both R06 executables retain
+their own mode, public input/event log, coverage and measurements. First sanitizer
+builds can take several minutes; every build/test stream remains on disk.
 
 To run a CLI replay while retaining both output streams in a new directory:
 
@@ -688,6 +729,8 @@ For the full `make tests` suite, the main paths are:
 | `sim-directed/output.log` | C++ assertions, complete requests and illustrative timelines |
 | `sha256-rtl/` | Actual RTL test output, public transaction JSONL, performance JSON, per-model line coverage and optional bounded FST |
 | `r05-rtl/` | OTP/reset/time/entropy RTL logs, actual conditioner-frame/nonces JSONL, profile/seed/SHA ownership/performance JSON, per-model coverage and optional bounded FST |
+| `r06-rtl/` | Fast-control logs, public OTP/request/reply/latency events, semantic comparisons, fuzz actions, real software pass counts, seed/ownership/performance, coverage and optional FST |
+| `r06-integration/` | Actual R05/R06 platform/controller logs, host verification jobs, mode/measurements, coverage and optional FST |
 | `rtl-lint/output.log` | Standalone production-module checks with assertions and with `SYNTHESIS` defined |
 | `sim-report/output.log` | CLI scenario expectations and observed status |
 | `sim-report/cli-artifacts/` | Individual CLI stdout/stderr, command records, JSON and negative-case inputs |
@@ -722,8 +765,9 @@ The RTL must independently enforce the live acceptance conditions before voting;
 the reference does not dictate RTL microstates. R04 supplies the functional SHA
 primitive and bounded message wrapper with actual RTL fuzz/interface checks.
 R05 builds on it with digital startup, configuration, timing and fresh entropy
-control and a documented trusted internal lease gate. Merkle/SLH-DSA and quorum
-controller integration, R03 internal fault campaigns and physical
+control and a documented trusted internal lease gate. R06 implements the quorum/
+lease controller and actual R05 composition with software-backed verification.
+Merkle/SLH-DSA hardware, receive/SPI/enforcement integration, R03 internal fault campaigns and physical
 qualification remain separate work. Passing SHA tests does not establish safe
 sharing between verification passes. The software mutation/stale/stall cases
 establish only their declared software behaviors.

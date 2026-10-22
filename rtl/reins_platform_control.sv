@@ -110,6 +110,7 @@ module reins_platform_control (
         .clk_i(clk_i), .por_ni(por_ni), .cold_reset_i(cold_reset_i), .warm_reset_i(warm_reset_i),
         .cancel_i(run_end_i || fatal_o), .monitor_i(monitored), .source_failure_i(a_failed || b_failed),
         .run_start_i(run_start), .now_i(now_o), .generation_i(entropy_generation), .window_i(window_o),
+        .tick_i(reference_a_i && run_active_o && !time_alarm),
         .draw_valid_i(draw_valid_i && run_active_o), .draw_ready_o(draw_ready_o), .draw_rejected_o(draw_rejected_o),
         .draw_round_i(draw_round_i), .draw_issue_i(draw_issue_i),
         .a_valid_i(source_a_valid_i), .a_bit_i(source_a_bit_i), .a_time_i(source_a_time_i),
