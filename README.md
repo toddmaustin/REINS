@@ -52,7 +52,7 @@ and keeps the logs for inspection.
 | Trusted CA certificates | Let Python verify HTTPS when downloading the test dependency |
 | pkg-config | Finds the installed OpenSSL headers and library |
 | OpenSSL **3.5 or newer development package** | Independent SHA-256 / FIPS 205 SLH-DSA backend, with the default provider's SLH-DSA support |
-| Verilator **5+** | Compiles and runs the SHA-256 and R05 configuration/entropy RTL with assertions and line coverage; tested with **5.032** |
+| Verilator **5+** | Compiles and runs the SHA-256, R05 configuration/entropy and R06 controller/integration RTL with assertions and line coverage; tested with **5.008 and 5.032** |
 
 OpenSSL's development package includes headers and `libcrypto`, not just the
 `openssl` executable. Many older systems supply OpenSSL 3.0 or 3.4, which do not
