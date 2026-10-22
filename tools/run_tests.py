@@ -216,6 +216,10 @@ def suite_steps(suite, build_dir, test_filter, make_command="make"):
         if suite == "quick":
             rtl += ["--test-case-exclude=*extended*"]
         steps.insert(1, Step("sha256-rtl", rtl, count_kind="doctest"))
+        r05 = [str(build_dir / "r05-rtl/reins-r05-tests"), "--no-colors", "--duration"]
+        if suite == "quick":
+            r05 += ["--test-case-exclude=*extended*"]
+        steps.insert(2, Step("r05-rtl", r05, count_kind="doctest"))
         steps.insert(1, Step("rtl-lint", shlex.split(make_command)+["--no-print-directory", "rtl-lint"]))
         steps.append(Step("sim-report", python + [str(ROOT / "tools/test_sim_report.py"),
             "--executable", str(build_dir / "reins-sim"), "--fixtures", str(build_dir / "fixtures")]))

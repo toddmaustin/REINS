@@ -11,11 +11,16 @@ provisioning, reset, entropy events, ARM/RENEW rounds, two-of-three voting, exec
 leases, receive jobs, stopping, test authorities and an untrusted relay. It uses
 real host signature verification. **R04 adds iterative SHA-256 SystemVerilog RTL
 and a C++ Verilator harness** with message padding, directed tests, seeded fuzz,
-interface-corruption checks and measured cycles/throughput. R03 protected
+interface-corruption checks and measured cycles/throughput. **R05 adds configuration,
+reset, timing and entropy-control RTL**: physically interlocked public OTP,
+permanent closure, startup qualification, fresh two-source SHA conditioning,
+retained nonce-repeat checks and sticky entropy hold. R03 protected
 primitives and general fault-injection infrastructure are deferred. The REINS
 controller and signature-verification RTL remain later work. These tests do not
 prove physical clock, randomness, isolation or fault-resistance properties.
 See the [RTL guide](rtl/README.md) for interfaces and hashing tests.
+The [R05 platform profile](docs/R05_PLATFORM_PROFILE.md) explains which digital
+checks are implemented and which timing/entropy inputs need physical evidence.
 
 ## Start here
 
@@ -41,7 +46,7 @@ and keeps the logs for inspection.
 | Trusted CA certificates | Let Python verify HTTPS when downloading the test dependency |
 | pkg-config | Finds the installed OpenSSL headers and library |
 | OpenSSL **3.5 or newer development package** | Independent SHA-256 / FIPS 205 SLH-DSA backend, with the default provider's SLH-DSA support |
-| Verilator **5+** | Compiles and runs the actual SHA-256 RTL with assertions and line coverage; tested with **5.032** |
+| Verilator **5+** | Compiles and runs the SHA-256 and R05 configuration/entropy RTL with assertions and line coverage; tested with **5.032** |
 
 OpenSSL's development package includes headers and `libcrypto`, not just the
 `openssl` executable. Many older systems supply OpenSSL 3.0 or 3.4, which do not
@@ -149,12 +154,12 @@ installing cached files too. A failed download requires no `make clean`.
 
 | Command | What it does |
 |---|---|
-| `make build` | Builds the C++ simulators/tests, prepares input data, and builds the Verilated SHA-256 tests |
+| `make build` | Builds the C++ simulators/tests, prepares input data, and builds the Verilated SHA-256 and R05 tests |
 | `make software-build` | Builds only the independent C++ simulators/tests and input data |
-| `make rtl-build` | Builds only the assertion/coverage-enabled SHA-256 Verilator test executable |
+| `make rtl-build` | Builds the assertion/coverage-enabled SHA-256 and R05 Verilator test executables and their required C++ oracle objects |
 | `make rtl-lint` | Checks production RTL with assertions and with `SYNTHESIS` defined, independently of the simulation top |
-| `make quick-tests` | Builds as needed and runs fast checks, skipping fresh key generation/signing |
-| `make tests` | Builds as needed and runs all current software, SHA-256 RTL and infrastructure checks |
+| `make quick-tests` | Builds as needed and runs bounded directed checks, including R05 signed-lease examples; skips extended fuzz and the larger software host-signing cases |
+| `make tests` | Builds as needed and runs all current software, SHA-256/R05 RTL and infrastructure checks |
 | `make baseline-tests` | Runs source/fixture/tool checks using only Python; no C++ build or OpenSSL package needed |
 | `make sanitize-tests` | Builds/runs the full suite with C++ address/undefined-behavior sanitizers |
 | `make regenerate-reference-fixtures` | Explicitly generates new public R02 keys/signatures and provenance; changes tracked fixtures |
@@ -208,6 +213,13 @@ that can be restored after reset.
 then stops at tick 360000000 even though the third authority continues supplying
 fresh signatures. See [sim/README.md](sim/README.md) for a complete replay command,
 the script language, architecture and state/lease field definitions.
+
+The R05 RTL stores configuration, startup state, local time and entropy history
+in the registers described in [sim/README.md](sim/README.md#r05-platform-control-and-state).
+It gates a trusted internal lease supplied at the future R06 boundary. The actual
+armed/vote/committed-lease registers still belong to R06; R05 cannot authorize
+execution on its own. Predictable test-source bits exercise the digital path
+without establishing physical randomness.
 
 ## What are fixtures?
 
@@ -268,6 +280,7 @@ physical randomness.
 | `build` | Can the selected compiler/OpenSSL build the actual programs and prepare verified inputs? |
 | `sim-directed` | Do known signatures verify, tampered data fail, configuration/request/key bindings hold, and simulated jobs obey timing, cancellation and immutable-input rules? |
 | `sha256-rtl` | Do actual clocked compression and message-padding RTL match published answers and OpenSSL, including arbitrary states, boundaries, seeded fuzz, backpressure, cancellation and interface corruption? |
+| `r05-rtl` | Do OTP validation/closure, cold/warm resets, independent time, raw health, fresh conditioned nonces and retained repeat checks behave correctly? Does hold preserve an already authorized lease to its original expiry while general alarms withdraw it immediately? |
 | `rtl-lint` | Do the standalone production modules pass fatal-warning lint/elaboration with assertions and with simulation assertions excluded for synthesis? |
 | `baseline` | Are the normative source files unchanged, the implementation fixed at 3/2, and the fixture OTP header supported? The full suite also runs the original Python review validation. |
 | `tool-regressions` | Do unsupported profiles and source changes fail? In the full suite, do TLS trust, download diagnostics, logging, failure status, timeouts, empty selection, retention and clean behavior work? |
@@ -275,17 +288,20 @@ physical randomness.
 | `reference-fixtures` | Do all R02 artifact hashes, public input bindings and Merkle roots match? The full suite cross-checks every new signature with the supplied Python verifier. |
 | `reference-report` | Do all six stateful scenarios replay identically, expose real state/lease decisions, reject false expectations, and retain request traces even for invalid evidence? |
 
-Currently the full suite contains 32 software C++ cases, 9 SHA-256 RTL C++ cases
-and 30 Python tool regressions, in addition to review/corpus/CLI checks. The quick
-suite runs 28 software and 8 RTL cases, plus 12 source/profile regressions. It still
+Currently the full suite contains 32 software C++ cases, 9 SHA-256 and 18 R05 RTL
+C++ cases and 30 Python tool regressions, in addition to review/corpus/CLI checks.
+The quick suite runs 28 software, 8 SHA-256 and 17 R05 cases, plus 12
+source/profile regressions. It still
 checks all 28 NIST outcomes, but skips
 the slower fresh-key signing case and the second Python cryptographic cross-check.
 Counts will grow as implementation progresses; saved logs record what executed.
 
-The `sha256-rtl` group exercises **actual SHA-256 hardware simulated on Verilator**;
-other groups exercise software. Current results do not exercise an RTL controller,
-actual SPI wiring or physical permit guards. The two-of-three lease system is
-modeled in C++; its correctness remains to be established independently in RTL.
+The `sha256-rtl` and `r05-rtl` groups exercise **actual hardware on Verilator**.
+R05 includes real RTL configuration/entropy SHA instances and compares its lease
+health/time gate with a signed quorum in the C++ reference model. The vote/lease
+controller, actual SPI wiring and physical permit guards remain later work.
+The complete two-of-three lease system is modeled in C++; its correctness remains
+to be established independently in RTL.
 The [implementation plan](docs/IMPLEMENTATION_PLAN.md) describes those next steps.
 
 ## Where are my results?
@@ -306,6 +322,10 @@ test-results/<timestamp>-full-release-<unique>/
   sha256-rtl/performance.json       Actual cycles/compression and simulator throughput
   sha256-rtl/transactions.jsonl     Public hash inputs, results and observed latencies
   sha256-rtl/coverage/              Per-model line coverage; optional sha256.fst alongside
+  r05-rtl/output.log               OTP/reset/time/entropy tests and signed-lease examples
+  r05-rtl/conditioner-events.jsonl  Actual public source frames and conditioned nonces
+  r05-rtl/performance.json         Profile/seed, SHA ownership, clocks and throughput
+  r05-rtl/coverage/                Per-model line coverage; optional r05.fst alongside
   rtl-lint/output.log               Standalone production/assertion/synthesis-path lint
   baseline/output.log               Source/profile and review checks
   baseline/review-package/          Retained generated review records (full suite)
