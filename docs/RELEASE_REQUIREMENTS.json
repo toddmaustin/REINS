@@ -1,0 +1,356 @@
+{
+  "version": 1,
+  "scope": "N=3 Q=2 v0.3 digital research profile; evidence is not physical qualification",
+  "requirements": [
+    {
+      "id": "SAFE-01",
+      "goal": "Authorization withdrawal and stopped protected effects",
+      "groups": [
+        "r06-rtl",
+        "r08-rtl",
+        "r10c-integration"
+      ],
+      "required_test": "*two withholding*"
+    },
+    {
+      "id": "BOUND-01",
+      "goal": "Fixed issue, expiry, clock and stop bounds",
+      "groups": [
+        "r06-rtl",
+        "r08-rtl",
+        "r10c-integration"
+      ],
+      "required_test": "*stalled second pass*"
+    },
+    {
+      "id": "CFG-01",
+      "goal": "Fixed N=3 Q=2 and public OTP checks",
+      "groups": [
+        "r05-rtl"
+      ],
+      "required_test": "*fixed OTP fields*"
+    },
+    {
+      "id": "PROV-01",
+      "goal": "Commissioning interlocks and permanent closure",
+      "groups": [
+        "r05-rtl",
+        "r07-integration"
+      ],
+      "required_test": "*commissioning interlocks*"
+    },
+    {
+      "id": "SIG-01",
+      "goal": "Selected official cases and real complete signatures",
+      "groups": [
+        "r10a-rtl",
+        "r10b-rtl",
+        "r10c-integration"
+      ],
+      "required_test": "*full RTL SPI ARM RENEW pair 0 1"
+    },
+    {
+      "id": "FRESH-01",
+      "goal": "No pre-issue samples or future nonce pool",
+      "groups": [
+        "r05-rtl",
+        "r06-rtl"
+      ],
+      "required_test": "*samples before issue*"
+    },
+    {
+      "id": "FRESH-02",
+      "goal": "Repeat history and reset freshness",
+      "groups": [
+        "r05-rtl",
+        "r06-rtl"
+      ],
+      "required_test": "*warm and recognized cold retain repeat history*"
+    },
+    {
+      "id": "ENT-01",
+      "goal": "Digital raw health and conditioner accounting",
+      "groups": [
+        "r05-rtl"
+      ],
+      "required_test": "*exact raw RCT APT*"
+    },
+    {
+      "id": "VOTE-01",
+      "goal": "Distinct authorities and fixed 2-of-3 quorum",
+      "groups": [
+        "r06-rtl",
+        "r10c-rtl",
+        "r10c-integration"
+      ],
+      "required_test": "*all quorum pairs*"
+    },
+    {
+      "id": "BATCH-01",
+      "goal": "Local expected grant and canonical Merkle paths",
+      "groups": [
+        "r09-rtl",
+        "r10c-rtl"
+      ],
+      "required_test": "*proof mutations fail both*"
+    },
+    {
+      "id": "ACCEPT-01",
+      "goal": "Independent two-pass acceptance and final join",
+      "groups": [
+        "r10c-rtl",
+        "r10c-integration"
+      ],
+      "required_test": "*complete independent passes*"
+    },
+    {
+      "id": "LEASE-01",
+      "goal": "Issue-relative nonbanking lease and strict deadlines",
+      "groups": [
+        "r06-rtl",
+        "r10c-integration"
+      ],
+      "required_test": "*second pass before at and after B*"
+    },
+    {
+      "id": "TIME-01",
+      "goal": "Independent trusted progress and overflow rejection",
+      "groups": [
+        "r05-rtl",
+        "r06-rtl",
+        "r10c-integration"
+      ],
+      "required_test": "*stalled second pass*"
+    },
+    {
+      "id": "RX-01",
+      "goal": "Single sealed receive SRAM and exact SPI envelopes",
+      "groups": [
+        "r07-rtl",
+        "r07-memory",
+        "r10c-rtl"
+      ],
+      "required_test": "*sealed write attempts*"
+    },
+    {
+      "id": "FAULT-02",
+      "goal": "Declared SRAM and common read/capture fault domains",
+      "groups": [
+        "r07-memory",
+        "r10c-rtl"
+      ],
+      "required_test": "*shared read data substitution*"
+    },
+    {
+      "id": "FAULT-03",
+      "goal": "Repeated/persistent acceptance-path campaigns",
+      "groups": [
+        "r10c-rtl"
+      ],
+      "required_test": "R11 extended*"
+    },
+    {
+      "id": "STOP-01",
+      "goal": "Two independently enforcing local guard paths",
+      "groups": [
+        "r08-rtl",
+        "r08-integration",
+        "r10c-integration"
+      ],
+      "required_test": "*two withholding*"
+    },
+    {
+      "id": "FAULT-01",
+      "goal": "Static rails, frozen source and permissive local guard faults",
+      "groups": [
+        "r08-rtl",
+        "r08-integration"
+      ],
+      "required_test": "*static*"
+    },
+    {
+      "id": "AUTH-01",
+      "goal": "Three independent test authorities and withholding policy",
+      "groups": [
+        "sim-directed",
+        "reference-fixtures",
+        "r10c-integration"
+      ],
+      "required_test": "*two withholding*"
+    },
+    {
+      "id": "ADMIT-01",
+      "goal": "Reference policy/batching behavior; aggregate rolling admission remains an explicit service/model gap",
+      "groups": [
+        "sim-directed",
+        "reference-report"
+      ],
+      "required_test": "*independent policy, real batching*"
+    }
+  ],
+  "required_groups": [
+    "sim-directed",
+    "sha256-rtl",
+    "r05-rtl",
+    "r06-rtl",
+    "r06-integration",
+    "r07-rtl",
+    "r07-integration",
+    "r07-memory",
+    "r08-rtl",
+    "r08-integration",
+    "r09-rtl",
+    "r09-integration",
+    "r10a-rtl",
+    "r10b-rtl",
+    "r10c-rtl",
+    "r10c-integration",
+    "r10c-evidence",
+    "r10b-evidence",
+    "r10a-evidence",
+    "rtl-lint",
+    "baseline",
+    "tool-regressions",
+    "reference-fixtures",
+    "sim-report",
+    "reference-report",
+    "production-build",
+    "production-full",
+    "production-evidence",
+    "formal",
+    "synthesis",
+    "reset",
+    "cdc",
+    "r11-spi",
+    "tool-versions",
+    "production-audit"
+  ],
+  "safety_states": {
+    "controller": {
+      "15": "UNPROVISIONED",
+      "51": "CLOSED_INIT",
+      "85": "WAIT_ARM",
+      "102": "RUNNING",
+      "153": "STOPPING",
+      "170": "STOPPED",
+      "204": "FAULT"
+    },
+    "verifier": {
+      "15": "IDLE",
+      "51": "START1",
+      "85": "WAIT1",
+      "105": "OUT1",
+      "150": "START2",
+      "170": "WAIT2",
+      "204": "OUT2"
+    },
+    "lane1": {
+      "15": "IDLE",
+      "51": "START_MERKLE",
+      "85": "MERKLE",
+      "105": "START_SLH",
+      "150": "SLH",
+      "170": "CHECK",
+      "204": "RESULT"
+    },
+    "lane2": {
+      "15": "IDLE",
+      "51": "START_MERKLE",
+      "85": "MERKLE",
+      "105": "START_SLH",
+      "150": "SLH",
+      "170": "CHECK",
+      "204": "RESULT"
+    }
+  },
+  "known_gaps": [
+    {
+      "id": "G-PHYSICAL",
+      "requirements": [
+        "SAFE-01",
+        "BOUND-01",
+        "FRESH-01",
+        "FRESH-02",
+        "ENT-01",
+        "TIME-01",
+        "STOP-01"
+      ],
+      "disposition": "platform_required",
+      "detail": "No assessed entropy, absolute clock floor, analog sensors, metastability, placement/isolation or physical stop qualification."
+    },
+    {
+      "id": "G-R03",
+      "requirements": [
+        "ACCEPT-01",
+        "FAULT-01",
+        "FAULT-02",
+        "FAULT-03",
+        "RX-01"
+      ],
+      "disposition": "deferred",
+      "detail": "R03 general protected primitives and exhaustive physical/shared-domain fault coverage remain deferred. Declared digital sites and durations are bounded campaigns, not fault completeness."
+    },
+    {
+      "id": "G-SIGNOFF",
+      "requirements": [
+        "CFG-01",
+        "PROV-01",
+        "FAULT-01",
+        "FAULT-02",
+        "FAULT-03"
+      ],
+      "disposition": "platform_required",
+      "detail": "Generic component synthesis and structural CDC inventory are separate from full-device mapping/STA/CDC/RDC, four-state power sequencing, macro substitution and redundant-path preservation."
+    },
+    {
+      "id": "G-AUTHORITY",
+      "requirements": [
+        "AUTH-01",
+        "ADMIT-01",
+        "BOUND-01"
+      ],
+      "disposition": "service_required",
+      "detail": "Test keys/policies are not durable admission, replicated operator holds, production custody or authority capacity. Profile assumes 80 ms signing plus 20 ms batch/relay; measured serial host signing can exceed W."
+    },
+    {
+      "id": "G-FORMAL",
+      "requirements": [
+        "LEASE-01",
+        "TIME-01",
+        "RX-01",
+        "ACCEPT-01",
+        "STOP-01"
+      ],
+      "disposition": "bounded_evidence",
+      "detail": "Small actual-RTL bounded properties only, with explicit environment/scope. No whole-device inductive, crypto, asynchronous analog or comprehensive X proof."
+    },
+    {
+      "id": "G-ADMIT-MODEL",
+      "requirements": [
+        "ADMIT-01"
+      ],
+      "disposition": "unimplemented",
+      "detail": "The reference Authority has policy, registration, delay and batch checks but no aggregate four-candidate rolling admission ledger. No model or production admission-cap claim is made."
+    }
+  ],
+  "required_case_counts": {
+    "sim-directed": 33,
+    "sha256-rtl": 9,
+    "r05-rtl": 18,
+    "r06-rtl": 21,
+    "r06-integration": 3,
+    "r07-rtl": 30,
+    "r07-integration": 2,
+    "r07-memory": 4,
+    "r08-rtl": 13,
+    "r08-integration": 2,
+    "r09-rtl": 9,
+    "r09-integration": 2,
+    "r10a-rtl": 12,
+    "r10b-rtl": 9,
+    "r10c-rtl": 14,
+    "r10c-integration": 5,
+    "r11-spi": 2,
+    "production-full": 1
+  }
+}

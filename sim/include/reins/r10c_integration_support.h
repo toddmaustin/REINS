@@ -49,6 +49,8 @@ public:
     }
     // Observe actual admission, cores, stages and completions just before the next monitor edge; no parameters.
     void observe() {
+        observe_state("controller",dut.state_o); observe_state("verifier",dut.verifier_state_o);
+        observe_state("lane1",dut.verifier_lane_state_o&255); observe_state("lane2",dut.verifier_lane_state_o>>8);
         const Tick edge_tick=absolute+unsigned(clocks%4==0);
         if (!observing_ && dut.job_valid_o && dut.job_ready_o) {
             VerificationInput input{{dut.job_run_o,dut.job_round_o,static_cast<std::uint8_t>(dut.job_slot_o)},unpack(dut.job_configuration_o,272),unpack(dut.job_request_o,128),uploaded_reply};

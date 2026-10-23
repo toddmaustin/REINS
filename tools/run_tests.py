@@ -4,6 +4,7 @@
 import argparse
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -19,6 +20,21 @@ import traceback
 import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def source_digest(cwd=ROOT):
+    """Hash cwd's first-party RTL, simulator, tooling, CI and release manifest, including uncommitted inputs."""
+    try:
+        paths = subprocess.check_output(["git", "ls-files", "--cached", "--others", "--exclude-standard"], cwd=cwd, text=True, stderr=subprocess.DEVNULL).splitlines()
+    except subprocess.CalledProcessError:
+        return None
+    inventory = {}
+    for name in sorted(set(paths)):
+        path = Path(cwd) / name
+        first_party = name.startswith(("rtl/", "sim/", "tools/")) and path.suffix in [".sv", ".cc", ".h", ".py", ".mk", ".json", ".trace", ".bin"]
+        if path.is_file() and (first_party or name.startswith(".github/") or name in ["Makefile", "docs/RELEASE_REQUIREMENTS.json", "third_party/verilator-tool.json"]):
+            inventory[name] = hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(json.dumps(inventory, sort_keys=True).encode()).hexdigest()
 
 
 @dataclass
@@ -131,6 +147,7 @@ def run_suite(suite, configuration, output_root, steps, *, build=None, cwd=ROOT,
         dirty = subprocess.run(["git", "status", "--porcelain"], cwd=cwd,
                                capture_output=True, text=True, check=False)
         summary["working_tree_dirty"] = bool(dirty.stdout) if dirty.returncode == 0 else None
+        summary["source_digest"] = source_digest(cwd)
     except OSError:
         summary.update(git_commit=None, working_tree_dirty=None)
     started = time.monotonic()
@@ -335,6 +352,10 @@ def suite_steps(suite, build_dir, test_filter, make_command="make", configuratio
         steps.insert(16, Step("r10c-rtl", r10c, timeout=r07_timeout, count_kind="doctest"))
         steps.insert(17, Step("r10c-integration", integrated, timeout=7200, count_kind="doctest"))
         steps.insert(18, Step("r10c-evidence", python + [str(ROOT / "tools/check_two_pass_report.py")], console_output=True))
+        r11 = [str(build_dir / "r11-spi/reins-r11-spi-tests"), "--no-colors", "--duration"]
+        if suite == "quick":
+            r11.append("--test-case=*minimized*")
+        steps.insert(19, Step("r11-spi", r11, timeout=r07_timeout, count_kind="doctest"))
         steps.insert(1, Step("rtl-lint", shlex.split(make_command)+["--no-print-directory", "rtl-lint"]))
         steps.append(Step("sim-report", python + [str(ROOT / "tools/test_sim_report.py"),
             "--executable", str(build_dir / "reins-sim"), "--fixtures", str(build_dir / "fixtures")]))
@@ -347,7 +368,7 @@ def main():
     """Parse process arguments and run the selected logged Make suite; no formal parameters."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--suite", choices=["quick", "full", "software", "baseline", "r07", "r08", "r08-unit", "r09", "r09-unit", "r10a", "r10b", "r10c-unit", "r10c", "r10c-integration"], default="full")
-    parser.add_argument("--configuration", choices=["release", "sanitize"], default="release")
+    parser.add_argument("--configuration", choices=["release", "sanitize", "production"], default="release")
     parser.add_argument("--build-dir", type=Path, default=ROOT / "build/release")
     parser.add_argument("--make-command", default="make")
     parser.add_argument("--jobs", default="4")

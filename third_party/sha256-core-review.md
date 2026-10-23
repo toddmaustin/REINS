@@ -27,7 +27,7 @@ That legacy API is deprecated by OpenSSL but exposes the exact compression
 operation needed here. Deprecation suppression is local to the test translation
 unit and does not change the production software verifier's API.
 
-Verilator's tested baseline is 5.032 (Debian package 5.032-1+b2), with assertion
+Verilator's active baseline is 5.008, with assertion
 and line-coverage support enabled; compatible version 5+ installations are accepted.
 Verilator is licensed under Artistic-2.0 or LGPL-3.0; consult the installed tool's
 copyright/license files for its distribution. No generated simulator source or

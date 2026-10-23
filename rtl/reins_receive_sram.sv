@@ -45,7 +45,7 @@ module reins_receive_sram (
             code[(1<<bit_number)-1]=parity;
         end
         code[115]=^code[114:0];
-        return code;
+        encode=code;
     endfunction
     // Extract code's data bits; callers independently reject every nonzero syndrome/parity.
     function automatic logic [107:0] decode(input logic [115:0] code);
@@ -55,14 +55,14 @@ module reins_receive_sram (
         for (int position=1;position<=115;position++) if ((position & (position-1))!=0) begin
             data[index]=code[position-1]; index++;
         end
-        return data;
+        decode=data;
     endfunction
     // Detect any single/double codeword fault in code; never silently correct bytes.
     function automatic logic corrupt(input logic [115:0] code);
         logic [6:0] syndrome;
         syndrome='0;
         for (int position=1;position<=115;position++) if (code[position-1]) syndrome^=7'(position);
-        return (syndrome!=0) || (^code);
+        corrupt=(syndrome!=0) || (^code);
     endfunction
 
     assign control_bad=state_q!=~state_inverse_q || owner_q!=~owner_inverse_q ||
@@ -121,6 +121,16 @@ module reins_receive_sram (
     end
 `ifndef SYNTHESIS
     assert property (@(posedge clk_i) disable iff (!por_ni || reset_i) sealed_o |-> !store);
+`endif
+`ifdef FORMAL
+    // These properties observe the real sole store enable; payload/ECC data is outside this proof.
+    logic formal_past=1'b0;
+    always @(posedge clk_i) begin
+        formal_past<=1'b1;
+        if (!formal_past) assume(!por_ni);
+        if (por_ni && !reset_i && sealed_o) assert(!store);
+        if (formal_past && $past(!por_ni || reset_i || release_i || seal_i || sealed_o)) assert(!write_event_o);
+    end
 `endif
 endmodule
 `default_nettype wire

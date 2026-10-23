@@ -80,7 +80,8 @@ and keeps the logs for inspection.
 | Trusted CA certificates | Let Python verify HTTPS when downloading the test dependency |
 | pkg-config | Finds the installed OpenSSL headers and library |
 | OpenSSL **3.5 or newer development package** | Independent SHA-256 / FIPS 205 SLH-DSA backend, with the default provider's SLH-DSA support |
-| Verilator **5+** | Compiles and runs SHA-256 and R05–R10b component/integration RTL with assertions and line coverage; tested with **5.008 and 5.032** |
+| Verilator **5.008** | Active local and CI baseline for SHA-256 and R05–R11 component/integration RTL |
+| Yosys and Icarus Verilog (`iverilog`, `vvp`) | Additional tools for `release-check`, formal/component synthesis and separate four-state/reset checks; Yosys 0.52 and Icarus 12.0 tested |
 
 OpenSSL's development package includes headers and `libcrypto`, not just the
 `openssl` executable. Many older systems supply OpenSSL 3.0 or 3.4, which do not
@@ -123,11 +124,29 @@ gmake tests
 Use `gmake` when your system's `make` is an older version. Linux/WSL2 is the tested
 path: Debian 13, GCC 14.2, GNU Make 4.4.1, Python 3.12.14 and OpenSSL 3.5.7.
 The full suite also passes with a source-built OpenSSL 3.5.0.
-macOS has not yet been validated here. On Debian/Ubuntu, `sudo apt-get install
-verilator` installs the packaged tool; check `verilator --version` reports 5 or
-newer. Set `VERILATOR=/path/to/verilator` for a custom installation. Verilator is
+macOS has not yet been validated here. Check `verilator --version` reports
+**5.008**. An existing 5.008 installation needs no replacement. Set
+`VERILATOR=/path/to/verilator` for a custom installation. CI uses the same single
+version; additional versions will be considered when a concrete problem requires
+them. Verilator is
 required for normal builds/tests; `make software-build` and `make baseline-tests`
 provide software-only entry points.
+
+If your package manager supplies a different version, an optional source setup
+downloads the pinned 5.008 archive and checks its SHA-256. It requires a C++
+compiler, Autoconf, Flex, Bison, Perl, `libfl` development files and zlib development
+files. The build and its setup report are retained on disk:
+
+```sh
+make setup-verilator JOBS=2
+export VERILATOR_ROOT="$PWD/.deps/verilator-5.008"
+export VERILATOR="$VERILATOR_ROOT/bin/verilator"
+make quick-tests
+```
+
+The optional setup reuses an existing version-checked tool in that directory.
+It does not change your system installation. The source pin is recorded in
+[verilator-tool.json](third_party/verilator-tool.json).
 
 The first build downloads a small, pinned C++ testing dependency called **doctest**.
 The downloader verifies HTTPS certificates and both archive and file SHA-256
@@ -188,13 +207,23 @@ installing cached files too. A failed download requires no `make clean`.
 
 | Command | What it does |
 |---|---|
-| `make build` | Builds the C++ simulators/tests, verified inputs and all fifteen Verilator component/integration test executables |
+| `make build` | Builds the C++ simulators/tests, verified inputs and all sixteen Verilator component/integration test executables |
 | `make software-tests` | Runs the independent C++ model, corpus/CLI cross-checks and Python tooling without building RTL |
 | `make software-build` | Builds only the independent C++ simulators/tests and input data |
 | `make rtl-build` | Builds all assertion/coverage-enabled RTL test executables and required C++ oracle objects |
 | `make rtl-lint` | Checks production RTL with assertions and with `SYNTHESIS` defined, independently of the simulation top |
 | `make quick-tests` | Builds as needed and runs bounded directed checks, including R05 signed-lease examples; skips extended fuzz and the larger software host-signing cases |
 | `make tests` | Builds as needed and runs all current software, RTL component/integration, stateful fuzz and infrastructure checks |
+| `make release-check` | Runs the complete local digital release workflow, normal non-instrumented timing, separate formal/synthesis/reset/CDC records and requirement/coverage reports |
+| `make r11-tests` | Replays small hole, partial-transaction and stale-token regressions through actual SPI pins |
+| `make fuzz-smoke` | Runs two saved seeds and 128 generated actions per seed by default; saves exact replay traces |
+| `make fault` | Runs nine repeated/persistent fault attempts against the real two-pass bank |
+| `make nightly` | Runs the full release workflow; set `CAMPAIGN_SEEDS` and `CAMPAIGN_ITERATIONS` for larger budgets |
+| `make production-tests` | Builds the bare production top and tests full SPI ARM/RENEW with RTL assertions/coverage/tracing and sanitizers disabled |
+| `make formal-checks` / `synthesis-checks` / `reset-checks` / `cdc-review` | Produces separate scoped proof, generic component synthesis, four-state reset and manual CDC inventory records |
+| `make replay REPLAY=path` | Replays exact saved byte/partial-bit actions against RTL and the C++ byte model |
+| `make minimize REPLAY=path FINGERPRINT='CHECK( expression )'` | Minimizes a reproducible assertion failure, retaining every candidate and child log |
+| `make campaign-report RESULTS=test-results/<run>` | Checks current-source evidence and generates requirement, execution-budget, critical-state and uncovered-source-point reports |
 | `make r07-tests` | Builds/runs just the SPI/controller, full R05/R06/R07 integration and protected-memory tests, retaining all outputs |
 | `make r08-tests` | Builds/runs local multi-clock enforcement and full-device signed-quorum/expiry/management tests, retaining all outputs |
 | `make r08-unit-tests` | Runs local guard, clock, queue, fault and seeded fuzz tests; useful for focused sanitizer checks |
@@ -319,6 +348,27 @@ full pin-level ARM and RENEW in the full suite. Quick tests retain pair 0/1;
 full-device runs can take several minutes per scenario and allow two hours per
 group. The [R10c guide](docs/R10C_FULL_RTL.md) states the clock profile and signing/
 relay assumptions; measured simulation wall time is separate from device time.
+
+For local release review:
+
+```sh
+make fuzz-smoke CAMPAIGN_SEEDS=2 CAMPAIGN_ITERATIONS=128
+make fault
+make release-check JOBS=2
+```
+
+Start with the resulting `campaign-report/campaign.md`. It links actual executed
+tests to requirements and records fuzz/fault budgets, critical state observations,
+uncovered source points and explicit gaps. `release-check` also tests a separate
+normal build and records formal, component synthesis, four-state/reset and CDC
+inventory results separately. Missing tools, zero work and stale-source evidence
+cannot pass. CDC inventory requires manual review; it is not signoff.
+The [R11 workflow guide](docs/R11_LOCAL_RELEASE.md) explains prerequisites, exact
+replay/minimization, CI and every report. The current authority model has no
+aggregate four-candidate rolling admission ledger; the requirement report keeps
+that gap explicit alongside deferred R03 and platform/service qualification.
+The [5.008 validation record](docs/R11_VALIDATION.md) lists this implementation's
+executed counts, timings, investigated gaps and retained run IDs.
 
 R07 tests clock every SPI bit and transfer complete signatures, so even directed
 tests can take several minutes. `quick-tests` excludes extended fuzzing, while
@@ -461,24 +511,24 @@ physical randomness.
 | `reference-fixtures` | Do all R02 artifact hashes, public input bindings and Merkle roots match? The full suite cross-checks every new signature with the supplied Python verifier. |
 | `reference-report` | Do all six stateful scenarios replay identically, expose real state/lease decisions, reject false expectations, and retain request traces even for invalid evidence? |
 
-Currently the full suite contains 32 software C++ cases, 9 SHA-256 and 18 R05 RTL
+Currently the full suite contains 33 software C++ cases, 9 SHA-256 and 18 R05 RTL
 C++ cases, 21 R06 controller cases, 3 R05/R06 integration cases, 30 R07 pin/controller
 cases, 2 R07 integration cases, 4 memory cases, 13 R08 enforcement cases,
 2 R08 integration cases, 9 R09 Merkle cases, 2 R09 integration cases,
-12 R10a component cases, 9 R10b complete-verifier cases, 11 R10c two-pass cases, 5 R10c full-device cases
-and 30 Python tool regressions,
+12 R10a component cases, 9 R10b complete-verifier cases, 14 R10c/R11 two-pass cases,
+5 R10c full-device cases, 2 R11 SPI cases and 38 Python tool regressions,
 in addition to review/corpus/CLI checks.
-The quick suite runs 28 software, 8 SHA-256, 17 R05, 20 R06 controller and 3
+The quick suite runs 29 software, 8 SHA-256, 17 R05, 20 R06 controller and 3
 R05/R06 integration cases, 29 R07 pin/controller cases, both R07 integration cases,
 all 4 memory cases, 12 R08 enforcement cases, both R08 integration cases,
 8 R09 Merkle cases, both R09 integration cases, 11 R10a component cases and
-8 R10b complete-verifier cases, 10 R10c two-pass cases and 1 R10c full-device case,
+8 R10b complete-verifier cases, 10 R10c two-pass cases, 1 R10c full-device case and 1 R11 SPI corpus case,
 plus 12 source/profile regressions. It still
 checks all 28 NIST outcomes, but skips
 the slower fresh-key signing case and the second Python cryptographic cross-check.
 Counts will grow as implementation progresses; saved logs record what executed.
 
-The fifteen RTL groups exercise **actual hardware on Verilator**. R06 controller
+The sixteen RTL groups exercise **actual hardware on Verilator**. R06 controller
 tests use actual independently computed host signature verification and compare
 semantic outcomes to the C++ model. Integration additionally exercises real R05
 configuration hashing, source conditioning and trusted time. R07 adds actual

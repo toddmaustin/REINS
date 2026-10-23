@@ -40,5 +40,20 @@ module reins_permit_guard_a (
             end
         end
     end
+`ifdef FORMAL
+    // Prove local safety steps; clock independence/metastability are physical assumptions.
+    logic formal_past=1'b0;
+    always @(posedge clk_i) begin
+        formal_past<=1'b1;
+        if (!formal_past) assume(!por_ni);
+        if (formal_past && por_ni) begin
+            assert(code_o==8'h69 || code_o==8'h96);
+            if (alarm_o) assert(code_o==8'h69);
+            if ($past(por_ni && failed_q && epoch_sync_q[1]==epoch_o)) assert(!qualified_q);
+            if ($past(por_ni && listening_q && !failed_q && !bad && age_q>=799 && epoch_sync_q[1]==epoch_o)) assert(failed_q && !qualified_q);
+            if ($past(por_ni && listening_q && !failed_q && !bad && age_q<799 && !edge_seen && epoch_sync_q[1]==epoch_o)) assert(age_q==$past(age_q)+10'd1);
+        end
+    end
+`endif
 endmodule
 `default_nettype wire

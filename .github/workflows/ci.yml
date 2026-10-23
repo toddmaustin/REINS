@@ -1,0 +1,60 @@
+name: Local Make checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: '23 6 * * 1'
+permissions:
+  contents: read
+jobs:
+  quick:
+    runs-on: ubuntu-24.04
+    container: debian:trixie
+    timeout-minutes: 90
+    steps:
+      - name: Install documented tools
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends g++ make python3 pkg-config libssl-dev openssl ca-certificates git autoconf flex bison perl libfl-dev zlib1g-dev
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Prepare the active Verilator 5.008 baseline
+        run: |
+          make setup-verilator JOBS=2
+          printf 'VERILATOR_ROOT=%s/.deps/verilator-5.008\n' "$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+          printf 'VERILATOR=%s/.deps/verilator-5.008/bin/verilator\n' "$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+      - name: Directed checks and selected complete RTL vector
+        run: make quick-tests JOBS=2
+      - name: Bounded byte fuzz and exact replay artifacts
+        run: make fuzz-smoke CAMPAIGN_SEEDS=2 CAMPAIGN_ITERATIONS=128 JOBS=2
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: quick-evidence
+          path: test-results/
+          if-no-files-found: error
+  release:
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+    runs-on: ubuntu-24.04
+    container: debian:trixie
+    timeout-minutes: 150
+    steps:
+      - name: Install simulator and separate qualification tools
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends g++ make python3 pkg-config libssl-dev openssl ca-certificates git yosys iverilog autoconf flex bison perl libfl-dev zlib1g-dev
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Prepare the active Verilator 5.008 baseline
+        run: |
+          make setup-verilator JOBS=2
+          printf 'VERILATOR_ROOT=%s/.deps/verilator-5.008\n' "$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+          printf 'VERILATOR=%s/.deps/verilator-5.008/bin/verilator\n' "$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+      - name: Full local digital release workflow
+        run: make release-check CAMPAIGN_SEEDS=4 CAMPAIGN_ITERATIONS=512 JOBS=2
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: release-evidence
+          path: test-results/
+          if-no-files-found: error

@@ -78,6 +78,26 @@ std::size_t count(const Device& device, std::string_view kind) {
 }
 }
 
+// Demonstrate the explicitly violated unpredictability assumption; fresh acquisition alone cannot defeat known future challenges.
+TEST_CASE("R11 predictable future nonce permits stockpiled correctly signed grants under a violated assumption") {
+    LiveRig rig;
+    std::array<Bytes,2> stockpiled;
+    for (unsigned slot=0;slot<2;slot++) {
+        const auto future=make_request(rig.config,3,slot,2,test_nonce(2,1));
+        const auto signed_reply=rig.authorities[slot].batch({future},0); REQUIRE(signed_reply.size()==1);
+        stockpiled[slot]=signed_reply.front().reply;
+    }
+    rig.deliver(0); rig.deliver(1); REQUIRE(rig.device.snapshot().permit);
+    for (unsigned slot=0;slot<2;slot++) rig.authorities[slot].set_policy({true,true,true,0,0});
+    rig.device.advance_to(rig.config.timing.period); REQUIRE(entropy(rig.device));
+    for (unsigned slot=0;slot<2;slot++) {
+        CHECK(rig.approve(slot).empty()); REQUIRE(rig.device.upload(slot,stockpiled[slot],{1,1,false}));
+        rig.device.advance_to(rig.device.snapshot().tick+2);
+    }
+    std::cout<<"[R11 ASSUMPTION] Predictable future nonce matched an earlier signature. This expected authorization demonstrates why physical unpredictability is required.\n";
+    CHECK(rig.device.snapshot().lease_expiry==rig.config.timing.period+rig.config.timing.lease);
+}
+
 TEST_CASE("R02: public corpus verifies ARM every slot, RENEW and proof depths") {
     const auto config=Configuration::parse(fixture::read(fixtures/"r02-otp.bin"));
     std::ifstream index(fixtures/"r02-index.txt"); REQUIRE(bool(index));

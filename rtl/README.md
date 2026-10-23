@@ -27,6 +27,35 @@ WOTS+ chains/public-key reconstruction. Its [component guide](../docs/R10A_SLH_C
 documents interfaces, prefix state, exact counts and independent intermediates.
 R10b completes single-pass SLH verification with FORS, all seven hypertree layers
 and a strict REINS gate; see the [verifier guide](../docs/R10B_SLH_VERIFIER.md).
+R10c's production `reins_device` now includes both complete real-SHA lanes, the
+SPI/SRAM/controller path and local enforcement. Older composition tops retain
+software boundaries for focused component tests. R11 adds repeated/persistent
+campaigns, passive critical-state observations and separate qualification checks;
+see the [local release guide](../docs/R11_LOCAL_RELEASE.md).
+
+## R11 build and qualification modes
+
+`make release-check` runs directed groups and normal-build full-RTL timing.
+The default Verilator build has assertions and line coverage.
+`make production-tests` creates `build/production` with
+`INSTRUMENT=0 SANITIZE=0 RTL_TRACE=0`, builds the bare production top and audits
+actual generated flags before SPI ARM/RENEW. Functional protected state/checks
+remain hardware in both builds; C++ scoreboards remain active in the harness.
+
+`FORMAL` blocks in the controller, SRAM and guards observe actual state/store
+logic and add no production ports. Arithmetic uses full 64-bit symbolic inputs.
+Controller priority/cancellation is bounded to 16 steps with a reachable commit
+witness, qualified constant configuration, abstract echoed verifier results and
+reduced ID/time limits. Schedule outputs are unconstrained in this proof;
+arithmetic is checked independently. Seal and guard step/safety properties use
+induction with explicit wrapper/clock assumptions. Retained `.ys` scripts and
+`qualification.json` describe exact scope and results.
+
+`synthesis-checks` runs actual generic component synthesis; Verilator lint with
+`SYNTHESIS` defined alone is not synthesis. `reset-checks` runs Icarus four-state
+local guard/actuator checks. `cdc-review` emits a hashed clock/reset/synchronizer
+inventory marked `manual_review_required`. Whole-device mapping, STA, CDC/RDC,
+four-state startup, macros, placement/separation and physical qualification remain open.
 
 ## Files and architecture
 
@@ -134,7 +163,7 @@ the compression interface remains available for other framing or longer streams.
 ## Build, tests and retained artifacts
 
 From the repository root, install the prerequisites in the [root README](../README.md),
-including **Verilator 5+**; the tested baseline is **5.032**. Use GNU Make:
+including **Verilator 5.008**, the single active local and CI baseline. Use GNU Make:
 
 ```sh
 make build
@@ -143,7 +172,7 @@ make tests
 make sanitize-tests JOBS=2
 ```
 
-`make rtl-build` builds all fifteen SHA and R05–R10c component/integration test executables, including the C++ oracle
+`make rtl-build` builds all sixteen SHA and R05–R11 component/integration test executables, including the C++ oracle
 objects needed by R05; `make software-build` builds the independent software
 simulator. Normal build includes all of them. Builds
 enable SystemVerilog assertions, fatal RTL lint warnings and line coverage.

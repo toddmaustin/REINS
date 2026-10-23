@@ -20,6 +20,7 @@
 #include <map>
 #include <random>
 #include <sstream>
+#include <set>
 #include <stdexcept>
 
 #if defined(__GNUC__)
@@ -34,8 +35,14 @@ struct Evidence {
     std::ofstream events;
     std::uint64_t seed=0x5245494e5306ULL, clocks=0, models=0, starts=0, completed=0, canceled=0, passes=0;
     bool traced=false;
+    std::set<std::pair<std::string,unsigned>> observed_states;
 };
 inline Evidence evidence;
+// Record each domain/state actually observed by passive RTL monitors once per executable run.
+inline void observe_state(const char* domain,unsigned state) {
+    if (evidence.observed_states.emplace(domain,state).second)
+        evidence.events<<"{\"event\":\"safety_state\",\"domain\":\""<<domain<<"\",\"code\":"<<state<<"}\n";
+}
 // Format bytes as hexadecimal, preserving leading zero bytes.
 inline std::string hex(const Bytes& bytes) {
     std::ostringstream out;
@@ -180,16 +187,18 @@ template<class Dut> void clear_verifier(Dut& dut) {
 // coverage, replay seed and measurements; return failure on ownership imbalance.
 inline int run(int argc, char** argv, const char* mode) {
     try {
+        const bool r11=std::string_view(mode).find("r11")!=std::string_view::npos;
         const bool r10c=std::string_view(mode).find("r10c")!=std::string_view::npos;
         const bool r10b=std::string_view(mode).find("r10b")!=std::string_view::npos;
         const bool r10=std::string_view(mode).find("r10")!=std::string_view::npos;
         const bool r09=std::string_view(mode).find("r09")!=std::string_view::npos;
         const bool r08=std::string_view(mode).find("r08")!=std::string_view::npos;
         const bool r07=std::string_view(mode).find("r07")!=std::string_view::npos;
-        const char* label=r10c ? "R10C" : r10b ? "R10B" : r10 ? "R10A" : r09 ? "R09" : r08 ? "R08" : r07 ? "R07" : "R06";
-        const char* seed_variable=r10c ? "REINS_R10C_SEED" : r10b ? "REINS_R10B_SEED" : r10 ? "REINS_R10A_SEED" : r09 ? "REINS_R09_SEED" : r08 ? "REINS_R08_SEED" : r07 ? "REINS_R07_SEED" : "REINS_R06_SEED";
-        const char* trace_variable=r10c ? "REINS_R10C_TRACE" : r10b ? "REINS_R10B_TRACE" : r10 ? "REINS_R10A_TRACE" : r09 ? "REINS_R09_TRACE" : r08 ? "REINS_R08_TRACE" : r07 ? "REINS_R07_TRACE" : "REINS_R06_TRACE";
-        if (r10c) evidence.seed=0x5245494e5310cULL;
+        const char* label=r11 ? "R11" : r10c ? "R10C" : r10b ? "R10B" : r10 ? "R10A" : r09 ? "R09" : r08 ? "R08" : r07 ? "R07" : "R06";
+        const char* seed_variable=r11 ? "REINS_R11_SEED" : r10c ? "REINS_R10C_SEED" : r10b ? "REINS_R10B_SEED" : r10 ? "REINS_R10A_SEED" : r09 ? "REINS_R09_SEED" : r08 ? "REINS_R08_SEED" : r07 ? "REINS_R07_SEED" : "REINS_R06_SEED";
+        const char* trace_variable=r11 ? "REINS_R11_TRACE" : r10c ? "REINS_R10C_TRACE" : r10b ? "REINS_R10B_TRACE" : r10 ? "REINS_R10A_TRACE" : r09 ? "REINS_R09_TRACE" : r08 ? "REINS_R08_TRACE" : r07 ? "REINS_R07_TRACE" : "REINS_R06_TRACE";
+        if (r11) evidence.seed=0x5245494e5311ULL;
+        else if (r10c) evidence.seed=0x5245494e5310cULL;
         else if (r10b) evidence.seed=0x5245494e5310bULL;
         else if (r10) evidence.seed=0x5245494e5310aULL;
         else if (r09) evidence.seed=0x5245494e5309ULL;
@@ -217,6 +226,7 @@ inline int run(int argc, char** argv, const char* mode) {
             <<"\",\n  \"backend\": \""<<backend_version()<<"\",\n  \"monitor_clocks\": "<<evidence.clocks<<",\n  \"models\": "<<evidence.models
             <<",\n  \"jobs\": "<<evidence.starts<<",\n  \"completed_jobs\": "<<evidence.completed<<",\n  \"canceled_jobs\": "<<evidence.canceled
             <<",\n  \"real_pass_evaluations\": "<<evidence.passes<<",\n  \"ownership_balanced\": "<<(balanced?"true":"false")
+            <<",\n  \"coverage_instrumented\": "<<(VM_COVERAGE?"true":"false")<<",\n  \"trace_instrumented\": "<<(VM_TRACE_FST?"true":"false")
             <<",\n  \"wall_seconds\": "<<seconds<<",\n  \"clocks_per_second\": "<<evidence.clocks/seconds<<",\n  \"exit_code\": "<<result<<"\n}\n";
         std::cout.flush(); capture.restore(); retained.close(); std::ifstream replay(evidence.directory/"test-output.log"); std::cout<<replay.rdbuf(); return result;
     } catch (const std::exception& error) {

@@ -55,6 +55,8 @@ public:
     void clocks_for(unsigned count=1) {
         for (unsigned c=0;c<count;c++) {
             dut.now_i=now; dut.tick_i=running_ && clocks%4==0; settle();
+            observe_state("controller",dut.controller_state_o); observe_state("verifier",dut.verifier_state_o);
+            observe_state("lane1",dut.lane_state_o&255); observe_state("lane2",dut.lane_state_o>>8);
             if (dut.read_valid_o && !dut.memory_fault_o) {
                 const unsigned lane=dut.read_owner_o==3 ? 0 : 1;
                 if (strict && !input.reply.empty()) {

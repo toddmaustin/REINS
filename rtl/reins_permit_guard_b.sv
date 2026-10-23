@@ -38,5 +38,20 @@ module reins_permit_guard_b (
             end
         end
     end
+`ifdef FORMAL
+    // The dissimilar down-counter must deny on local timeout, including a simultaneous edge.
+    logic formal_past=1'b0;
+    always @(posedge clk_i) begin
+        formal_past<=1'b1;
+        if (!formal_past) assume(!por_ni);
+        if (formal_past && por_ni) begin
+            assert(code_o==8'h5a || code_o==8'ha5);
+            if (alarm_o) assert(code_o==8'h5a);
+            if ($past(por_ni && failed_q && epoch_sync_q[1]==epoch_o)) assert(!qualified_q);
+            if ($past(por_ni && listening_q && !failed_q && !bad && remaining_q<=1 && epoch_sync_q[1]==epoch_o)) assert(failed_q && !qualified_q);
+            if ($past(por_ni && listening_q && !failed_q && !bad && remaining_q>1 && !changed && epoch_sync_q[1]==epoch_o)) assert(remaining_q==$past(remaining_q)-10'd1);
+        end
+    end
+`endif
 endmodule
 `default_nettype wire
