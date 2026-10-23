@@ -33,8 +33,10 @@ SLH-DSA components**: canonical addresses, pure/empty-context message hashing,
 MGF1 and WOTS+ reconstruction with independent intermediate checks. R03 protected primitives and general
 fault-injection infrastructure are deferred. **R10b completes single-pass signature
 verification RTL**: FORS, all seven hypertree layers, exact parsing and reconstructed
-public-key root comparison using real SHA. Independent two-pass acceptance and
-whole-device integration remain R10c; physical qualification remains later work. These tests do not
+public-key root comparison using real SHA. **R10c integrates two complete independent
+passes and the full RTL device**: real SPI-to-lease authorization, six separate SHA
+datapaths, protected read/capture paths, dissimilar comparisons and redundant vote/commit
+checks. Physical qualification remains later work. These tests do not
 prove physical clock, randomness, isolation or fault-resistance properties.
 See the [RTL guide](rtl/README.md) for interfaces and hashing tests.
 The [R05 platform profile](docs/R05_PLATFORM_PROFILE.md) explains which digital
@@ -51,6 +53,8 @@ The [R10a component guide](docs/R10A_SLH_COMPONENTS.md) explains the SHA prefix
 state, addresses, framing, exact work counts, WOTS signature slices and saved evidence.
 The [R10b verifier guide](docs/R10B_SLH_VERIFIER.md) explains complete verification,
 strict REINS versus algorithm interfaces, scratch ownership and replayable evidence.
+The [R10c full RTL guide](docs/R10C_FULL_RTL.md) explains the production top,
+two-pass independence, exact work, fault domains and complete SPI/guard timing.
 
 ## Start here
 
@@ -184,7 +188,8 @@ installing cached files too. A failed download requires no `make clean`.
 
 | Command | What it does |
 |---|---|
-| `make build` | Builds the C++ simulators/tests, verified inputs and all twelve Verilator component/integration test executables |
+| `make build` | Builds the C++ simulators/tests, verified inputs and all fifteen Verilator component/integration test executables |
+| `make software-tests` | Runs the independent C++ model, corpus/CLI cross-checks and Python tooling without building RTL |
 | `make software-build` | Builds only the independent C++ simulators/tests and input data |
 | `make rtl-build` | Builds all assertion/coverage-enabled RTL test executables and required C++ oracle objects |
 | `make rtl-lint` | Checks production RTL with assertions and with `SYNTHESIS` defined, independently of the simulation top |
@@ -195,6 +200,9 @@ installing cached files too. A failed download requires no `make clean`.
 | `make r08-unit-tests` | Runs local guard, clock, queue, fault and seeded fuzz tests; useful for focused sanitizer checks |
 | `make r09-tests` | Runs real-SHA local grant/Merkle tests and signed SPI/full-device integration, retaining all outputs |
 | `make r09-unit-tests` | Runs grant/proof vectors, both-lane construction/hand-off faults and seeded fuzz without long SPI transfers |
+| `make r10c-tests` | Runs real two-pass controller and complete production-top SPI ARM/RENEW, withholding/expiry and stall tests |
+| `make r10c-unit-tests` | Runs independent-pass, all-quorum, mutation, shared-path/final-commit fault and seeded unit tests |
+| `make r10c-integration-tests` | Runs only full RTL pin-level tests; `TEST_FILTER` selects individual scenarios |
 | `make r10b-tests` | Runs all 28 official outcomes, real REINS signatures, FORS/hypertree mutations, fault/backpressure tests and saved-evidence validation |
 | `make r10a-tests` | Runs FIPS addresses, framing, MGF1, all WOTS layers/intermediates, fault tests and seeded fuzz; validates and retains the actual evidence files |
 | `make baseline-tests` | Runs source/fixture/tool checks using only Python; no C++ build or OpenSSL package needed |
@@ -292,7 +300,25 @@ proper algorithm interfaces, and verifies both actual empty-context REINS
 signatures through the strict production gate and sealed SRAM. The C++ harness
 compares every SHA block/state and 29 stage values; fault and mutation cases
 must fail. Exact replay bytes and per-pass measurements stay in `r10b-rtl/`.
-Independent two-pass acceptance and whole-device integration remain R10c.
+Run complete two-pass authorization with:
+
+```sh
+make r10c-tests
+make r10c-integration-tests TEST_FILTER='*pair 0 1*'
+REINS_R10C_SEED=12345 make r10c-unit-tests
+make SANITIZE=1 r10c-unit-tests TEST_FILTER='*complete independent*,*abort reset*'
+```
+
+The production top is `rtl/reins_device.sv`. C++ signs authority replies and drives
+SPI; every verification hash, both accept codes, quorum/lease update and endpoint
+guard runs in RTL. Each pass freshly reconstructs the expected grant and batch
+root. `r10c-rtl/` and `r10c-integration/` retain the exact public inputs, actual SHA
+blocks/states, stages, counts and latency measurements. `timing-summary.json`
+collects per-pass/job/ARM measurements and budget margins for inspection. All three pairs perform
+full pin-level ARM and RENEW in the full suite. Quick tests retain pair 0/1;
+full-device runs can take several minutes per scenario and allow two hours per
+group. The [R10c guide](docs/R10C_FULL_RTL.md) states the clock profile and signing/
+relay assumptions; measured simulation wall time is separate from device time.
 
 R07 tests clock every SPI bit and transfer complete signatures, so even directed
 tests can take several minutes. `quick-tests` excludes extended fuzzing, while
@@ -424,6 +450,9 @@ physical randomness.
 | `r09-integration` | Do signed ARM/RENEW quorums work through actual R05–R09 hardware, with host SLH verification of the actual RTL message/key, rejection of wrong paths and cancellation during reconstruction? |
 | `r10a-rtl` | Do canonical FIPS addresses, pure framing, message hashing/MGF1, checksum/chain boundaries and all 42 independently expected WOTS layers match? Do malformed slices and framing/count/address/hand-off faults fail off? |
 | `r10b-rtl` | Do complete FORS/seven-layer reconstruction, all official outcomes and real REINS signatures match? Do section mutations, gates, faults, cancellation and scratch lifetime behave correctly? |
+| `r10c-rtl` | Do both fresh real-SHA passes, all quorum pairs, exact counts/addresses/stages, mutations, shared-path and final-commit faults behave correctly? |
+| `r10c-integration` | Does the production top complete full SPI ARM/RENEW for every pair, expire when two authorities withhold, cancel stalled/late work and enforce local stop? |
+| `r10c-evidence` | Do actual public replay hashes, physical work records, sparse authorizing codes and job budgets agree? |
 | `r10b-evidence` | Do retained full-pass traces, exact replay inputs and independent oracle hashes agree? |
 | `r10a-evidence` | Do the actual saved JSONL, operation/result records, measurements and independent oracle provenance parse and meet their declared formats? |
 | `baseline` | Are the normative source files unchanged, the implementation fixed at 3/2, and the fixture OTP header supported? The full suite also runs the original Python review validation. |
@@ -436,31 +465,32 @@ Currently the full suite contains 32 software C++ cases, 9 SHA-256 and 18 R05 RT
 C++ cases, 21 R06 controller cases, 3 R05/R06 integration cases, 30 R07 pin/controller
 cases, 2 R07 integration cases, 4 memory cases, 13 R08 enforcement cases,
 2 R08 integration cases, 9 R09 Merkle cases, 2 R09 integration cases,
-12 R10a component cases, 9 R10b complete-verifier cases and 30 Python tool regressions,
+12 R10a component cases, 9 R10b complete-verifier cases, 11 R10c two-pass cases, 5 R10c full-device cases
+and 30 Python tool regressions,
 in addition to review/corpus/CLI checks.
 The quick suite runs 28 software, 8 SHA-256, 17 R05, 20 R06 controller and 3
 R05/R06 integration cases, 29 R07 pin/controller cases, both R07 integration cases,
 all 4 memory cases, 12 R08 enforcement cases, both R08 integration cases,
 8 R09 Merkle cases, both R09 integration cases, 11 R10a component cases and
-8 R10b complete-verifier cases,
+8 R10b complete-verifier cases, 10 R10c two-pass cases and 1 R10c full-device case,
 plus 12 source/profile regressions. It still
 checks all 28 NIST outcomes, but skips
 the slower fresh-key signing case and the second Python cryptographic cross-check.
 Counts will grow as implementation progresses; saved logs record what executed.
 
-The thirteen RTL groups exercise **actual hardware on Verilator**. R06 controller
+The fifteen RTL groups exercise **actual hardware on Verilator**. R06 controller
 tests use actual independently computed host signature verification and compare
 semantic outcomes to the C++ model. Integration additionally exercises real R05
 configuration hashing, source conditioning and trusted time. R07 adds actual
-mode-0 pins, transaction handling and sealed receive-memory accesses. Full RTL
-whole-device verifier integration and physical guard qualification remain later work.
+mode-0 pins, transaction handling and sealed receive-memory accesses. R10c integrates full RTL
+whole-device verification; physical guard qualification remains later work.
 R08 now models separate local guards/cells and observes actual outbound effects;
 its delay assumptions still require platform evidence. Mirrored/sparse digital
 checks do not establish R03's physical fault protections.
 R09 adds real configuration/leaf/node hashing independently in each pass. R10a
 adds actual SLH addresses/framing/WOTS+, with direct independent intermediate
-checks. R10b completes real SLH single-pass verification. Independent two-pass
-acceptance and whole-device integration remain R10c.
+checks. R10b completes real SLH single-pass verification. R10c now connects two
+independent real passes to SPI, protected acceptance and endpoint enforcement.
 The [implementation plan](docs/IMPLEMENTATION_PLAN.md) describes those next steps.
 
 ## Where are my results?
@@ -476,6 +506,9 @@ test-results/<timestamp>-full-release-<unique>/
   junit.xml                         Machine-readable results, one entry per group
   build/output.log                  Compiler/linker output, including build failures
   build/build-config.json           Compiler and flags used for this build
+  r10c-rtl/                        Two-pass unit faults, public replay inputs and physical traces
+  r10c-integration/                Full RTL SPI/lease/guard cases and measured latency
+  r10c-evidence/                   Checks of the actual saved input/work/authorization records
   sim-directed/output.log           C++ test names, assertions and results
   sha256-rtl/output.log             Actual RTL directed/fuzz/interface-corruption checks
   sha256-rtl/performance.json       Actual cycles/compression and simulator throughput
@@ -523,6 +556,13 @@ Start with `runner.log` or `summary.json`, then inspect the failed group's
 `output.log`. Test stdout and stderr are both saved. The JSON records executed,
 failed, timed-out and unrun groups separately. The JUnit file includes group output;
 individual C++ assertions are in the detailed C++ log.
+
+R10c runs also print a compact timing summary to the console after validating the
+saved evidence: actual SHA work, two-pass computation, receive-job time and budget
+margin, each ARM's commit/guard latency and response-window margin, signing/relay
+assumptions, measured host signing time, and simulator throughput. This same summary
+is retained in `runner.log` and `r10c-evidence/output.log`; detailed measurements
+remain in each R10c group's `timing-summary.json`.
 
 ### Reading the examples in a test log
 

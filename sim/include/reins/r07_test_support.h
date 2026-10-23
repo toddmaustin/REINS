@@ -33,6 +33,7 @@ struct HardwareJob {
 template<class Dut> class PinBench {
 public:
     static constexpr bool platform=requires(Dut value) { value.factory_image_i; };
+    static constexpr bool fullrtl=requires(Dut value) { value.verifier_state_o; };
     static constexpr bool merkle=requires(Dut value) { value.merkle_req_valid_i; };
     static constexpr bool enforced=requires(Dut value) { value.guard_clock_a_i; };
     VerilatedContext context;
@@ -83,15 +84,17 @@ public:
             dut.run_begin_i=0; dut.platform_generation_i=0; dut.draw_ready_i=1;
             dut.nonce_valid_i=0; pack(dut.nonce_i,Bytes(32)); dut.nonce_round_i=0; dut.nonce_issue_i=0; dut.nonce_generation_i=0;
         }
-        dut.sclk_i=0; dut.cs_ni=1; dut.mosi_i=0; dut.job_ready_i=1;
+        dut.sclk_i=0; dut.cs_ni=1; dut.mosi_i=0;
+        if constexpr (!fullrtl) { dut.job_ready_i=1;
         dut.completion_valid_i=0; dut.completion_token_i=0; dut.completion_run_i=0; dut.completion_round_i=0;
         dut.completion_epoch_i=0; dut.completion_slot_i=0; dut.completion_pass_i=0; dut.completion_code_i=0; dut.completion_reason_i=2;
         pack(dut.completion_request_i,Bytes(128)); pack(dut.completion_config_digest_i,Bytes(32));
         dut.read_valid_i=0; dut.read_address_i=0; dut.read_address_inverse_i=0x3fff;
+        }
 #if VM_TRACE_FST
-        if (std::getenv(merkle ? "REINS_R09_TRACE" : enforced ? "REINS_R08_TRACE" : "REINS_R07_TRACE") && !evidence.traced) {
+        if (std::getenv(fullrtl ? "REINS_R10C_TRACE" : merkle ? "REINS_R09_TRACE" : enforced ? "REINS_R08_TRACE" : "REINS_R07_TRACE") && !evidence.traced) {
             trace=std::make_unique<VerilatedFstC>(); dut.trace(trace.get(),8);
-            trace->open((evidence.directory/(merkle ? "r09.fst" : enforced ? "r08.fst" : "r07.fst")).c_str()); evidence.traced=true;
+            trace->open((evidence.directory/(fullrtl ? "r10c.fst" : merkle ? "r09.fst" : enforced ? "r08.fst" : "r07.fst")).c_str()); evidence.traced=true;
         }
 #endif
         REQUIRE(reference.program(fixtures.config.otp,true,true)); REQUIRE(reference.close(true,true)); reference.reset(Reset::cold);
@@ -128,6 +131,8 @@ public:
             dut.run_begin_i=1; idle(1); dut.run_begin_i=0; running=true; idle(2); publish(domain);
         }
     }
+    // Return the actual hardware admission output for full RTL, or the explicit host-backend input for legacy fast tests.
+    bool verifier_ready() const { if constexpr (fullrtl) return dut.job_ready_o; else return dut.job_ready_i; }
     // Advance count monitor clocks, observing real pin transactions and verifier ownership.
     void idle(unsigned count=1) {
         for (unsigned index=0;index<count;index++) {
@@ -165,7 +170,7 @@ public:
                 }
             }
             if (edge_action) { edge_action(); settle(); }
-            if (dut.job_valid_o && dut.job_ready_i) {
+            if (dut.job_valid_o && verifier_ready()) {
                 REQUIRE_FALSE((job && job->owned));
                 HardwareJob value;
                 value.token=dut.job_token_o; value.epoch=dut.job_epoch_o;

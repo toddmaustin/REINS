@@ -79,6 +79,11 @@ R10A_HEADERS := sim/include/reins/r10a_test_support.h sim/include/reins/r06_test
 R10B_PRODUCTION := $(R10A_PRODUCTION) rtl/slh_verify.sv rtl/slh_verify_reins.sv
 R10B_DIR := $(abspath $(BUILD_DIR)/r10b-rtl)
 R10B_BINARY := $(BUILD_DIR)/r10b-rtl/reins-r10b-tests
+R10C_PRODUCTION := $(R10B_PRODUCTION) rtl/reins_verifier_pass.sv rtl/reins_verifier.sv rtl/reins_device.sv
+R10C_INTEGRATION_DIR := $(abspath $(BUILD_DIR)/r10c-integration)
+R10C_INTEGRATION_BINARY := $(BUILD_DIR)/r10c-integration/reins-r10c-integration-tests
+R10C_DIR := $(abspath $(BUILD_DIR)/r10c-rtl)
+R10C_BINARY := $(BUILD_DIR)/r10c-rtl/reins-r10c-tests
 BASELINE_INPUTS := docs/implementation_baseline.json $(wildcard docs/REINS*) $(wildcard docs/validation/*) $(wildcard sim/fixtures/*) third_party/crypto-backend.json
 
 # Pass only explicit build settings to the logged recursive build. The runner
@@ -87,13 +92,19 @@ export CXX PYTHON PKG_CONFIG SANITIZE CPPFLAGS CXXFLAGS LDFLAGS LDLIBS
 export PROJECT_CPPFLAGS PROJECT_CXXFLAGS PROJECT_LDFLAGS OPENSSL_LIBS
 export VERILATOR RTL_TRACE
 
-.PHONY: r10b-build r10b-tests r10a-build r10a-tests r09-build r09-unit-build r09-tests r09-unit-tests r08-build r08-unit-build r08-tests r08-unit-tests build software-build rtl-build r07-build rtl-lint check-tools check-rtl-tools verify-deps quick-tests tests r07-tests baseline-tests sanitize-tests regenerate-reference-fixtures clean clean-results clean-deps help FORCE
+.PHONY: software-tests r10c-integration-build r10c-integration-tests r10c-build r10c-tests r10c-unit-build r10c-unit-tests r10b-build r10b-tests r10a-build r10a-tests r09-build r09-unit-build r09-tests r09-unit-tests r08-build r08-unit-build r08-tests r08-unit-tests build software-build rtl-build r07-build rtl-lint check-tools check-rtl-tools verify-deps quick-tests tests r07-tests baseline-tests sanitize-tests regenerate-reference-fixtures clean clean-results clean-deps help FORCE
 
 build: software-build rtl-build
 
 software-build: $(BUILD_DIR)/reins-sim $(BUILD_DIR)/reins-reference $(BUILD_DIR)/reins-sim-tests $(BUILD_DIR)/fixtures/ready.stamp
 
-rtl-build: $(R10B_BINARY) $(R10A_BINARY) $(R09_BINARY) $(R09_INTEGRATION_BINARY) $(R08_BINARY) $(R08_INTEGRATION_BINARY) $(RTL_BINARY) $(R05_BINARY) $(R06_BINARY) $(R06_INTEGRATION_BINARY) $(R07_BINARY) $(R07_INTEGRATION_BINARY) $(R07_MEMORY_BINARY)
+rtl-build: $(R10C_BINARY) $(R10C_INTEGRATION_BINARY) $(R10B_BINARY) $(R10A_BINARY) $(R09_BINARY) $(R09_INTEGRATION_BINARY) $(R08_BINARY) $(R08_INTEGRATION_BINARY) $(RTL_BINARY) $(R05_BINARY) $(R06_BINARY) $(R06_INTEGRATION_BINARY) $(R07_BINARY) $(R07_INTEGRATION_BINARY) $(R07_MEMORY_BINARY)
+
+r10c-integration-build: $(R10C_INTEGRATION_BINARY)
+
+r10c-build: $(R10C_BINARY) $(R10C_INTEGRATION_BINARY)
+
+r10c-unit-build: $(R10C_BINARY)
 
 r10b-build: $(R10B_BINARY)
 
@@ -132,6 +143,9 @@ rtl-lint: check-rtl-tools
 
 	$(VERILATOR) --lint-only -Wall --assert --top-module slh_verify_reins rtl/sha256_compress.sv $(R10B_PRODUCTION)
 	$(VERILATOR) --lint-only -Wall -DSYNTHESIS --top-module slh_verify_reins rtl/sha256_compress.sv $(R10B_PRODUCTION)
+
+	$(VERILATOR) --lint-only -Wall --assert --top-module reins_device rtl/sha256_compress.sv rtl/sha256_message.sv $(R05_PRODUCTION) $(R06_PRODUCTION) $(R07_PRODUCTION) $(R08_PRODUCTION) $(R09_PRODUCTION) $(R10C_PRODUCTION)
+	$(VERILATOR) --lint-only -Wall -DSYNTHESIS --top-module reins_device rtl/sha256_compress.sv rtl/sha256_message.sv $(R05_PRODUCTION) $(R06_PRODUCTION) $(R07_PRODUCTION) $(R08_PRODUCTION) $(R09_PRODUCTION) $(R10C_PRODUCTION)
 
 check-rtl-tools:
 	@$(PYTHON) -c 'import re, subprocess, sys; version=subprocess.check_output(sys.argv[1:]+["--version"], text=True); print(version, end=""); match=re.match(r"Verilator ([0-9]+)\.", version); sys.exit(0 if match and int(match[1])>=5 else "Verilator 5+ required")' $(VERILATOR)
@@ -269,11 +283,25 @@ $(BUILD_DIR)/fixtures/r10b.stamp: tools/prepare_slh_verifier_vectors.py $(BASELI
 	$(PYTHON) -E -s -B tools/prepare_slh_verifier_vectors.py --output $(BUILD_DIR)/fixtures
 	@touch $@
 
-$(R10B_BINARY): rtl/sha256_compress.sv $(R10B_PRODUCTION) rtl/reins_receive_sram.sv sim/rtl/r10b_test_top.sv sim/tests/r10b_rtl_tests.cc sim/include/reins/r10b_test_support.h sim/include/reins/r06_test_support.h sim/include/reins/fixture_io.h Makefile $(LIB_OBJECTS) $(DOCTEST_HEADER) $(BUILD_DIR)/fixtures/r10b.stamp $(BUILD_DIR)/fixtures/ready.stamp $(BUILD_DIR)/build-config.json | check-tools check-rtl-tools verify-deps
+$(R10B_BINARY): rtl/sha256_compress.sv $(R10B_PRODUCTION) rtl/reins_receive_sram.sv sim/rtl/r10b_test_top.sv sim/tests/r10b_rtl_tests.cc sim/include/reins/r10b_test_support.h sim/include/reins/slh_test_oracle.h sim/include/reins/r06_test_support.h sim/include/reins/fixture_io.h Makefile $(LIB_OBJECTS) $(DOCTEST_HEADER) $(BUILD_DIR)/fixtures/r10b.stamp $(BUILD_DIR)/fixtures/ready.stamp $(BUILD_DIR)/build-config.json | check-tools check-rtl-tools verify-deps
 	@mkdir -p $(R10B_DIR)
 	+$(VERILATOR) --cc --exe --build -j 2 --assert --coverage-line --output-split 5000 --output-split-cfuncs 300 $(RTL_TRACE_FLAGS) -Wall --top-module r10b_test_top \
 	  --Mdir $(R10B_DIR) -o reins-r10b-tests rtl/sha256_compress.sv $(R10B_PRODUCTION) rtl/reins_receive_sram.sv sim/rtl/r10b_test_top.sv $(abspath sim/tests/r10b_rtl_tests.cc) \
 	  -CFLAGS '-std=c++20 -Wall -Wextra $(OPT_FLAGS) $(OPENSSL_CFLAGS) -I$(abspath sim/include) -isystem $(abspath $(DOCTEST_DIR)) -DREINS_FIXTURE_DIR=\"$(abspath $(BUILD_DIR)/fixtures)\" $(CXXFLAGS)' \
+	  -LDFLAGS '$(abspath $(LIB_OBJECTS)) $(PROJECT_LDFLAGS) $(LDFLAGS) $(OPENSSL_LIBS) $(LDLIBS)'
+
+$(R10C_BINARY): rtl/sha256_compress.sv rtl/sha256_message.sv $(R06_CORE) $(R09_PRODUCTION) $(R10C_PRODUCTION) rtl/reins_receive_sram.sv sim/rtl/r10c_test_top.sv sim/tests/r10c_rtl_tests.cc sim/include/reins/r10c_test_support.h sim/include/reins/verifier_test_oracle.h sim/include/reins/slh_test_oracle.h sim/include/reins/r06_test_support.h sim/include/reins/fixture_io.h Makefile $(LIB_OBJECTS) $(DOCTEST_HEADER) $(BUILD_DIR)/build-config.json | check-tools check-rtl-tools verify-deps
+	@mkdir -p $(R10C_DIR)
+	+$(VERILATOR) --cc --exe --build -j 2 --assert --coverage-line --output-split 5000 --output-split-cfuncs 300 $(RTL_TRACE_FLAGS) -Wall --top-module r10c_test_top \
+	  --Mdir $(R10C_DIR) -o reins-r10c-tests rtl/sha256_compress.sv rtl/sha256_message.sv $(R06_CORE) $(R09_PRODUCTION) $(R10C_PRODUCTION) rtl/reins_receive_sram.sv sim/rtl/r10c_test_top.sv $(abspath sim/tests/r10c_rtl_tests.cc) \
+	  -CFLAGS '-std=c++20 -Wall -Wextra $(OPT_FLAGS) $(OPENSSL_CFLAGS) -I$(abspath sim/include) -isystem $(abspath $(DOCTEST_DIR)) $(CXXFLAGS)' \
+	  -LDFLAGS '$(abspath $(LIB_OBJECTS)) $(PROJECT_LDFLAGS) $(LDFLAGS) $(OPENSSL_LIBS) $(LDLIBS)'
+
+$(R10C_INTEGRATION_BINARY): rtl/sha256_compress.sv rtl/sha256_message.sv $(R05_PRODUCTION) $(R06_PRODUCTION) $(R07_PRODUCTION) $(R08_PRODUCTION) $(R09_PRODUCTION) $(R10C_PRODUCTION) sim/rtl/reins_otp_model.sv sim/rtl/r10c_integration_top.sv sim/tests/r10c_integration_tests.cc sim/include/reins/r10c_integration_support.h sim/include/reins/verifier_test_oracle.h sim/include/reins/slh_test_oracle.h sim/include/reins/r06_test_support.h sim/include/reins/r07_test_support.h Makefile $(LIB_OBJECTS) $(DOCTEST_HEADER) $(BUILD_DIR)/build-config.json | check-tools check-rtl-tools verify-deps
+	@mkdir -p $(R10C_INTEGRATION_DIR)
+	+$(VERILATOR) --cc --exe --build -j 2 --timescale 1ns/1ns --assert --coverage-line --output-split 5000 --output-split-cfuncs 300 $(RTL_TRACE_FLAGS) -Wall --top-module r10c_integration_top \
+	  --Mdir $(R10C_INTEGRATION_DIR) -o reins-r10c-integration-tests rtl/sha256_compress.sv rtl/sha256_message.sv $(R05_PRODUCTION) $(R06_PRODUCTION) $(R07_PRODUCTION) $(R08_PRODUCTION) $(R09_PRODUCTION) $(R10C_PRODUCTION) sim/rtl/reins_otp_model.sv sim/rtl/r10c_integration_top.sv $(abspath sim/tests/r10c_integration_tests.cc) \
+	  -CFLAGS '-std=c++20 -Wall -Wextra $(OPT_FLAGS) $(OPENSSL_CFLAGS) -I$(abspath sim/include) -isystem $(abspath $(DOCTEST_DIR)) $(CXXFLAGS)' \
 	  -LDFLAGS '$(abspath $(LIB_OBJECTS)) $(PROJECT_LDFLAGS) $(LDFLAGS) $(OPENSSL_LIBS) $(LDLIBS)'
 
 regenerate-reference-fixtures: $(BUILD_DIR)/reins-generate-fixtures
@@ -281,6 +309,9 @@ regenerate-reference-fixtures: $(BUILD_DIR)/reins-generate-fixtures
 
 $(BUILD_DIR)/fixtures/ready.stamp: tools/prepare_sim_fixtures.py tools/check_baseline.py tools/reference_fixtures.py $(BASELINE_INPUTS) | check-tools
 	$(PYTHON) -E -s -B tools/prepare_sim_fixtures.py --output $(BUILD_DIR)/fixtures
+
+software-tests:
+	+$(PYTHON) -E -s -B tools/run_tests.py --suite software --configuration $(CONFIGURATION) --build-dir $(BUILD_DIR) --make-command '$(MAKE)' --jobs $(JOBS) --test-filter '$(TEST_FILTER)'
 
 quick-tests:
 	+$(PYTHON) -E -s -B tools/run_tests.py --suite quick --configuration $(CONFIGURATION) --build-dir $(BUILD_DIR) --make-command '$(MAKE)' --jobs $(JOBS) --test-filter '$(TEST_FILTER)'
@@ -296,6 +327,15 @@ r08-tests:
 
 r08-unit-tests:
 	+$(PYTHON) -E -s -B tools/run_tests.py --suite r08-unit --configuration $(CONFIGURATION) --build-dir $(BUILD_DIR) --make-command '$(MAKE)' --jobs $(JOBS) --test-filter '$(TEST_FILTER)'
+
+r10c-integration-tests:
+	+$(PYTHON) -E -s -B tools/run_tests.py --suite r10c-integration --configuration $(CONFIGURATION) --build-dir $(BUILD_DIR) --make-command '$(MAKE)' --jobs $(JOBS) --test-filter '$(TEST_FILTER)'
+
+r10c-tests:
+	+$(PYTHON) -E -s -B tools/run_tests.py --suite r10c --configuration $(CONFIGURATION) --build-dir $(BUILD_DIR) --make-command '$(MAKE)' --jobs $(JOBS) --test-filter '$(TEST_FILTER)'
+
+r10c-unit-tests:
+	+$(PYTHON) -E -s -B tools/run_tests.py --suite r10c-unit --configuration $(CONFIGURATION) --build-dir $(BUILD_DIR) --make-command '$(MAKE)' --jobs $(JOBS) --test-filter '$(TEST_FILTER)'
 
 r10b-tests:
 	+$(PYTHON) -E -s -B tools/run_tests.py --suite r10b --configuration $(CONFIGURATION) --build-dir $(BUILD_DIR) --make-command '$(MAKE)' --jobs $(JOBS) --test-filter '$(TEST_FILTER)'
@@ -325,9 +365,12 @@ clean-deps:
 	rm -rf -- .deps
 
 help:
-	@echo 'make build          Build C++ CLIs/tests and all twelve Verilator test executables (default)'
+	@echo 'make build          Build C++ CLIs/tests and all fifteen Verilator test executables (default)'
+	@echo 'make r10c-tests     Real two-pass controller and full pin-level ARM/RENEW/fault campaigns'
+	@echo 'make r10c-unit-tests / r10c-integration-tests    Select either R10c campaign'
 	@echo 'make rtl-build      Build RTL component/integration tests and C++ oracle objects'
 	@echo 'make rtl-lint       Check standalone production RTL with/without SYNTHESIS'
+	@echo 'make software-tests Run independent C++ model, corpus, CLI and Python tooling without RTL'
 	@echo 'make software-build Build only the independent C++ simulator and tests'
 	@echo 'make quick-tests    Build and run fast checks; retain every run'
 	@echo 'make tests          Build and run all current checks; retain every run'

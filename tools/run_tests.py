@@ -27,6 +27,7 @@ class Step:
     command: list[str]
     timeout: float = 120
     count_kind: str = "plain"
+    console_output: bool = False  # Echo compact reports after capture; retain every child log.
 
 
 def utc_now():
@@ -109,6 +110,12 @@ def save_reports(directory, summary):
 
 def run_suite(suite, configuration, output_root, steps, *, build=None, cwd=ROOT,
               environment=None, build_config=None):
+    """Collect suite/configuration's steps in output_root, optionally building first.
+
+    cwd and environment select child execution context; build_config is the saved
+    build-settings file. Steps marked console_output also appear in runner.log
+    and the terminal after their complete output is safely captured.
+    """
     output_root = Path(output_root).resolve()
     output_root.mkdir(parents=True, exist_ok=True)
     prefix = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ-")
@@ -158,6 +165,9 @@ def run_suite(suite, configuration, output_root, steps, *, build=None, cwd=ROOT,
             if result["exit_code"] and not code:
                 code = result["exit_code"]
             say(f"{step.name}: {result['status']} ({result['elapsed_seconds']:.2f}s); {result['log']}")
+            if step.console_output:
+                for line in Path(result["log"]).read_text(encoding="utf-8", errors="replace").splitlines():
+                    say(line)
             summary["elapsed_seconds"] = time.monotonic() - started
             save_reports(directory, summary)
             if result["status"] == "interrupted" or (step is build and result["exit_code"]):
@@ -196,6 +206,24 @@ def suite_steps(suite, build_dir, test_filter, make_command="make", configuratio
     # Instrumenting generated RTL is substantially slower than native simulation;
     # hardware tick deadlines stay identical in both configurations.
     r07_timeout = 7200 if configuration == "sanitize" else 1200
+    if suite == "software":
+        groups = {"sim-directed", "baseline", "tool-regressions", "reference-fixtures", "sim-report", "reference-report"}
+        return [step for step in suite_steps("full", build_dir, test_filter, make_command, configuration) if step.name in groups]
+    if suite == "r10c-integration":
+        command = [str(build_dir / "r10c-integration/reins-r10c-integration-tests"), "--no-colors", "--duration"]
+        if test_filter:
+            command += ["--test-case=" + test_filter]
+        return [Step("r10c-integration", command, timeout=7200, count_kind="doctest"),
+                Step("r10c-evidence", python + [str(ROOT / "tools/check_two_pass_report.py"), "--group", "integration"], console_output=True)]
+    if suite in ["r10c", "r10c-unit"]:
+        command = [str(build_dir / "r10c-rtl/reins-r10c-tests"), "--no-colors", "--duration"]
+        if test_filter:
+            command += ["--test-case=" + test_filter]
+        result = [Step("r10c-rtl", command, timeout=r07_timeout, count_kind="doctest")]
+        if suite == "r10c":
+            result.append(Step("r10c-integration", [str(build_dir / "r10c-integration/reins-r10c-integration-tests"), "--no-colors", "--duration"], timeout=7200, count_kind="doctest"))
+        result.append(Step("r10c-evidence", python + [str(ROOT / "tools/check_two_pass_report.py"), "--group", "both" if suite == "r10c" else "unit"], console_output=True))
+        return result
     if suite == "r10b":
         command = [str(build_dir / "r10b-rtl/reins-r10b-tests"), "--no-colors", "--duration"]
         if test_filter:
@@ -299,6 +327,14 @@ def suite_steps(suite, build_dir, test_filter, make_command="make", configuratio
             r10b += ["--test-case-exclude=*extended*"]
         steps.insert(14, Step("r10b-rtl", r10b, timeout=r07_timeout, count_kind="doctest"))
         steps.insert(15, Step("r10b-evidence", python + [str(ROOT / "tools/check_slh_verifier_report.py")]))
+        r10c = [str(build_dir / "r10c-rtl/reins-r10c-tests"), "--no-colors", "--duration"]
+        integrated = [str(build_dir / "r10c-integration/reins-r10c-integration-tests"), "--no-colors", "--duration"]
+        if suite == "quick":
+            r10c += ["--test-case-exclude=*extended*"]
+            integrated += ["--test-case-exclude=*extended*"]
+        steps.insert(16, Step("r10c-rtl", r10c, timeout=r07_timeout, count_kind="doctest"))
+        steps.insert(17, Step("r10c-integration", integrated, timeout=7200, count_kind="doctest"))
+        steps.insert(18, Step("r10c-evidence", python + [str(ROOT / "tools/check_two_pass_report.py")], console_output=True))
         steps.insert(1, Step("rtl-lint", shlex.split(make_command)+["--no-print-directory", "rtl-lint"]))
         steps.append(Step("sim-report", python + [str(ROOT / "tools/test_sim_report.py"),
             "--executable", str(build_dir / "reins-sim"), "--fixtures", str(build_dir / "fixtures")]))
@@ -310,7 +346,7 @@ def suite_steps(suite, build_dir, test_filter, make_command="make", configuratio
 def main():
     """Parse process arguments and run the selected logged Make suite; no formal parameters."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--suite", choices=["quick", "full", "baseline", "r07", "r08", "r08-unit", "r09", "r09-unit", "r10a", "r10b"], default="full")
+    parser.add_argument("--suite", choices=["quick", "full", "software", "baseline", "r07", "r08", "r08-unit", "r09", "r09-unit", "r10a", "r10b", "r10c-unit", "r10c", "r10c-integration"], default="full")
     parser.add_argument("--configuration", choices=["release", "sanitize"], default="release")
     parser.add_argument("--build-dir", type=Path, default=ROOT / "build/release")
     parser.add_argument("--make-command", default="make")
@@ -325,7 +361,7 @@ def main():
         environment.pop(name, None)
     build = None if args.suite == "baseline" else Step("build",
         shlex.split(args.make_command) + ["--no-print-directory", "-j" + args.jobs,
-            {"r10b": "r10b-build", "r10a": "r10a-build", "r09": "r09-build", "r09-unit": "r09-unit-build", "r07": "r07-build", "r08": "r08-build", "r08-unit": "r08-unit-build"}.get(args.suite, "build")],
+            {"software": "software-build", "r10c-integration": "r10c-integration-build", "r10c": "r10c-build", "r10c-unit": "r10c-unit-build", "r10b": "r10b-build", "r10a": "r10a-build", "r09": "r09-build", "r09-unit": "r09-unit-build", "r07": "r07-build", "r08": "r08-build", "r08-unit": "r08-unit-build"}.get(args.suite, "build")],
         # Instrumented generated models can exceed the release build budget on a first build.
         timeout=7200 if args.configuration == "sanitize" else 1200)
     code, _ = run_suite(args.suite, args.configuration, ROOT / "test-results",

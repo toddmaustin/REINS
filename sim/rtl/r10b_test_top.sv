@@ -27,6 +27,15 @@ output logic [511:0] block0_o, block1_o,
 output logic [255:0] state0_o, state1_o,
 output logic scratch_zero_o
 );
+// R10c observers are unnecessary in this standalone top; terminate them explicitly.
+logic [1:0] unused_chain_start;
+logic [5:0] unused_chain_index [0:1];
+logic [4:0] unused_chain_digit [0:1];
+logic [1:0] unused_sha_start [0:1], unused_sha_complete [0:1];
+logic unused_stage_valid;
+logic [7:0] unused_stage_phase;
+logic [3:0] unused_stage_forest, unused_stage_height, unused_stage_layer;
+logic [127:0] unused_stage_value;
 logic a_req_ready;
 logic a_read_valid;
 logic [13:0] a_read_address;
@@ -100,7 +109,11 @@ slh_verify algorithm (
 .height_o(a_height),
 .layer_o(a_layer),
 .stage_valid_o(a_stage_valid),
-.stage_value_o(a_stage_value)
+.stage_value_o(a_stage_value),
+.chain_start_o(unused_chain_start[0]),
+.chain_index_o(unused_chain_index[0]),
+.chain_digit_o(unused_chain_digit[0]),
+.sha_start_o(unused_sha_start[0]),.sha_complete_o(unused_sha_complete[0])
 );
 slh_verify_reins production (
 .clk_i(clk_i),
@@ -131,7 +144,17 @@ slh_verify_reins production (
 .batch_message_i(batch_message_i),
 .pure_i(pure_i),
 .context_length_i(context_length_i),
-.profile_i(profile_i)
+.profile_i(profile_i),
+.chain_start_o(unused_chain_start[1]),
+.chain_index_o(unused_chain_index[1]),
+.chain_digit_o(unused_chain_digit[1]),
+.sha_start_o(unused_sha_start[1]),.sha_complete_o(unused_sha_complete[1]),
+.stage_valid_o(unused_stage_valid),
+.stage_phase_o(unused_stage_phase),
+.stage_forest_o(unused_stage_forest),
+.stage_height_o(unused_stage_height),
+.stage_layer_o(unused_stage_layer),
+.stage_value_o(unused_stage_value)
 );
 assign req_ready_o=production_i ? p_req_ready : a_req_ready;
 assign read_valid_o=production_i ? p_read_valid : a_read_valid;

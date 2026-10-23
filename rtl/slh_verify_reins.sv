@@ -2,7 +2,9 @@
 // context bytes are exposed. A caller supplies its locally reconstructed batch
 // message and the immutable sealed job descriptor; this is one pass, not a vote.
 `default_nettype none
-module slh_verify_reins (
+// CHECK_LIVE_INPUTS adds a held-source audit for R10c's Merkle-to-SLH handoff.
+// Default snapshot semantics remain unchanged for standalone R10b callers.
+module slh_verify_reins #(parameter bit CHECK_LIVE_INPUTS=1'b0) (
     input logic clk_i, rst_ni, cancel_i, // Trusted clock/reset; cancel wins over a same-cycle completion.
     input logic req_valid_i, // One immutable request captured on valid/ready.
     output logic req_ready_o,
@@ -23,7 +25,15 @@ module slh_verify_reins (
     output logic [31:0] tag_o,
     output logic [127:0] reconstructed_root_o, // Actual reconstructed PK root; never the signed 32-byte batch root.
     output logic start_o, complete_o, // Physical SHA events, available for independent monitors.
-    output logic [15:0] starts_o, completions_o
+    output logic [15:0] starts_o, completions_o,
+    output logic stage_valid_o, // Passive stages and chain digits support a separately sequenced pass observer.
+    output logic [7:0] stage_phase_o,
+    output logic [3:0] stage_forest_o, stage_height_o, stage_layer_o,
+    output logic [127:0] stage_value_o,
+    output logic chain_start_o,
+    output logic [5:0] chain_index_o,
+    output logic [4:0] chain_digit_o,
+    output logic [1:0] sha_start_o, sha_complete_o
 );
     localparam logic [7:0] IDLE=8'h0f,LAUNCH=8'h33,ACTIVE=8'h55,REJECT=8'h69;
     logic [7:0] state_q, state_inv_q;
@@ -34,11 +44,10 @@ module slh_verify_reins (
     logic [31:0] core_tag;
     logic [13:0] payload_address;
     logic [127:0] core_root;
-    logic [7:0] unused_state, unused_phase;
-    logic [3:0] unused_forest, unused_height, unused_layer;
-    logic unused_stage_valid;
-    logic [127:0] unused_stage_value;
-    assign bad=state_q!=~state_inv_q || message_q!=~message_inv_q || descriptor_q!=~descriptor_inv_q ||
+    logic [7:0] unused_state;
+    assign bad=(CHECK_LIVE_INPUTS && (state_q==LAUNCH || state_q==ACTIVE) &&
+        (message_q!=batch_message_i || descriptor_q!={public_key_i,signature_length_i,sealed_length_i,tag_i})) ||
+        state_q!=~state_inv_q || message_q!=~message_inv_q || descriptor_q!=~descriptor_inv_q ||
         !(state_q==IDLE || state_q==LAUNCH || state_q==ACTIVE || state_q==REJECT);
     assign fault_o=rst_ni && (bad || failed_q || core_fault);
     assign req_ready_o=rst_ni && !cancel_i && state_q==IDLE && !fault_o;
@@ -56,9 +65,9 @@ module slh_verify_reins (
         .read_valid_i(read_valid_i),.read_data_i(read_data_i),.payload_address_o(payload_address),
         .payload_byte_i(payload_address<46 ? message_q[367-int'(payload_address)*8 -: 8] : 8'd0),
         .rsp_valid_o(core_valid),.rsp_ready_i(rsp_ready_i && state_q==ACTIVE),.verified_o(core_verified),.fault_o(core_fault),
-        .error_o(core_error),.tag_o(core_tag),.reconstructed_root_o(core_root),.state_o(unused_state),.phase_o(unused_phase),
-        .fors_tree_o(unused_forest),.height_o(unused_height),.layer_o(unused_layer),.stage_valid_o(unused_stage_valid),.stage_value_o(unused_stage_value),
-        .start_o(start_o),.complete_o(complete_o),.starts_o(starts_o),.completions_o(completions_o));
+        .error_o(core_error),.tag_o(core_tag),.reconstructed_root_o(core_root),.state_o(unused_state),.phase_o(stage_phase_o),
+        .fors_tree_o(stage_forest_o),.height_o(stage_height_o),.layer_o(stage_layer_o),.stage_valid_o(stage_valid_o),.stage_value_o(stage_value_o),
+        .start_o(start_o),.complete_o(complete_o),.starts_o(starts_o),.completions_o(completions_o),.chain_start_o(chain_start_o),.chain_index_o(chain_index_o),.chain_digit_o(chain_digit_o),.sha_start_o(sha_start_o),.sha_complete_o(sha_complete_o));
     always_ff @(posedge clk_i) begin
         if (!rst_ni) begin state_q<=IDLE; state_inv_q<=~IDLE; message_q<=0; message_inv_q<='1; descriptor_q<=0; descriptor_inv_q<='1; failed_q<=0; end
         else if (cancel_i || (rsp_valid_o && rsp_ready_i)) begin state_q<=IDLE; state_inv_q<=~IDLE; message_q<=0; message_inv_q<='1; descriptor_q<=0; descriptor_inv_q<='1; failed_q<=failed_q || bad || core_fault; end

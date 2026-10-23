@@ -1,5 +1,7 @@
 """Exercise actual child failures, retained runs, reports, and explicit clean targets."""
 import json
+from contextlib import redirect_stdout
+import io
 import os
 from pathlib import Path
 import shutil
@@ -30,9 +32,15 @@ class TestResultCollection(unittest.TestCase):
         return json.loads((directory / "summary.json").read_text())
 
     def test_success_captures_both_streams_and_preserves_previous_run(self):
-        steps = [self.step("output", "import sys; print('standard out'); print('standard err', file=sys.stderr)")]
-        code, first = self.run_steps(steps)
+        """Check console reports and both streams remain in distinct retained runs; no parameters."""
+        steps = [self.step("output", "import sys; print('standard out'); print('standard err', file=sys.stderr)", console_output=True)]
+        console = io.StringIO()
+        with redirect_stdout(console):
+            code, first = self.run_steps(steps)
         self.assertEqual(code, 0)
+        self.assertIn("standard out", console.getvalue())
+        self.assertIn("standard err", console.getvalue())
+        self.assertIn("standard out", (first / "runner.log").read_text())
         original = (first / "output/output.log").read_bytes()
         self.assertIn(b"standard out", original)
         self.assertIn(b"standard err", original)
