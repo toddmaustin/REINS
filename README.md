@@ -28,8 +28,10 @@ cells, queue containment and internally certified stop completion. SPI managemen
 remains live while protected work is stopped. **R09 adds expected-grant and Merkle
 RTL**: each pass independently constructs its local grant, hashes all public OTP,
 reads the sealed proof and reconstructs its root with its own real SHA-256 core.
-Tests verify the actual RTL message/key using host SLH-DSA. R03 protected primitives and general
-fault-injection infrastructure are deferred. Signature-verification RTL and
+Tests verify the actual RTL message/key using host SLH-DSA. **R10a adds real
+SLH-DSA components**: canonical addresses, pure/empty-context message hashing,
+MGF1 and WOTS+ reconstruction with independent intermediate checks. R03 protected primitives and general
+fault-injection infrastructure are deferred. Complete signature-verification RTL and
 physical qualification remain later work. These tests do not
 prove physical clock, randomness, isolation or fault-resistance properties.
 See the [RTL guide](rtl/README.md) for interfaces and hashing tests.
@@ -43,6 +45,8 @@ The [R08 enforcement guide](docs/R08_ENDPOINT_ENFORCEMENT.md) explains the dual
 guards, queue/stop ordering, 1.1 ms modeled bound and required physical assumptions.
 The [R09 Merkle guide](docs/R09_MERKLE.md) explains exact framing, per-pass state,
 last-leaf padding, independent byte/block checks and the remaining signature boundary.
+The [R10a component guide](docs/R10A_SLH_COMPONENTS.md) explains the SHA prefix
+state, addresses, framing, exact work counts, WOTS signature slices and saved evidence.
 
 ## Start here
 
@@ -68,7 +72,7 @@ and keeps the logs for inspection.
 | Trusted CA certificates | Let Python verify HTTPS when downloading the test dependency |
 | pkg-config | Finds the installed OpenSSL headers and library |
 | OpenSSL **3.5 or newer development package** | Independent SHA-256 / FIPS 205 SLH-DSA backend, with the default provider's SLH-DSA support |
-| Verilator **5+** | Compiles and runs the SHA-256 and R05–R09 component/integration RTL with assertions and line coverage; tested with **5.008 and 5.032** |
+| Verilator **5+** | Compiles and runs SHA-256 and R05–R10a component/integration RTL with assertions and line coverage; tested with **5.008 and 5.032** |
 
 OpenSSL's development package includes headers and `libcrypto`, not just the
 `openssl` executable. Many older systems supply OpenSSL 3.0 or 3.4, which do not
@@ -176,7 +180,7 @@ installing cached files too. A failed download requires no `make clean`.
 
 | Command | What it does |
 |---|---|
-| `make build` | Builds the C++ simulators/tests, verified inputs and all eleven Verilator component/integration test executables |
+| `make build` | Builds the C++ simulators/tests, verified inputs and all twelve Verilator component/integration test executables |
 | `make software-build` | Builds only the independent C++ simulators/tests and input data |
 | `make rtl-build` | Builds all assertion/coverage-enabled RTL test executables and required C++ oracle objects |
 | `make rtl-lint` | Checks production RTL with assertions and with `SYNTHESIS` defined, independently of the simulation top |
@@ -187,6 +191,7 @@ installing cached files too. A failed download requires no `make clean`.
 | `make r08-unit-tests` | Runs local guard, clock, queue, fault and seeded fuzz tests; useful for focused sanitizer checks |
 | `make r09-tests` | Runs real-SHA local grant/Merkle tests and signed SPI/full-device integration, retaining all outputs |
 | `make r09-unit-tests` | Runs grant/proof vectors, both-lane construction/hand-off faults and seeded fuzz without long SPI transfers |
+| `make r10a-tests` | Runs FIPS addresses, framing, MGF1, all WOTS layers/intermediates, fault tests and seeded fuzz; validates and retains the actual evidence files |
 | `make baseline-tests` | Runs source/fixture/tool checks using only Python; no C++ build or OpenSSL package needed |
 | `make sanitize-tests` | Builds/runs the full suite with C++ address/undefined-behavior sanitizers |
 | `make regenerate-reference-fixtures` | Explicitly generates new public R02 keys/signatures and provenance; changes tracked fixtures |
@@ -255,6 +260,20 @@ locally; it receives no grant body. Its root is a candidate until the signature
 verifies. The C++ harness checks every actual SHA block/chaining state and uses
 host SLH-DSA to check the actual RTL-produced message and selected key. See the
 [R09 guide](docs/R09_MERKLE.md) for interfaces, rejection cases and saved evidence.
+
+For SLH-DSA addressing, message hashing and WOTS+:
+
+```sh
+make r10a-tests
+REINS_R10A_SEED=12345 make r10a-tests
+make SANITIZE=1 r10a-tests
+REINS_R10A_TRACE=1 make RTL_TRACE=1 r10a-tests
+```
+
+These tests compare 42 WOTS layer intermediates from supplied and official
+signatures with the unchanged Python verifier and an independent C++/OpenSSL
+oracle. They check actual compression blocks, states, chain endpoints and counts.
+Complete FORS/hypertree verification and two-pass acceptance remain R10b/c.
 
 R07 tests clock every SPI bit and transfer complete signatures, so even directed
 tests can take several minutes. `quick-tests` excludes extended fuzzing, while
@@ -384,6 +403,8 @@ physical randomness.
 | `r08-integration` | Does a real signed quorum enable work, expire into trusted physical stop, preserve live SPI management and permit fresh ARM only after closure? Are unsupported OTP delay promises rejected? |
 | `r09-rtl` | Do independently constructed grants/configuration hashes and every physical SHA block match software, for the supplied/R02 corpus, depths 0–20, last-leaf padding, malformed proofs, construction/hand-off faults and seeded fuzz? |
 | `r09-integration` | Do signed ARM/RENEW quorums work through actual R05–R09 hardware, with host SLH verification of the actual RTL message/key, rejection of wrong paths and cancellation during reconstruction? |
+| `r10a-rtl` | Do canonical FIPS addresses, pure framing, message hashing/MGF1, checksum/chain boundaries and all 42 independently expected WOTS layers match? Do malformed slices and framing/count/address/hand-off faults fail off? |
+| `r10a-evidence` | Do the actual saved JSONL, operation/result records, measurements and independent oracle provenance parse and meet their declared formats? |
 | `baseline` | Are the normative source files unchanged, the implementation fixed at 3/2, and the fixture OTP header supported? The full suite also runs the original Python review validation. |
 | `tool-regressions` | Do unsupported profiles and source changes fail? In the full suite, do TLS trust, download diagnostics, logging, failure status, timeouts, empty selection, retention and clean behavior work? |
 | `sim-report` | Does the actual CLI produce correct JSON and deterministic event times, reject invalid inputs/modes, and return the right exit status? |
@@ -393,18 +414,19 @@ physical randomness.
 Currently the full suite contains 32 software C++ cases, 9 SHA-256 and 18 R05 RTL
 C++ cases, 21 R06 controller cases, 3 R05/R06 integration cases, 30 R07 pin/controller
 cases, 2 R07 integration cases, 4 memory cases, 13 R08 enforcement cases,
-2 R08 integration cases, 9 R09 Merkle cases, 2 R09 integration cases and 30 Python tool regressions,
+2 R08 integration cases, 9 R09 Merkle cases, 2 R09 integration cases,
+12 R10a component cases and 30 Python tool regressions,
 in addition to review/corpus/CLI checks.
 The quick suite runs 28 software, 8 SHA-256, 17 R05, 20 R06 controller and 3
 R05/R06 integration cases, 29 R07 pin/controller cases, both R07 integration cases,
 all 4 memory cases, 12 R08 enforcement cases, both R08 integration cases,
-8 R09 Merkle cases and both R09 integration cases,
+8 R09 Merkle cases, both R09 integration cases and 11 R10a component cases,
 plus 12 source/profile regressions. It still
 checks all 28 NIST outcomes, but skips
 the slower fresh-key signing case and the second Python cryptographic cross-check.
 Counts will grow as implementation progresses; saved logs record what executed.
 
-The eleven RTL groups exercise **actual hardware on Verilator**. R06 controller
+The twelve RTL groups exercise **actual hardware on Verilator**. R06 controller
 tests use actual independently computed host signature verification and compare
 semantic outcomes to the C++ model. Integration additionally exercises real R05
 configuration hashing, source conditioning and trusted time. R07 adds actual
@@ -413,8 +435,9 @@ signature verification and physical guard qualification remain later work.
 R08 now models separate local guards/cells and observes actual outbound effects;
 its delay assumptions still require platform evidence. Mirrored/sparse digital
 checks do not establish R03's physical fault protections.
-R09 adds real configuration/leaf/node hashing independently in each pass; full
-SLH-DSA hardware and complete protected acceptance integration remain R10a–R10c.
+R09 adds real configuration/leaf/node hashing independently in each pass. R10a
+adds actual SLH addresses/framing/WOTS+, with direct independent intermediate
+checks. FORS, hypertree, complete SLH verification and protected acceptance remain R10b/c.
 The [implementation plan](docs/IMPLEMENTATION_PLAN.md) describes those next steps.
 
 ## Where are my results?
@@ -454,6 +477,9 @@ test-results/<timestamp>-full-release-<unique>/
   r09-rtl/events.jsonl             Public replies, physical starts and per-result leaf/root/cycle/read counts
   r09-rtl/performance.json         Seed, actual clocks and simulator throughput; coverage and optional FST alongside
   r09-integration/                 Actual R05–R09 signed ARM/RENEW, host SLH over RTL outputs and cancellation
+  r10a-rtl/                        FIPS/WOTS logs, actual SHA blocks/states/endpoints/results and coverage
+  r10a-rtl/oracle-provenance.json   Version and source/artifact hashes for independent Python intermediates
+  r10a-evidence/output.log         Validation of actual retained JSONL, measurements and provenance
   r07-memory/                      Exhaustive ECC and address/seal/control fault evidence
   rtl-lint/output.log               Standalone production/assertion/synthesis-path lint
   baseline/output.log               Source/profile and review checks

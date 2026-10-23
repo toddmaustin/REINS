@@ -48,9 +48,9 @@ template<class Port> Bytes unpack(const Port& port, std::size_t size) {
     for (std::size_t i=0;i<size;i++) bytes[i]=port[(size-1-i)/4]>>(8*((size-1-i)%4));
     return bytes;
 }
-// Store all bytes into a matching complete wide port, clearing previous values.
+// Store all bytes into matching wide port, clearing every word, including a partial high word.
 template<class Port> void pack(Port& port, const Bytes& bytes) {
-    for (std::size_t i=0;i<bytes.size()/4;i++) port[i]=0;
+    for (std::size_t i=0;i<(bytes.size()+3)/4;i++) port[i]=0;
     for (std::size_t i=0;i<bytes.size();i++) port[(bytes.size()-1-i)/4]|=std::uint32_t(bytes[i])<<(8*((bytes.size()-1-i)%4));
 }
 // Convert hash's fixed bytes for the generic wide-port encoder.
@@ -180,13 +180,15 @@ template<class Dut> void clear_verifier(Dut& dut) {
 // coverage, replay seed and measurements; return failure on ownership imbalance.
 inline int run(int argc, char** argv, const char* mode) {
     try {
+        const bool r10=std::string_view(mode).find("r10")!=std::string_view::npos;
         const bool r09=std::string_view(mode).find("r09")!=std::string_view::npos;
         const bool r08=std::string_view(mode).find("r08")!=std::string_view::npos;
         const bool r07=std::string_view(mode).find("r07")!=std::string_view::npos;
-        const char* label=r09 ? "R09" : r08 ? "R08" : r07 ? "R07" : "R06";
-        const char* seed_variable=r09 ? "REINS_R09_SEED" : r08 ? "REINS_R08_SEED" : r07 ? "REINS_R07_SEED" : "REINS_R06_SEED";
-        const char* trace_variable=r09 ? "REINS_R09_TRACE" : r08 ? "REINS_R08_TRACE" : r07 ? "REINS_R07_TRACE" : "REINS_R06_TRACE";
-        if (r09) evidence.seed=0x5245494e5309ULL;
+        const char* label=r10 ? "R10A" : r09 ? "R09" : r08 ? "R08" : r07 ? "R07" : "R06";
+        const char* seed_variable=r10 ? "REINS_R10A_SEED" : r09 ? "REINS_R09_SEED" : r08 ? "REINS_R08_SEED" : r07 ? "REINS_R07_SEED" : "REINS_R06_SEED";
+        const char* trace_variable=r10 ? "REINS_R10A_TRACE" : r09 ? "REINS_R09_TRACE" : r08 ? "REINS_R08_TRACE" : r07 ? "REINS_R07_TRACE" : "REINS_R06_TRACE";
+        if (r10) evidence.seed=0x5245494e5310aULL;
+        else if (r09) evidence.seed=0x5245494e5309ULL;
         else if (r08) evidence.seed=0x5245494e5308ULL;
         else if (r07) evidence.seed=0x5245494e5307ULL;
         const char* directory=std::getenv("REINS_TEST_OUTPUT_DIR");
