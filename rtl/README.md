@@ -25,6 +25,8 @@ construction and hand-off checks, and the software SLH signature boundary.
 R10a now supplies real SLH addresses, production pure framing, H_msg/MGF1 and
 WOTS+ chains/public-key reconstruction. Its [component guide](../docs/R10A_SLH_COMPONENTS.md)
 documents interfaces, prefix state, exact counts and independent intermediates.
+R10b completes single-pass SLH verification with FORS, all seven hypertree layers
+and a strict REINS gate; see the [verifier guide](../docs/R10B_SLH_VERIFIER.md).
 
 ## Files and architecture
 
@@ -141,7 +143,7 @@ make tests
 make sanitize-tests JOBS=2
 ```
 
-`make rtl-build` builds all twelve SHA and R05–R10a component/integration test executables, including the C++ oracle
+`make rtl-build` builds all thirteen SHA and R05–R10b component/integration test executables, including the C++ oracle
 objects needed by R05; `make software-build` builds the independent software
 simulator. Normal build includes all of them. Builds
 enable SystemVerilog assertions, fatal RTL lint warnings and line coverage.
@@ -393,7 +395,8 @@ cancel; the R05/R06 caller retains system reset, timeout and acceptance ownershi
 Run `make r09-unit-tests` for vectors, faults and seeded fuzz; `make r09-tests`
 also clocks real signed ARM/RENEW through the complete device. Both are included
 in normal builds/tests. The integration adapter verifies actual RTL outputs with
-host SLH-DSA, leaving full signature hardware and protected acceptance to R10a–c.
+host SLH-DSA. R10b implements complete single-pass signature hardware; R10c
+will integrate independent two-pass acceptance.
 See [R09_MERKLE.md](../docs/R09_MERKLE.md) for every port/code, exact framing,
 pass independence, saved reports, timing measurements and remaining limits.
 
@@ -428,5 +431,37 @@ Run `make r10a-tests` for directed/independent-intermediate/fault/fuzz checks an
 saved-evidence validation. They also run through normal Make suites, including
 fatal-warning assertion/synthesis lint. See the [R10a guide](../docs/R10A_SLH_COMPONENTS.md)
 for exact ports, work formulas, trusted memory/reset boundaries and retained
-artifacts. FORS/hypertree and complete protected acceptance remain R10b/c;
+artifacts. Complete single-pass FORS/hypertree verification is now in R10b;
+independent two-pass acceptance remains R10c;
 R03 general physical fault qualification remains deferred.
+
+
+## R10b complete single-pass verification
+
+`slh_verify.sv` sequences real H_msg, fourteen FORS trees, FORS_ROOTS, seven
+WOTS public-key reconstructions and all 63 XMSS authentication hashes. It parses
+exactly 7,856 signature bytes through the sealed-memory read boundary, checks
+complementary sequencer/scratch state and independently accounts for actual SHA
+starts/completions. Its final 16-byte reconstructed root is compared with the
+captured public-key root. A completed mismatch is distinct from a malformed
+request or integrity alarm.
+
+`slh_verify_reins.sv` captures and protects the exact public message/key/job.
+Its production ports require profile 2, pure mode, empty context, the fixed batch
+label, exact signature size and canonical reply extent. It has no internal FIPS
+interface selector. The generic algorithm component separately supports bounded
+long messages and contexts needed by the selected official cases.
+
+There is one real SHA engine for H_msg/FORS/XMSS and one in WOTS, with exclusive
+sequenced ownership. The signature stays in the sole R07 receive SRAM; bounded
+FORS/WOTS workspaces are erased at request boundaries. Cancel suppresses reads
+and acceptance immediately and preserves sticky failure. A valid single pass
+awards no vote or lease; R10c still owns complete independent two-pass integration.
+
+Run `make r10b-tests` for all 28 official outcomes, supplied REINS signatures,
+29 section mutations, twelve fault sites, gate/lifecycle checks and seeded fuzz.
+The C++ harness checks every real core block/state and 29 independent stages;
+`r10b-evidence` validates saved traces, hashes and exact replay input binaries.
+`make tests` and `make quick-tests` include this group and production lint.
+The [R10b guide](../docs/R10B_SLH_VERIFIER.md) supplies detailed ports, parser
+ranges, work formulas and measurements.

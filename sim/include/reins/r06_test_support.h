@@ -180,14 +180,16 @@ template<class Dut> void clear_verifier(Dut& dut) {
 // coverage, replay seed and measurements; return failure on ownership imbalance.
 inline int run(int argc, char** argv, const char* mode) {
     try {
+        const bool r10b=std::string_view(mode).find("r10b")!=std::string_view::npos;
         const bool r10=std::string_view(mode).find("r10")!=std::string_view::npos;
         const bool r09=std::string_view(mode).find("r09")!=std::string_view::npos;
         const bool r08=std::string_view(mode).find("r08")!=std::string_view::npos;
         const bool r07=std::string_view(mode).find("r07")!=std::string_view::npos;
-        const char* label=r10 ? "R10A" : r09 ? "R09" : r08 ? "R08" : r07 ? "R07" : "R06";
-        const char* seed_variable=r10 ? "REINS_R10A_SEED" : r09 ? "REINS_R09_SEED" : r08 ? "REINS_R08_SEED" : r07 ? "REINS_R07_SEED" : "REINS_R06_SEED";
-        const char* trace_variable=r10 ? "REINS_R10A_TRACE" : r09 ? "REINS_R09_TRACE" : r08 ? "REINS_R08_TRACE" : r07 ? "REINS_R07_TRACE" : "REINS_R06_TRACE";
-        if (r10) evidence.seed=0x5245494e5310aULL;
+        const char* label=r10b ? "R10B" : r10 ? "R10A" : r09 ? "R09" : r08 ? "R08" : r07 ? "R07" : "R06";
+        const char* seed_variable=r10b ? "REINS_R10B_SEED" : r10 ? "REINS_R10A_SEED" : r09 ? "REINS_R09_SEED" : r08 ? "REINS_R08_SEED" : r07 ? "REINS_R07_SEED" : "REINS_R06_SEED";
+        const char* trace_variable=r10b ? "REINS_R10B_TRACE" : r10 ? "REINS_R10A_TRACE" : r09 ? "REINS_R09_TRACE" : r08 ? "REINS_R08_TRACE" : r07 ? "REINS_R07_TRACE" : "REINS_R06_TRACE";
+        if (r10b) evidence.seed=0x5245494e5310bULL;
+        else if (r10) evidence.seed=0x5245494e5310aULL;
         else if (r09) evidence.seed=0x5245494e5309ULL;
         else if (r08) evidence.seed=0x5245494e5308ULL;
         else if (r07) evidence.seed=0x5245494e5307ULL;

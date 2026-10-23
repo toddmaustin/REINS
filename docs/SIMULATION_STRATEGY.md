@@ -43,6 +43,15 @@ signatures; independent C++/OpenSSL checks every real SHA block/state and endpoi
 See [R10A_SLH_COMPONENTS.md](R10A_SLH_COMPONENTS.md) for interfaces, exact counts,
 canonical slices, fault domains and the remaining full-signature boundary.
 
+R10b adds **rtl-r10b-single-pass**: complete real-SHA FORS and seven-layer
+hypertree reconstruction with a strict REINS production gate. Official cases
+retain their internal/external algorithm interfaces, including contexts unsupported
+by production. Both supplied REINS signatures also traverse the actual sealed
+SRAM. Every physical compression block/state and 29 stages are cross-checked,
+with mutation/fault/lifecycle/fuzz evidence and exact retained replay inputs.
+See [R10B_SLH_VERIFIER.md](R10B_SLH_VERIFIER.md). Two-pass acceptance and
+whole-device crypto integration remain R10c.
+
 ## Boundaries and APIs
 
 ```mermaid
@@ -149,9 +158,10 @@ independent Python outcomes anchor the C++ implementation.
 | RTL R09 Merkle | Two independent real-SHA grant/configuration/proof lanes and exact sealed SRAM | Supplied/R02 corpus, depths 0–20, last-leaf padding, canonical parsing, actual block/state/read checks, construction/hand-off faults and seeded fuzz |
 | RTL R09 integration | Actual R05–R09 composition with host SLH over RTL-produced message/key | Signed ARM/RENEW, selected key binding, wrong-path signature rejection, abort during reconstruction and enforced endpoints |
 | RTL R10a components | Real FIPS addressing, framing/H_msg/MGF1 and WOTS+ with independent intermediate oracles | All legal chain intervals, 42 WOTS layers, actual SHA blocks/states/endpoints/counts, malformed slices, faults and seeded fuzz; no complete signature verdict |
+| RTL R10b single pass | Complete real-SHA FORS, WOTS/XMSS hypertree and strict production gate | All 28 official outcomes, real sealed-memory REINS signatures, every block/state and 29 stages, section mutations, gates, twelve fault sites, scratch lifecycle and seeded fuzz; no two-pass vote/commit integration |
 | RTL R07 memory | Isolated exact-production SRAM wrapper | Exhaustive single/double codeword errors, address/owner substitution and seal/control checks in declared digital fault domains |
 | Crypto control | Deferred until measurements justify a software SHA compression backend | Later: real sequencing with abstracted compression datapath |
-| Full RTL | SHA, independent grant/Merkle and SLH framing/WOTS stages available; pending FORS/hypertree and protected acceptance | Later: actual complete digital crypto/control and cycle measurements |
+| Full RTL | SHA, independent grant/Merkle and complete single-pass SLH available; pending independent two-pass acceptance and whole-device integration | Later: actual complete digital crypto/control and cycle measurements |
 | RTL fault | Pending fault-site implementation | Later: declared implementation-level injection evidence |
 
 These new modes identify test-executable reports; the existing `reins-sim` CLI

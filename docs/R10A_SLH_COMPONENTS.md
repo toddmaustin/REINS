@@ -7,9 +7,9 @@ the iterative R04 compression core. The normative algorithm is
 are `n=16`, `h=63`, `d=7`, `h'=9`, `a=12`, `k=14`, `lg(w)=4`, and WOTS length 35.
 The public key has 32 bytes and the signature has exactly 7,856 bytes.
 
-These components return **candidate cryptographic intermediates**. R10b still
-owns FORS, all XMSS authentication paths, the hypertree and comparison against
-the expected 16-byte public-key root. R10c owns complete independent two-pass
+These components return **candidate cryptographic intermediates**. R10b now
+implements FORS, all XMSS authentication paths, the hypertree and comparison against
+the expected 16-byte public-key root; see the [complete verifier guide](R10B_SLH_VERIFIER.md). R10c owns complete independent two-pass
 integration and protected acceptance. No R10a output awards a vote or execution
 lease. The existing complete-device tests continue using their explicit host
 signature boundary.
@@ -127,7 +127,7 @@ Every byte is read twice before use. Address/complement checks and independent
 row/column decoding compare the actual read with the captured slice, chain and
 byte position. This catches coherent address/complement substitution even when
 all signature bytes happen to be identical. The test memory driver supplies
-public bytes; integration with the already protected R07 SRAM remains R10b/c.
+public bytes; R10b production tests now integrate the protected R07 SRAM.
 No additional 9,216-byte receive array is introduced. The 560-byte endpoint
 workspace and its integrity copy are cleared on each request boundary.
 
@@ -199,8 +199,8 @@ intermediate chain endpoints. No old fixture private key is needed.
 
 Official internal/nonempty-context cases contribute **WOTS component** expected
 values through the Python algorithm interface. They do not broaden the RTL
-production H_msg gate. The other official signature outcomes, complete FORS/
-hypertree and full RTL signature acceptance remain R10b/c.
+production H_msg gate. R10b now checks all official outcomes and complete
+FORS/hypertree single-pass verification. The protected two-pass join remains R10c.
 
 Each run retains `r10a-rtl/output.log`, request diagnostics, `events.jsonl`,
 `performance.json`, per-model `coverage/`, `oracle-index.txt` and
