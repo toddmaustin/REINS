@@ -22,6 +22,9 @@ R09 adds independent expected-grant/configuration/Merkle stages, each with its o
 real SHA core and fresh sealed-memory proof reads. The
 [R09 guide](../docs/R09_MERKLE.md) defines exact framing, evidence/provenance,
 construction and hand-off checks, and the software SLH signature boundary.
+R10a now supplies real SLH addresses, production pure framing, H_msg/MGF1 and
+WOTS+ chains/public-key reconstruction. Its [component guide](../docs/R10A_SLH_COMPONENTS.md)
+documents interfaces, prefix state, exact counts and independent intermediates.
 
 ## Files and architecture
 
@@ -138,7 +141,7 @@ make tests
 make sanitize-tests JOBS=2
 ```
 
-`make rtl-build` builds all eleven SHA and R05–R09 component/integration test executables, including the C++ oracle
+`make rtl-build` builds all twelve SHA and R05–R10a component/integration test executables, including the C++ oracle
 objects needed by R05; `make software-build` builds the independent software
 simulator. Normal build includes all of them. Builds
 enable SystemVerilog assertions, fatal RTL lint warnings and line coverage.
@@ -393,3 +396,37 @@ in normal builds/tests. The integration adapter verifies actual RTL outputs with
 host SLH-DSA, leaving full signature hardware and protected acceptance to R10a–c.
 See [R09_MERKLE.md](../docs/R09_MERKLE.md) for every port/code, exact framing,
 pass independence, saved reports, timing measurements and remaining limits.
+
+## R10a SLH-DSA components
+
+| File | Interface and ownership |
+|---|---|
+| [`slh_address.sv`](slh_address.sv) | Stateless 32-byte ADRS/22-byte ADRSc construction, canonical unused fields and selected-profile bounds |
+| [`slh_wots_digits.sv`](slh_wots_digits.sv) | Thirty-two message nibbles and three correctly shifted checksum nibbles |
+| [`slh_sha256_stream.sv`](slh_sha256_stream.sv) | Standard SHA, continuation after one public-seed block, or raw seed-state compression; one real R04 core |
+| [`slh_hash_transaction.sv`](slh_hash_transaction.sv) | Independent byte audit, complementary descriptors/counts, physical events, tag and digest hand-off checks |
+| [`slh_message_hash.sv`](slh_message_hash.sv) | Pure/empty-context H_msg gate, bounded standalone MGF1, actual mask/tree/leaf and separate expected PK.root |
+| [`slh_wots.sv`](slh_wots.sv) | One bounded chain or 35-chain reconstruction/T_l; fresh prefix, canonical signature read port and endpoint scratch |
+
+H_msg computes the actual `00 || 00 || application_message` framing and uses four
+compressions. The WOTS prefix is the raw compression of `PK.seed || zero[48]`;
+F uses one further compression per step and T_l uses ten. Full WOTS therefore
+requires exactly `11 + sum(15-digit[i])`, checked independently of completion
+intent. It reads 560 bytes at `2928+704*layer`, twice per byte, without introducing
+a second receive array. Coherent address/complement substitution is checked by
+independent row/byte decoding as well as complementary controls.
+
+Ready/valid requests capture immutable metadata. Responses hold candidate values
+until consumed; cancel/reset invalidate and erase work. Integrity alarms survive
+cancellation. Stage/chain/hash-index and physical start/completion ports permit
+independent observation; test tops add passive actual block/state taps and fault
+probes. No production module accepts a software SHA result or emits a vote.
+The 32-byte batch root in the signed message, expected 16-byte SLH root and
+candidate 16-byte WOTS key remain separate objects.
+
+Run `make r10a-tests` for directed/independent-intermediate/fault/fuzz checks and
+saved-evidence validation. They also run through normal Make suites, including
+fatal-warning assertion/synthesis lint. See the [R10a guide](../docs/R10A_SLH_COMPONENTS.md)
+for exact ports, work formulas, trusted memory/reset boundaries and retained
+artifacts. FORS/hypertree and complete protected acceptance remain R10b/c;
+R03 general physical fault qualification remains deferred.

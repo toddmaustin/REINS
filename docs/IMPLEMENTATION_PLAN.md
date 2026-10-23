@@ -11,7 +11,9 @@ entropy, R06 operational controller and R07 SPI/sealed receive RTL are implement
 with Verilator tests. R08 now adds dynamic dual permit rails, independent local
 guards and modeled endpoint isolation/queue containment, with trusted stop
 completion and live management. R09 adds independent per-pass expected grants,
-configuration binding and Merkle reconstruction with real SHA-256. R07 includes
+configuration binding and Merkle reconstruction with real SHA-256. R10a adds
+canonical FIPS addresses, pure framing, message hashing/MGF1 and WOTS+ hardware,
+cross-checked against independent component intermediates. R07 includes
 an independent byte-level C++ oracle, actual memory-backed host verification and
 real R05/R06/R07 pin integration. Remaining RTL milestones
 are open; software/Python validation is not evidence that their RTL exists.
@@ -361,6 +363,18 @@ Corrupt context construction and Merkle hand-offs, not only stored output hashes
 
 ### PR 10a — SLH-DSA addressing, framing, and WOTS+
 
+**Status: implemented as digital components.** See the
+[R10a architecture/evidence guide](R10A_SLH_COMPONENTS.md),
+[RTL source map](../rtl/README.md#r10a-slh-dsa-components) and
+[C++ harness](../sim/README.md#r10a-slh-component-state).
+Real SHA drives pure/empty-context H_msg, bounded MGF1, all 35 verification
+chains and WOTS public-key compression. Tests anchor 42 layer intermediates to
+unchanged Python verification of supplied/official signatures, compare every
+physical block/state and endpoint with OpenSSL, cover all legal chain intervals,
+and exercise malformed slices, framing/count/transfer faults and stateful fuzz.
+These candidate intermediates do not establish complete signature acceptance;
+FORS/hypertree and the protected two-pass join remain R10b/c.
+
 **Deliver:** FIPS 205 address construction, pure-mode framing including the empty
 context prefix, message hashing/MGF1, WOTS+ digits/checksum/chains, and per-stage
 operation observations. Keep the reconstructed public-key root distinct from the
@@ -550,8 +564,9 @@ behavior; and measure environmental/fault coverage and the actual stop bound.
 Sharing SHA hardware or broadening N/Q is a later change requiring renewed
 performance, fault, and regression evidence.
 
-**Next development action: PR 10a.** Implement FIPS 205 addressing, pure/empty-context
-framing and WOTS+, preserving R09's independently reconstructed messages and keys,
-the two-pass acceptance boundary and R08 endpoint enforcement.
+**Next development action: PR 10b.** Implement FORS, all seven hypertree layers,
+bounded full-signature parsing and complete single-pass verification, reusing
+R10a's real SHA/address/WOTS components and preserving R09 context binding and
+R08 endpoint enforcement. Complete protected two-pass integration remains R10c.
 Keep R03 protected primitives and general internal fault campaigns explicitly
 deferred until their implementation and integration are resumed.

@@ -196,6 +196,12 @@ def suite_steps(suite, build_dir, test_filter, make_command="make", configuratio
     # Instrumenting generated RTL is substantially slower than native simulation;
     # hardware tick deadlines stay identical in both configurations.
     r07_timeout = 7200 if configuration == "sanitize" else 1200
+    if suite == "r10a":
+        command = [str(build_dir / "r10a-rtl/reins-r10a-tests"), "--no-colors", "--duration"]
+        if test_filter:
+            command += ["--test-case=" + test_filter]
+        return [Step("r10a-rtl", command, timeout=r07_timeout, count_kind="doctest"),
+            Step("r10a-evidence", python + [str(ROOT / "tools/check_slh_report.py")])]
     if suite in ["r09", "r09-unit"]:
         command = [str(build_dir / "r09-rtl/reins-r09-tests"), "--no-colors", "--duration"]
         if test_filter:
@@ -277,6 +283,11 @@ def suite_steps(suite, build_dir, test_filter, make_command="make", configuratio
         steps.insert(10, Step("r09-rtl", r09, timeout=r07_timeout, count_kind="doctest"))
         steps.insert(11, Step("r09-integration", [str(build_dir / "r09-integration/reins-r09-integration-tests"),
             "--no-colors", "--duration"], timeout=r07_timeout, count_kind="doctest"))
+        r10a = [str(build_dir / "r10a-rtl/reins-r10a-tests"), "--no-colors", "--duration"]
+        if suite == "quick":
+            r10a += ["--test-case-exclude=*extended*"]
+        steps.insert(12, Step("r10a-rtl", r10a, timeout=r07_timeout, count_kind="doctest"))
+        steps.insert(13, Step("r10a-evidence", python + [str(ROOT / "tools/check_slh_report.py")]))
         steps.insert(1, Step("rtl-lint", shlex.split(make_command)+["--no-print-directory", "rtl-lint"]))
         steps.append(Step("sim-report", python + [str(ROOT / "tools/test_sim_report.py"),
             "--executable", str(build_dir / "reins-sim"), "--fixtures", str(build_dir / "fixtures")]))
@@ -288,7 +299,7 @@ def suite_steps(suite, build_dir, test_filter, make_command="make", configuratio
 def main():
     """Parse process arguments and run the selected logged Make suite; no formal parameters."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--suite", choices=["quick", "full", "baseline", "r07", "r08", "r08-unit", "r09", "r09-unit"], default="full")
+    parser.add_argument("--suite", choices=["quick", "full", "baseline", "r07", "r08", "r08-unit", "r09", "r09-unit", "r10a"], default="full")
     parser.add_argument("--configuration", choices=["release", "sanitize"], default="release")
     parser.add_argument("--build-dir", type=Path, default=ROOT / "build/release")
     parser.add_argument("--make-command", default="make")
@@ -303,7 +314,7 @@ def main():
         environment.pop(name, None)
     build = None if args.suite == "baseline" else Step("build",
         shlex.split(args.make_command) + ["--no-print-directory", "-j" + args.jobs,
-            {"r09": "r09-build", "r09-unit": "r09-unit-build", "r07": "r07-build", "r08": "r08-build", "r08-unit": "r08-unit-build"}.get(args.suite, "build")],
+            {"r10a": "r10a-build", "r09": "r09-build", "r09-unit": "r09-unit-build", "r07": "r07-build", "r08": "r08-build", "r08-unit": "r08-unit-build"}.get(args.suite, "build")],
         # Instrumented generated models can exceed the release build budget on a first build.
         timeout=7200 if args.configuration == "sanitize" else 1200)
     code, _ = run_suite(args.suite, args.configuration, ROOT / "test-results",

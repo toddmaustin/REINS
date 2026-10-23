@@ -36,6 +36,12 @@ construction, fresh configuration binding and bottom-up Merkle proofs through re
 SHA-256 in each lane. Host SLH-DSA verifies the actual RTL message and key, rather
 than a software-reconstructed replacement. See [R09_MERKLE.md](R09_MERKLE.md) for
 canonical parsing, last-leaf padding, block/read audits and fault evidence.
+R10a adds **rtl-r10a-components**: real FIPS addresses, pure framing, message
+hashing/MGF1 and WOTS+ verification chains/public-key reconstruction. The unchanged
+Python verifier provides public intermediate values for supplied and official
+signatures; independent C++/OpenSSL checks every real SHA block/state and endpoint.
+See [R10A_SLH_COMPONENTS.md](R10A_SLH_COMPONENTS.md) for interfaces, exact counts,
+canonical slices, fault domains and the remaining full-signature boundary.
 
 ## Boundaries and APIs
 
@@ -142,9 +148,10 @@ independent Python outcomes anchor the C++ implementation.
 | RTL R08 complete device | Actual R05 through R08, host crypto over real sealed SRAM | Signed quorum/expiry, trusted closure, live SPI management, fresh ARM, sensor withdrawal and incompatible OTP timing |
 | RTL R09 Merkle | Two independent real-SHA grant/configuration/proof lanes and exact sealed SRAM | Supplied/R02 corpus, depths 0–20, last-leaf padding, canonical parsing, actual block/state/read checks, construction/hand-off faults and seeded fuzz |
 | RTL R09 integration | Actual R05–R09 composition with host SLH over RTL-produced message/key | Signed ARM/RENEW, selected key binding, wrong-path signature rejection, abort during reconstruction and enforced endpoints |
+| RTL R10a components | Real FIPS addressing, framing/H_msg/MGF1 and WOTS+ with independent intermediate oracles | All legal chain intervals, 42 WOTS layers, actual SHA blocks/states/endpoints/counts, malformed slices, faults and seeded fuzz; no complete signature verdict |
 | RTL R07 memory | Isolated exact-production SRAM wrapper | Exhaustive single/double codeword errors, address/owner substitution and seal/control checks in declared digital fault domains |
 | Crypto control | Deferred until measurements justify a software SHA compression backend | Later: real sequencing with abstracted compression datapath |
-| Full RTL | SHA and independent grant/Merkle stages available; pending SLH-DSA RTL and protected acceptance | Later: actual complete digital crypto/control and cycle measurements |
+| Full RTL | SHA, independent grant/Merkle and SLH framing/WOTS stages available; pending FORS/hypertree and protected acceptance | Later: actual complete digital crypto/control and cycle measurements |
 | RTL fault | Pending fault-site implementation | Later: declared implementation-level injection evidence |
 
 These new modes identify test-executable reports; the existing `reins-sim` CLI

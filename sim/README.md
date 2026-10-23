@@ -33,6 +33,10 @@ Its C++ harness checks every actual SHA block/chaining state and verifies the
 actual RTL-produced root message/key using host SLH-DSA. The
 [R09 guide](../docs/R09_MERKLE.md) describes exact framing, last-leaf padding,
 construction/hand-off fault tests and the remaining signature hardware work.
+R10a supplies real SLH addressing, pure framing, message hashing/MGF1 and WOTS+
+components. Its [component guide](../docs/R10A_SLH_COMPONENTS.md) explains exact
+signature slices, fresh prefix-state ownership, independent intermediate oracles
+and per-stage counts. FORS/hypertree and full protected acceptance remain R10b/c.
 
 This directory contains the simulator: `src/` holds implementation files,
 `include/reins/` holds interfaces, and `tests/` holds C++ tests. All commands below
@@ -82,6 +86,9 @@ These are the C++ source/header files in `sim/`:
 | [`sim/include/reins/simulation.h`](include/reins/simulation.h) | Public data types and APIs shared by the CLI, tests and future simulation drivers | `VerificationInput`, `JobTag`, `Verdict`, `Latency`, `Completion`, `VerifierService`, `TestAuthority` |
 | [`sim/src/crypto.cc`](src/crypto.cc) | Fixed-profile framing, grant construction, SHA-256, Merkle reconstruction, host SLH-DSA verification and test signing | `verify_reply`, `expected_batch_root`, `root_message`, `sha256`, `backend_version`, `TestAuthority`, `algorithm_test::verify` |
 | [`sim/include/reins/r09_test_support.h`](include/reins/r09_test_support.h) | Independent OpenSSL frame/block/state oracle and exact production memory driver | `Bench`, expected leaf/blocks, per-pass provenance/count/address checks, public evidence and real signature validation |
+| [`sim/include/reins/r10a_test_support.h`](include/reins/r10a_test_support.h) | Independent FIPS byte/block/state oracle and bounded signature-memory driver | Canonical software addresses/digits/chains, actual SHA/state/endpoint scoreboard, public inputs/results, coverage and FST |
+| [`sim/tests/r10a_rtl_tests.cc`](tests/r10a_rtl_tests.cc) | Twelve real SLH component cases | SHA prefix/padding, H_msg/MGF1, all legal chain intervals, 42 supplied/official WOTS layers, malformed slices, fourteen faults and seeded fuzz |
+| [`sim/rtl/r10a_test_top.sv`](rtl/r10a_test_top.sv) | Exact production SLH components and a standalone SHA backend | Passive physical block/state observations and simulation-only semantic-stage fault sites |
 | [`sim/tests/r09_rtl_tests.cc`](tests/r09_rtl_tests.cc) | Nine real-SHA grant/Merkle directed/fault/fuzz cases | Supplied/R02 corpus, all depths, last-leaf batches, malformed proofs/context, thirty construction/transfer faults and 160-action seeded replay |
 | [`sim/tests/r09_integration_tests.cc`](tests/r09_integration_tests.cc) | Actual R05–R09 composition with host SLH verification of actual RTL message/key | Signed ARM/RENEW, wrong proof rejection, cancellation during reconstruction and local endpoint enforcement |
 | [`sim/rtl/r09_test_top.sv`](rtl/r09_test_top.sv) | Exact production Merkle pair and sealed SRAM | Passive physical SHA requests/completions, address observations and simulation-only constructor/hand-off faults |
@@ -165,6 +172,7 @@ build/<configuration>/r08-rtl/reins-r08-tests           Independent-clock local 
 build/<configuration>/r08-integration/reins-r08-integration-tests  Signed quorum through actual dynamic endpoint isolation
 build/<configuration>/r09-rtl/reins-r09-tests           Independent local grants/configuration/proofs with real SHA
 build/<configuration>/r09-integration/reins-r09-integration-tests  Signed SPI ARM/RENEW with real Merkle and host SLH
+build/<configuration>/r10a-rtl/reins-r10a-tests         Real SLH addressing/framing/MGF1/WOTS components
 ```
 
 The configuration is `release` or `sanitize`. The two small I/O/diagnostic headers
@@ -302,6 +310,41 @@ coverage. The thirty fault cases target grant construction and Merkle transfers
 in both lanes, including coherent value/complement changes. Optional FST is
 bounded. Full SLH hardware and protected two-pass acceptance remain R10a–R10c;
 see the [R09 guide](../docs/R09_MERKLE.md) for interface/error codes and limits.
+
+### R10a SLH component state
+
+[`slh_message_hash`](../rtl/slh_message_hash.sv) captures the public key, R,
+46-byte application message, production-gate fields and tag. Its complementary
+metadata, inner digest and mask stay local to that request. The actual pure
+framing is `00 || 00 || REINS-BATCH-v2 || batch_root`. A separate bounded MGF1
+entry exercises the algorithm without broadening the production protocol gate.
+
+[`slh_wots`](../rtl/slh_wots.sv) stores an immutable protected context, fresh
+public-seed compression state, current chain value/position, the 560-byte endpoint
+workspace, read position/sample and independently checked work counts. It reads
+only the canonical WOTS slice for the requested layer, checks row/column and
+address/complement, and samples each byte twice. Every request recomputes the
+prefix and erases it on cancellation/reset/consumption. These components store
+no armed state, quorum bitmap or lease; those remain in R06.
+
+The C++ harness compares every actual compression input/state and chain endpoint
+with independently constructed OpenSSL results. Build-only expected values come
+from observing the unchanged pinned Python verifier over two supplied and four
+valid official signatures: all seven WOTS layers, 42 in total. The reports keep
+generator/source/artifact hashes. Nonempty-context/internal official cases supply
+WOTS component values only; production H_msg still rejects those interfaces.
+
+```sh
+make r10a-tests
+REINS_R10A_SEED=12345 make r10a-tests
+make SANITIZE=1 r10a-tests
+REINS_R10A_TRACE=1 make RTL_TRACE=1 r10a-tests
+```
+
+`r10a-evidence` parses actual saved JSONL, measurements and oracle provenance.
+The [R10a guide](../docs/R10A_SLH_COMPONENTS.md) gives exact count formulas,
+framing, slice bounds and fault coverage. A candidate WOTS key or message digest
+does not establish a signature verdict; complete verification remains R10b/c.
 
 ### R07 SPI and receive state
 
@@ -914,6 +957,8 @@ For the full `make tests` suite, the main paths are:
 | `r08-integration/` | Complete-device signed inputs, actual stop latency, live management/fresh ARM, coverage and real verification counts |
 | `r09-rtl/` | Public OTP/request/reply inputs, physical compression events, leaf/root/cycle/read counts, seed/throughput, per-model coverage and optional FST |
 | `r09-integration/` | Actual R05–R09 signed inputs, host signatures over RTL outputs, cancellation/stop results, performance and coverage |
+| `r10a-rtl/` | Actual SHA blocks/states, chain endpoints, public inputs/results, clocks/counts, oracle index/provenance, per-model coverage and optional FST |
+| `r10a-evidence/` | Validation of the actual retained JSONL, measurements and independent oracle provenance |
 | `rtl-lint/output.log` | Standalone production-module checks with assertions and with `SYNTHESIS` defined |
 | `sim-report/output.log` | CLI scenario expectations and observed status |
 | `sim-report/cli-artifacts/` | Individual CLI stdout/stderr, command records, JSON and negative-case inputs |
@@ -953,7 +998,9 @@ lease controller and actual R05 composition with software-backed verification.
 R07 adds pin-level SPI and protected sealed-memory reception, including actual
 fresh memory reads in each host pass. R08 supplies dynamic permit, dual local
 guards, queue containment and actual stop completion. R09 implements independent
-local grants/configuration/Merkle hashing in each pass. SLH-DSA hardware,
+local grants/configuration/Merkle hashing in each pass. R10a adds real SLH
+addresses, framing, H_msg/MGF1 and WOTS+ with independent intermediate checks.
+FORS/hypertree, complete verification and protected acceptance,
 R03 internal fault campaigns and physical
 qualification remain separate work. Passing SHA tests does not establish safe
 sharing between verification passes. The software mutation/stale/stall cases
