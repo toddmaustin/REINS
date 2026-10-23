@@ -13,7 +13,9 @@ guards and modeled endpoint isolation/queue containment, with trusted stop
 completion and live management. R09 adds independent per-pass expected grants,
 configuration binding and Merkle reconstruction with real SHA-256. R10a adds
 canonical FIPS addresses, pure framing, message hashing/MGF1 and WOTS+ hardware,
-cross-checked against independent component intermediates. R07 includes
+cross-checked against independent component intermediates. R10b completes real-SHA
+single-pass FORS/seven-layer verification, strict production gating and official
+case/operation/stage cross-checks. Independent two-pass integration remains R10c. R07 includes
 an independent byte-level C++ oracle, actual memory-backed host verification and
 real R05/R06/R07 pin integration. Remaining RTL milestones
 are open; software/Python validation is not evidence that their RTL exists.
@@ -33,7 +35,7 @@ state/lease reporting, pinned public replay corpus and semantic completion tests
 Component RTL modes, real-cycle measurements and bounded FST now exist for R04/05.
 Pin-level SPI, native receive timeouts and sealed-memory fault evidence now exist
 in R07. R08 now supplies digital endpoint enforcement and real-time clock/fault
-evidence. Full verifier hardware and physical authorization/enforcement qualification remain with
+evidence. Full two-pass integration and physical authorization/enforcement qualification remain with
 their dependent milestones. R03 protected primitives/internal fault campaigns are
 deferred by the current development decision.
 
@@ -373,7 +375,7 @@ unchanged Python verification of supplied/official signatures, compare every
 physical block/state and endpoint with OpenSSL, cover all legal chain intervals,
 and exercise malformed slices, framing/count/transfer faults and stateful fuzz.
 These candidate intermediates do not establish complete signature acceptance;
-FORS/hypertree and the protected two-pass join remain R10b/c.
+FORS/hypertree are implemented in R10b; the protected two-pass join remains R10c.
 
 **Deliver:** FIPS 205 address construction, pure-mode framing including the empty
 context prefix, message hashing/MGF1, WOTS+ digits/checksum/chains, and per-stage
@@ -385,6 +387,15 @@ values; chain boundaries, addresses, checksum, prefix and context handling are
 correct; completion/count manipulation and malformed signature slices fail.
 
 ### PR 10b — FORS, hypertree, and complete single-pass verification
+
+**Status: implemented as a complete digital single-pass component.** See the
+[R10b verifier/evidence guide](R10B_SLH_VERIFIER.md). All 28 selected official
+outcomes use their original algorithm interfaces. Both supplied REINS signatures
+verify through the strict production gate and real sealed SRAM. Every physical
+SHA block/state and 29 stages match independent oracles; R/FORS/all-layer
+mutations, unsupported descriptors, twelve fault sites, cancellation, scratch
+lifetime and seeded read-backpressure fuzz are exercised. No single-pass result
+awards a vote or lease; the independent protected join remains R10c.
 
 **Deliver:** FORS, all seven hypertree layers, exact 7,856-byte signature parsing,
 scratch management, reconstructed-root output, and protected sequencer state.
@@ -564,9 +575,10 @@ behavior; and measure environmental/fault coverage and the actual stop bound.
 Sharing SHA hardware or broadening N/Q is a later change requiring renewed
 performance, fault, and regression evidence.
 
-**Next development action: PR 10b.** Implement FORS, all seven hypertree layers,
-bounded full-signature parsing and complete single-pass verification, reusing
-R10a's real SHA/address/WOTS components and preserving R09 context binding and
-R08 endpoint enforcement. Complete protected two-pass integration remains R10c.
+**Next development action: PR 10c.** Integrate two complete independently
+sequenced Merkle/SLH passes with initially separate SHA datapaths, dissimilar
+root comparisons and protected vote/commit acceptance. Preserve R09 context
+binding, R07 ownership/deadlines and R08 endpoint enforcement. Measure full-RTL
+SPI ARM/RENEW and exercise shared-input, memory, join and stale-result faults.
 Keep R03 protected primitives and general internal fault campaigns explicitly
 deferred until their implementation and integration are resumed.

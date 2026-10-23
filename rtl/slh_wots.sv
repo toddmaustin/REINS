@@ -2,7 +2,8 @@
 // compression per request, then one real compression per F step. The 560-byte
 // endpoint workspace is not another receive memory. No signature acceptance output.
 `default_nettype none
-module slh_wots (
+// Algorithm-only parents may pass a signature without a REINS index/proof; the production gate forbids that extent.
+module slh_wots #(parameter bit ALLOW_SIGNATURE_ONLY=1'b0) (
     input logic clk_i, rst_ni, cancel_i,      // Rising clock; synchronous trusted reset; cancel invalidates even a held result.
     input logic req_valid_i,                 // Descriptor is immutable after valid/ready capture.
     output logic req_ready_o,                // One healthy owned request at a time.
@@ -188,7 +189,8 @@ module slh_wots (
             CHECK: begin
                 if (!address_valid || (!context_q.full && (context_q.chain>=35 || context_q.start>15 || context_q.steps>15 || {1'b0,context_q.start}+{1'b0,context_q.steps}>15)) ||
                     (context_q.full && (context_q.signature_length!=7856 || context_q.offset!=14'd2928+14'(context_q.layer)*14'd704 ||
-                        context_q.sealed_length<7860 || context_q.sealed_length>8500 || (context_q.sealed_length-14'd7860)%32!=0 ||
+                        (!(ALLOW_SIGNATURE_ONLY && context_q.sealed_length==7856) &&
+                            (context_q.sealed_length<7860 || context_q.sealed_length>8500 || (context_q.sealed_length-14'd7860)%32!=0)) ||
                         {1'b0,context_q.offset}+15'd560>{1'b0,context_q.signature_length}))) begin
                     error_o<=1; state_q<=RESULT; state_inv_q<=~RESULT;
                 end else begin state_q<=HASH_START; state_inv_q<=~HASH_START; end

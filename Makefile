@@ -76,6 +76,9 @@ R10A_PRODUCTION := rtl/slh_address.sv rtl/slh_wots_digits.sv rtl/slh_sha256_stre
 R10A_DIR := $(abspath $(BUILD_DIR)/r10a-rtl)
 R10A_BINARY := $(BUILD_DIR)/r10a-rtl/reins-r10a-tests
 R10A_HEADERS := sim/include/reins/r10a_test_support.h sim/include/reins/r06_test_support.h sim/include/reins/fixture_io.h
+R10B_PRODUCTION := $(R10A_PRODUCTION) rtl/slh_verify.sv rtl/slh_verify_reins.sv
+R10B_DIR := $(abspath $(BUILD_DIR)/r10b-rtl)
+R10B_BINARY := $(BUILD_DIR)/r10b-rtl/reins-r10b-tests
 BASELINE_INPUTS := docs/implementation_baseline.json $(wildcard docs/REINS*) $(wildcard docs/validation/*) $(wildcard sim/fixtures/*) third_party/crypto-backend.json
 
 # Pass only explicit build settings to the logged recursive build. The runner
@@ -84,13 +87,15 @@ export CXX PYTHON PKG_CONFIG SANITIZE CPPFLAGS CXXFLAGS LDFLAGS LDLIBS
 export PROJECT_CPPFLAGS PROJECT_CXXFLAGS PROJECT_LDFLAGS OPENSSL_LIBS
 export VERILATOR RTL_TRACE
 
-.PHONY: r10a-build r10a-tests r09-build r09-unit-build r09-tests r09-unit-tests r08-build r08-unit-build r08-tests r08-unit-tests build software-build rtl-build r07-build rtl-lint check-tools check-rtl-tools verify-deps quick-tests tests r07-tests baseline-tests sanitize-tests regenerate-reference-fixtures clean clean-results clean-deps help FORCE
+.PHONY: r10b-build r10b-tests r10a-build r10a-tests r09-build r09-unit-build r09-tests r09-unit-tests r08-build r08-unit-build r08-tests r08-unit-tests build software-build rtl-build r07-build rtl-lint check-tools check-rtl-tools verify-deps quick-tests tests r07-tests baseline-tests sanitize-tests regenerate-reference-fixtures clean clean-results clean-deps help FORCE
 
 build: software-build rtl-build
 
 software-build: $(BUILD_DIR)/reins-sim $(BUILD_DIR)/reins-reference $(BUILD_DIR)/reins-sim-tests $(BUILD_DIR)/fixtures/ready.stamp
 
-rtl-build: $(R10A_BINARY) $(R09_BINARY) $(R09_INTEGRATION_BINARY) $(R08_BINARY) $(R08_INTEGRATION_BINARY) $(RTL_BINARY) $(R05_BINARY) $(R06_BINARY) $(R06_INTEGRATION_BINARY) $(R07_BINARY) $(R07_INTEGRATION_BINARY) $(R07_MEMORY_BINARY)
+rtl-build: $(R10B_BINARY) $(R10A_BINARY) $(R09_BINARY) $(R09_INTEGRATION_BINARY) $(R08_BINARY) $(R08_INTEGRATION_BINARY) $(RTL_BINARY) $(R05_BINARY) $(R06_BINARY) $(R06_INTEGRATION_BINARY) $(R07_BINARY) $(R07_INTEGRATION_BINARY) $(R07_MEMORY_BINARY)
+
+r10b-build: $(R10B_BINARY)
 
 r10a-build: $(R10A_BINARY)
 
@@ -124,6 +129,9 @@ rtl-lint: check-rtl-tools
 	$(VERILATOR) --lint-only -Wall -DSYNTHESIS --top-module slh_wots rtl/sha256_compress.sv $(R10A_PRODUCTION)
 	$(VERILATOR) --lint-only -Wall --assert --top-module slh_message_hash rtl/sha256_compress.sv $(R10A_PRODUCTION)
 	$(VERILATOR) --lint-only -Wall -DSYNTHESIS --top-module slh_message_hash rtl/sha256_compress.sv $(R10A_PRODUCTION)
+
+	$(VERILATOR) --lint-only -Wall --assert --top-module slh_verify_reins rtl/sha256_compress.sv $(R10B_PRODUCTION)
+	$(VERILATOR) --lint-only -Wall -DSYNTHESIS --top-module slh_verify_reins rtl/sha256_compress.sv $(R10B_PRODUCTION)
 
 check-rtl-tools:
 	@$(PYTHON) -c 'import re, subprocess, sys; version=subprocess.check_output(sys.argv[1:]+["--version"], text=True); print(version, end=""); match=re.match(r"Verilator ([0-9]+)\.", version); sys.exit(0 if match and int(match[1])>=5 else "Verilator 5+ required")' $(VERILATOR)
@@ -257,6 +265,17 @@ $(R10A_BINARY): rtl/sha256_compress.sv $(R10A_PRODUCTION) sim/rtl/r10a_test_top.
 	  -CFLAGS '-std=c++20 -Wall -Wextra $(OPT_FLAGS) $(OPENSSL_CFLAGS) -I$(abspath sim/include) -isystem $(abspath $(DOCTEST_DIR)) -DREINS_FIXTURE_DIR=\"$(abspath $(BUILD_DIR)/fixtures)\" $(CXXFLAGS)' \
 	  -LDFLAGS '$(abspath $(LIB_OBJECTS)) $(PROJECT_LDFLAGS) $(LDFLAGS) $(OPENSSL_LIBS) $(LDLIBS)'
 
+$(BUILD_DIR)/fixtures/r10b.stamp: tools/prepare_slh_verifier_vectors.py $(BASELINE_INPUTS) | check-tools
+	$(PYTHON) -E -s -B tools/prepare_slh_verifier_vectors.py --output $(BUILD_DIR)/fixtures
+	@touch $@
+
+$(R10B_BINARY): rtl/sha256_compress.sv $(R10B_PRODUCTION) rtl/reins_receive_sram.sv sim/rtl/r10b_test_top.sv sim/tests/r10b_rtl_tests.cc sim/include/reins/r10b_test_support.h sim/include/reins/r06_test_support.h sim/include/reins/fixture_io.h Makefile $(LIB_OBJECTS) $(DOCTEST_HEADER) $(BUILD_DIR)/fixtures/r10b.stamp $(BUILD_DIR)/fixtures/ready.stamp $(BUILD_DIR)/build-config.json | check-tools check-rtl-tools verify-deps
+	@mkdir -p $(R10B_DIR)
+	+$(VERILATOR) --cc --exe --build -j 2 --assert --coverage-line --output-split 5000 --output-split-cfuncs 300 $(RTL_TRACE_FLAGS) -Wall --top-module r10b_test_top \
+	  --Mdir $(R10B_DIR) -o reins-r10b-tests rtl/sha256_compress.sv $(R10B_PRODUCTION) rtl/reins_receive_sram.sv sim/rtl/r10b_test_top.sv $(abspath sim/tests/r10b_rtl_tests.cc) \
+	  -CFLAGS '-std=c++20 -Wall -Wextra $(OPT_FLAGS) $(OPENSSL_CFLAGS) -I$(abspath sim/include) -isystem $(abspath $(DOCTEST_DIR)) -DREINS_FIXTURE_DIR=\"$(abspath $(BUILD_DIR)/fixtures)\" $(CXXFLAGS)' \
+	  -LDFLAGS '$(abspath $(LIB_OBJECTS)) $(PROJECT_LDFLAGS) $(LDFLAGS) $(OPENSSL_LIBS) $(LDLIBS)'
+
 regenerate-reference-fixtures: $(BUILD_DIR)/reins-generate-fixtures
 	$(PYTHON) -E -s -B tools/generate_reference_fixtures.py --generator $(BUILD_DIR)/reins-generate-fixtures
 
@@ -277,6 +296,9 @@ r08-tests:
 
 r08-unit-tests:
 	+$(PYTHON) -E -s -B tools/run_tests.py --suite r08-unit --configuration $(CONFIGURATION) --build-dir $(BUILD_DIR) --make-command '$(MAKE)' --jobs $(JOBS) --test-filter '$(TEST_FILTER)'
+
+r10b-tests:
+	+$(PYTHON) -E -s -B tools/run_tests.py --suite r10b --configuration $(CONFIGURATION) --build-dir $(BUILD_DIR) --make-command '$(MAKE)' --jobs $(JOBS) --test-filter '$(TEST_FILTER)'
 
 r10a-tests:
 	+$(PYTHON) -E -s -B tools/run_tests.py --suite r10a --configuration $(CONFIGURATION) --build-dir $(BUILD_DIR) --make-command '$(MAKE)' --jobs $(JOBS) --test-filter '$(TEST_FILTER)'
@@ -309,6 +331,7 @@ help:
 	@echo 'make software-build Build only the independent C++ simulator and tests'
 	@echo 'make quick-tests    Build and run fast checks; retain every run'
 	@echo 'make tests          Build and run all current checks; retain every run'
+	@echo 'make r10b-tests     Run full SLH verification, official cases, mutation/fault tests; retain outputs'
 	@echo 'make r10a-tests     Run FIPS addressing, framing, MGF1, WOTS vectors/faults/fuzz; retain outputs'
 	@echo 'make r09-tests      Run real-SHA grant/Merkle and complete-device tests; retain every run'
 	@echo 'make r09-unit-tests Run Merkle vectors, fault tests and seeded fuzz only; retain every run'
