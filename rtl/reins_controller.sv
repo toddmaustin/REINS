@@ -88,6 +88,16 @@ module reins_controller #(
     logic pending_q, published_q, draw_pending_q, stop_needed_q, reset_active;
     logic active_q, issued_q, pass1_seen_q, pass1_ok_q, eligible_edge;
     logic [2:0] votes_q, votes_inv_q;
+    logic pass1_seen_inv_q, pass1_ok_inv_q;
+    logic [7:0] pass1_code_q, pass1_code_inv_q; // Protected sparse acceptance evidence, never an unchecked shared success flag.
+    logic secondary_identity_ok, secondary_vote_ok, secondary_commit_ok;
+    logic [2:0] secondary_voted;
+    logic [1:0] secondary_slot;
+    logic [7:0] vote_certificate_q [0:2], vote_certificate_inv_q [0:2];
+    logic [63:0] vote_token_q [0:2], vote_token_inv_q [0:2];
+    logic [2:0] certified_votes;
+    logic certificate_bad;
+    logic [2:0] secondary_vote_count;
     logic [2175:0] config_q, config_inv_q;     // Complete run-fixed image; no shared mutable host snapshot.
     logic [255:0] digest_q;
     logic [63:0] length_q, period_q, window_q, timing_inv_q [0:2];
@@ -104,6 +114,28 @@ module reins_controller #(
     context_t scheduled;
     job_t proposed_job;
 
+    // Return slot's internal sparse certificate code; these are not protocol or SPI values.
+    function automatic logic [7:0] certificate_code(input logic [1:0] slot);
+        case (slot)
+        0: return 8'h3c;
+        1: return 8'hc3;
+        2: return 8'h5a;
+        default: return 8'd0;
+        endcase
+    endfunction
+    // Independently authenticate stored votes from separate sparse certificates and unique job tokens.
+    always_comb begin
+        certificate_bad=0; certified_votes=0;
+        for (int i=0;i<3;i++) begin
+            if (vote_certificate_q[i]!=~vote_certificate_inv_q[i] || vote_token_q[i]!=~vote_token_inv_q[i] ||
+                (vote_certificate_q[i]!=0 && vote_certificate_q[i]!=certificate_code(2'(i))) ||
+                ((vote_certificate_q[i]==0)!=(vote_token_q[i]==0)) || vote_token_q[i]>=token_q) certificate_bad=1;
+            certified_votes[i]=vote_certificate_q[i]==certificate_code(2'(i)) && vote_token_q[i]!=0;
+        end
+        if (certified_votes!=votes_q) certificate_bad=1;
+        for (int i=0;i<3;i++) for (int j=i+1;j<3;j++)
+            if (certified_votes[i] && certified_votes[j] && vote_token_q[i]==vote_token_q[j]) certificate_bad=1;
+    end
     // Serialize slot's exact request from the single checked context and run OTP.
     // Body bytes 40..71 and 112..127 stay zero; no session or timing field is added.
     function automatic logic [1023:0] make_request(input logic [1:0] slot);
@@ -127,7 +159,9 @@ module reins_controller #(
     assign context_bad=pending_q && context_q!=~context_inv_q;
     assign job_bad=active_q && job_q!=~job_inv_q;
     assign counters_bad=run_q!=~run_inv_q || round_q!=~round_inv_q || token_q!=~token_inv_q || epoch_q!=~epoch_inv_q ||
-        next_issue_q!=~next_issue_inv_q || votes_q!=~votes_inv_q;
+        next_issue_q!=~next_issue_inv_q || votes_q!=~votes_inv_q || certificate_bad ||
+        pass1_seen_q!=~pass1_seen_inv_q || pass1_ok_q!=~pass1_ok_inv_q || pass1_code_q!=~pass1_code_inv_q ||
+        (pass1_seen_q && pass1_ok_q!=(pass1_code_q==8'h96));
     assign config_bad=running && (!config_valid_i || !config_closed_i || config_q!=~config_inv_q ||
         config_q!=configuration_i || digest_q!=config_digest_i || length_q!=~timing_inv_q[0] ||
         period_q!=~timing_inv_q[1] || window_q!=~timing_inv_q[2] ||
@@ -199,6 +233,22 @@ module reins_controller #(
         completion_slot_i==job_q.slot && completion_request_i==job_q.request_body && completion_config_digest_i==job_q.config_hash &&
         job_q.run_id==run_q && job_q.round_id==context_q.round_id && job_q.config_hash==context_q.config_hash &&
         job_q.request_body==make_request(job_q.slot);
+    // A separately formed identity check consumes the complemented stores and
+    // XOR reduction, not the primary equality chain or its match signal.
+    assign secondary_identity_ok=!(|({completion_token_i,completion_run_i,completion_round_i,completion_epoch_i,completion_slot_i,completion_request_i,completion_config_digest_i} ^
+        ~{job_inv_q.token,job_inv_q.run_id,job_inv_q.round_id,job_inv_q.epoch,job_inv_q.slot,job_inv_q.request_body,job_inv_q.config_hash})) &&
+        (~job_inv_q.run_id)==(~run_inv_q) && (~job_inv_q.round_id)==(~context_inv_q.round_id) && (~job_inv_q.config_hash)==(~context_inv_q.config_hash);
+    assign secondary_slot=~job_inv_q.slot;
+    always_comb begin
+        secondary_voted=certified_votes;
+        for (int i=0;i<3;i++) if (secondary_slot==2'(i)) secondary_voted[i]=1;
+        secondary_vote_count={2'd0,secondary_voted[0]}+{2'd0,secondary_voted[1]}+{2'd0,secondary_voted[2]};
+    end
+    assign secondary_vote_ok=secondary_identity_ok && pass1_seen_q && pass1_code_q==8'h96 && (~pass1_code_inv_q)==8'h96 &&
+        completion_pass_i==2 && completion_code_i==8'h69 && secondary_slot<2'd3 && votes_inv_q[secondary_slot] &&
+        at_edge<(~context_inv_q.deadline) && at_edge<(~next_issue_inv_q) &&
+        context_q.expiry>at_edge && at_edge>=context_q.issue && (context_q.expiry-context_q.issue)==length_q && !edge_expired;
+    assign secondary_commit_ok=secondary_vote_ok && secondary_vote_count>=2 && secondary_voted==voted;
     assign abort_match=abort_valid_i && active_q && abort_token_i==job_q.token;
     assign voted=votes_q | (3'b001<<job_q.slot);
     assign permit_o=state_q==RUNNING && lease_permit && !fault_o && !reset_active;
@@ -219,12 +269,14 @@ module reins_controller #(
             if (epoch_q==ID_MAX) begin state_q<=FAULT; state_inv_q<=~FAULT; stop_needed_q<=1'b1; end
             else begin epoch_q<=epoch_q+64'd1; epoch_inv_q<=~(epoch_q+64'd1); end
         end
-        active_q<=1'b0; issued_q<=1'b0; pass1_seen_q<=1'b0; pass1_ok_q<=1'b0;
+        active_q<=1'b0; issued_q<=1'b0; pass1_seen_q<=1'b0; pass1_ok_q<=1'b0; pass1_seen_inv_q<=1'b1; pass1_ok_inv_q<=1'b1; pass1_code_q<=0; pass1_code_inv_q<='1;
     endtask
     // Cancel the sole pending context, including all votes and an outstanding draw.
     task automatic close_context;
         pending_q<=1'b0; published_q<=1'b0; draw_pending_q<=1'b0;
-        votes_q<='0; votes_inv_q<='1; cancel_job();
+        votes_q<='0; votes_inv_q<='1;
+        for (int i=0;i<3;i++) begin vote_certificate_q[i]<=0; vote_certificate_inv_q[i]<='1; vote_token_q[i]<=0; vote_token_inv_q[i]<='1; end
+        cancel_job();
     endtask
     // Withdraw authorization and request a physical stop; fatal selects FAULT.
     task automatic begin_stop(input logic fatal);
@@ -244,8 +296,9 @@ module reins_controller #(
             run_q<='0; run_inv_q<='1; round_q<='0; round_inv_q<='1; next_issue_q<='0; next_issue_inv_q<='1;
             token_q<=64'd1; token_inv_q<=~64'd1; epoch_q<='0; epoch_inv_q<='1;
             issue_q<='0; issue_inv_q<='1; expiry_q<='0; remaining_q<='0; remaining_inv_q<='1;
+            for (int i=0;i<3;i++) begin vote_certificate_q[i]<=0; vote_certificate_inv_q[i]<='1; vote_token_q[i]<=0; vote_token_inv_q[i]<='1; end
             observed_now_q<='0; lease_q<=1'b0; pending_q<=1'b0; published_q<=1'b0; draw_pending_q<=1'b0;
-            active_q<=1'b0; issued_q<=1'b0; pass1_seen_q<=1'b0; pass1_ok_q<=1'b0; votes_q<='0; votes_inv_q<='1;
+            active_q<=1'b0; issued_q<=1'b0; pass1_seen_q<=1'b0; pass1_ok_q<=1'b0; pass1_seen_inv_q<=1'b1; pass1_ok_inv_q<=1'b1; pass1_code_q<=0; pass1_code_inv_q<='1; votes_q<='0; votes_inv_q<='1;
             run_end_o<=1'b0; cancel_valid_o<=1'b0; cancel_token_o<='0;
             result_valid_o<=1'b0; result_token_o<='0; result_code_o<='0; vote_event_o<=1'b0; commit_event_o<=1'b0;
         end else begin
@@ -303,23 +356,33 @@ module reins_controller #(
                             job_q<=proposed_job; job_inv_q<=~proposed_job;
                             token_q<=token_q+64'd1; token_inv_q<=~(token_q+64'd1);
                             epoch_q<=epoch_q+64'd1; epoch_inv_q<=~(epoch_q+64'd1);
-                            active_q<=1'b1; issued_q<=1'b0; pass1_seen_q<=1'b0; pass1_ok_q<=1'b0;
+                            active_q<=1'b1; issued_q<=1'b0; pass1_seen_q<=1'b0; pass1_ok_q<=1'b0; pass1_seen_inv_q<=1'b1; pass1_ok_inv_q<=1'b1; pass1_code_q<=0; pass1_code_inv_q<='1;
                         end
                     end else if (job_valid_o && job_ready_i) issued_q<=1'b1;
                     else if (completion_valid_i && match_completion && context_live && at_edge<context_q.deadline && !edge_expired) begin
                         if (completion_pass_i==1 && !pass1_seen_q) begin
-                            pass1_seen_q<=1'b1; pass1_ok_q<=completion_code_i==8'h96;
+                            pass1_seen_q<=1'b1; pass1_seen_inv_q<=1'b0; pass1_ok_q<=completion_code_i==8'h96; pass1_ok_inv_q<=completion_code_i!=8'h96;
+                            pass1_code_q<=completion_code_i; pass1_code_inv_q<=~completion_code_i;
                         end else if (completion_pass_i==2 && pass1_seen_q) begin
                             active_q<=1'b0; issued_q<=1'b0; result_valid_o<=1'b1; result_token_o<=job_q.token;
                             result_code_o<=pass1_ok_q && completion_code_i==8'h69 ? 2'd0 : 2'd1;
                             if (pass1_ok_q && completion_code_i==8'h69 && !votes_q[job_q.slot]) begin
+                                if (!secondary_vote_ok) begin_stop(1'b1);
+                                else begin
                                 votes_q<=voted; votes_inv_q<=~voted; vote_event_o<=1'b1;
+                                vote_certificate_q[job_q.slot]<=certificate_code(job_q.slot); vote_certificate_inv_q[job_q.slot]<=~certificate_code(job_q.slot);
+                                vote_token_q[job_q.slot]<=job_q.token; vote_token_inv_q[job_q.slot]<=~job_q.token;
                                 if ((voted[0] && voted[1]) || (voted[0] && voted[2]) || (voted[1] && voted[2])) begin
+                                    if (!secondary_commit_ok) begin_stop(1'b1);
+                                    else begin
                                     lease_q<=1'b1; issue_q<=context_q.issue; issue_inv_q<=~context_q.issue; expiry_q<=context_q.expiry;
                                     remaining_q<=length_q-(at_edge-context_q.issue);
                                     remaining_inv_q<=~(length_q-(at_edge-context_q.issue));
                                     state_q<=RUNNING; state_inv_q<=~RUNNING; commit_event_o<=1'b1;
                                     pending_q<=1'b0; published_q<=1'b0; votes_q<='0; votes_inv_q<='1;
+                                    for (int i=0;i<3;i++) begin vote_certificate_q[i]<=0; vote_certificate_inv_q[i]<='1; vote_token_q[i]<=0; vote_token_inv_q[i]<='1; end
+                                    end
+                                end
                                 end
                             end
                         end

@@ -28,7 +28,11 @@ module slh_verify (
     output logic stage_valid_o, // FORS tree roots, FORS public key, WOTS keys, and XMSS roots at TAKE/TAKE_WOTS.
     output logic [127:0] stage_value_o,
     output logic start_o, complete_o, // Actual compression starts/completions across the two exclusively owned engines.
-    output logic [15:0] starts_o, completions_o
+    output logic [15:0] starts_o, completions_o,
+    output logic chain_start_o, // Independently observed chain launch, before any F evaluation.
+    output logic [5:0] chain_index_o,
+    output logic [4:0] chain_digit_o,
+    output logic [1:0] sha_start_o, sha_complete_o // Independent physical main/WOTS events, not sequencer intent.
 );
     typedef struct packed {
         logic [255:0] key;
@@ -180,6 +184,8 @@ module slh_verify (
         .chain_start_o(unused_chain_start),.chain_complete_o(unused_chain_end),.chain_value_o(unused_chain_value),
         .stage_o(unused_wots_stage),.state_o(unused_wots_state),.start_o(wots_start),.complete_o(wots_end),
         .starts_o(wots_starts),.completions_o(wots_ends),.chain_steps_o(unused_steps));
+    assign sha_start_o={wots_start,hash_start}; assign sha_complete_o={wots_end,hash_end};
+    assign chain_start_o=unused_chain_start; assign chain_index_o=unused_chain; assign chain_digit_o=unused_step;
     assign start_o=hash_start || wots_start; assign complete_o=hash_end || wots_end;
     assign stage_valid_o=!fault_o && ((w.state==TAKE && (w.phase==FORS_PK || (w.phase==FORS_PATH && w.height==11) || (w.phase==TREE && w.height==8))) || w.state==TAKE_WOTS);
     assign stage_value_o=w.state==TAKE_WOTS ? wots_value : w.capture[255:128];

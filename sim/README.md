@@ -39,7 +39,7 @@ signature slices, fresh prefix-state ownership, independent intermediate oracles
 and per-stage counts. R10b adds complete single-pass real-SHA verification and a
 strict REINS gate; its [verifier guide](../docs/R10B_SLH_VERIFIER.md) documents
 FORS, seven hypertree layers, algorithm interfaces and retained replay evidence.
-Independent two-pass acceptance and whole-device integration remain R10c.
+R10c now supplies independent two-pass acceptance and full production-top SPI/lease/guard integration.
 
 This directory contains the simulator: `src/` holds implementation files,
 `include/reins/` holds interfaces, and `tests/` holds C++ tests. All commands below
@@ -89,6 +89,14 @@ These are the C++ source/header files in `sim/`:
 | [`sim/include/reins/simulation.h`](include/reins/simulation.h) | Public data types and APIs shared by the CLI, tests and future simulation drivers | `VerificationInput`, `JobTag`, `Verdict`, `Latency`, `Completion`, `VerifierService`, `TestAuthority` |
 | [`sim/src/crypto.cc`](src/crypto.cc) | Fixed-profile framing, grant construction, SHA-256, Merkle reconstruction, host SLH-DSA verification and test signing | `verify_reply`, `expected_batch_root`, `root_message`, `sha256`, `backend_version`, `TestAuthority`, `algorithm_test::verify` |
 | [`sim/include/reins/r09_test_support.h`](include/reins/r09_test_support.h) | Independent OpenSSL frame/block/state oracle and exact production memory driver | `Bench`, expected leaf/blocks, per-pass provenance/count/address checks, public evidence and real signature validation |
+| [`sim/include/reins/slh_test_oracle.h`](include/reins/slh_test_oracle.h) | Independent reusable FIPS byte/block/stage reconstruction | R10b/R10c SHA queues, WOTS digits/chains, FORS and seven-layer expected intermediates |
+| [`sim/include/reins/verifier_test_oracle.h`](include/reins/verifier_test_oracle.h) | Complete independent job oracle | Local grant/config/Merkle framing plus signature work for each lane |
+| [`sim/include/reins/r10c_test_support.h`](include/reins/r10c_test_support.h) | Actual controller/verifier/sealed SRAM harness | Per-lane addresses/blocks/states/stages, semantic replay, fault triggers and exact public inputs |
+| [`sim/include/reins/r10c_integration_support.h`](include/reins/r10c_integration_support.h) | Exact production-top SPI and guard harness | Authority signing, every real clock, semantic comparison and receive/crypto/ARM measurements |
+| [`sim/tests/r10c_rtl_tests.cc`](tests/r10c_rtl_tests.cc) | Eleven independent two-pass cases | Every quorum pair, duplicates/mutations, shared/lane/join/commit faults, reset/abort/stall and seeded fuzz |
+| [`sim/tests/r10c_integration_tests.cc`](tests/r10c_integration_tests.cc) | Five full RTL scenarios | ARM/RENEW for all three pairs, two withholding authorities and stalled second-pass expiry with actual guards |
+| [`sim/rtl/r10c_test_top.sv`](rtl/r10c_test_top.sv) | Component boundary and declared fault probes | Exact R06 controller, both complete lanes and sole R07 SRAM; passive physical observations |
+| [`sim/rtl/r10c_integration_top.sv`](rtl/r10c_integration_top.sv) | Exact production top with public OTP model and external sinks | Actual pin-to-permit path, independent guard clocks, effect accounting and simulation-only stall probes |
 | [`sim/include/reins/r10b_test_support.h`](include/reins/r10b_test_support.h) | Independent complete-signature oracle and memory driver | Every real SHA block/state, 29 stages, sequential reads, exact replay inputs and per-pass timing |
 | [`sim/tests/r10b_rtl_tests.cc`](tests/r10b_rtl_tests.cc) | Nine complete-verifier cases | All 28 official outcomes, supplied REINS signatures, R/FORS/all-layer mutations, strict gates, faults, cancellation, scratch and seeded backpressure fuzz |
 | [`sim/rtl/r10b_test_top.sv`](rtl/r10b_test_top.sv) | Algorithm/production instances with one shared actual R07 SRAM | Passive physical SHA and scratch observations, twelve explicit digital fault sites |
@@ -178,6 +186,8 @@ build/<configuration>/r08-rtl/reins-r08-tests           Independent-clock local 
 build/<configuration>/r08-integration/reins-r08-integration-tests  Signed quorum through actual dynamic endpoint isolation
 build/<configuration>/r09-rtl/reins-r09-tests           Independent local grants/configuration/proofs with real SHA
 build/<configuration>/r09-integration/reins-r09-integration-tests  Signed SPI ARM/RENEW with real Merkle and host SLH
+build/<configuration>/r10c-rtl/reins-r10c-tests         Actual controller, independent verifier bank and sealed SRAM
+build/<configuration>/r10c-integration/reins-r10c-integration-tests  Exact production top: SPI through both passes to lease and guards
 build/<configuration>/r10b-rtl/reins-r10b-tests         Complete single-pass RTL verifier and strict REINS gate
 build/<configuration>/r10a-rtl/reins-r10a-tests         Real SLH addressing/framing/MGF1/WOTS components
 ```
@@ -315,8 +325,59 @@ REINS_R09_TRACE=1 make RTL_TRACE=1 r09-unit-tests
 Both suites retain request dumps, public input/events, measurements and per-model
 coverage. The thirty fault cases target grant construction and Merkle transfers
 in both lanes, including coherent value/complement changes. Optional FST is
-bounded. Complete single-pass SLH hardware is in R10b; protected two-pass acceptance remains R10c;
+bounded. Complete single-pass SLH hardware is in R10b; protected two-pass acceptance is integrated in R10c;
 see the [R09 guide](../docs/R09_MERKLE.md) for interface/error codes and limits.
+
+### R10c full RTL device state and operation
+
+`rtl/reins_device.sv` is the production top. Its inputs are platform technology,
+commissioning and untrusted SPI pins. It connects actual R05 startup/time/entropy,
+R06 round/lease/quorum, R07 SPI/sealed SRAM, two complete cryptographic passes and
+R08 endpoint guards. No host Boolean, SHA result or stop acknowledgement can
+create permission through this top.
+
+The verifier bank's `state_q/state_inv_q` selects lane 1 then lane 2;
+`context_q/context_inv_q` holds provenance, and `capture_q/capture_inv_q` holds a
+sparse result checked against the originating lane's still-held response. Each
+`reins_verifier_pass` owns its `identity_q/identity_inv_q` and `e/ei` evidence,
+independent Merkle/SLH scratch and three SHA datapaths. It reconstructs its own
+configuration digest, expected grant, leaf and batch root from the original
+checked context and sealed bytes. It then verifies the complete signature.
+Neither pass consumes the other's root, digest, control, scratch or success flag.
+
+R06 remains the owner of armed/lease/round state. Its protected pass-one code and
+independent per-slot sparse certificates/tokens supplement the primary vote
+bitmap. A separate identity/deadline/quorum calculation checks final commit.
+The lease still stores fixed issue/expiry and redundant remaining/age evidence;
+crypto and SPI never move `I`, `B` or `E`. Local R08 guards own actual endpoint
+permission and trusted stop completion. C++ cannot acknowledge stop.
+
+`r10c_test::Bench` runs the actual controller/bank/SRAM at a declared platform
+component boundary. `r10c_integration::Bench` drives full pin-level replies and
+independent clocks through the exact production top. Test authorities generate
+signatures off device. The harness reconstructs both lanes independently with
+`verifier_test_oracle.h` and `slh_test_oracle.h`, compares every physical SHA
+block/state and 29 stages, and replays measured completion times into the C++
+`Device` for semantic request/vote/permit/lease comparisons. Oracle outputs never
+drive an acceptance input. Fresh signing wall time is recorded separately from
+the declared simulated authority/relay delay.
+
+```sh
+make software-tests
+make r10c-tests
+make r10c-unit-tests TEST_FILTER='*capture*,*redundant*'
+make r10c-integration-tests TEST_FILTER='*pair 0 1*'
+REINS_R10C_SEED=0xc10c make r10c-unit-tests
+REINS_R10C_TRACE=1 make RTL_TRACE=1 r10c-unit-tests TEST_FILTER='*complete independent*'
+```
+
+Both test groups retain complete public OTP/request/reply binaries, hashes,
+physical block/state/stage JSONL, sparse completions, compact `timing-summary.json`
+budget/latency records, performance reports,
+coverage and optional bounded FST. A fresh-key rerun uses the same selected
+scenario but need not produce the same signature bytes. See the
+[R10c guide](../docs/R10C_FULL_RTL.md) for exact work formulas, fault domains,
+production ports, measured timing and remaining qualification assumptions.
 
 ### R10b complete-verifier state
 
@@ -438,6 +499,7 @@ are in [R05_PLATFORM_PROFILE.md](../docs/R05_PLATFORM_PROFILE.md).
 | [`Makefile`](../Makefile) | Compiles C++20 sources, finds OpenSSL through pkg-config, prepares fixtures and invokes logged test suites |
 | [`tools/prepare_sim_fixtures.py`](../tools/prepare_sim_fixtures.py) | Verifies baseline pins and converts public JSON fixtures into binary test inputs |
 | [`tools/check_baseline.py`](../tools/check_baseline.py) | Checks source hashes and the fixed profile; optionally runs the supplied review validator on isolated copies |
+| [`tools/check_two_pass_report.py`](../tools/check_two_pass_report.py) | Validates actual R10c public input hashes, observed work/stages, sparse code evidence, ownership, budgets and production ports |
 | [`tools/run_tests.py`](../tools/run_tests.py) | Runs build/test groups and retains raw output, statuses, revision/build settings, JSON and JUnit reports |
 | [`tools/test_sim_report.py`](../tools/test_sim_report.py) | Exercises the actual CLI, JSON reports, request traces, deterministic event times and failure statuses |
 | [`tools/fetch_doctest.py`](../tools/fetch_doctest.py) | Downloads or reuses the pinned C++ test dependency with TLS and SHA-256 checks |
@@ -1000,6 +1062,9 @@ For the full `make tests` suite, the main paths are:
 | `r09-integration/` | Actual R05–R09 signed inputs, host signatures over RTL outputs, cancellation/stop results, performance and coverage |
 | `r10a-rtl/` | Actual SHA blocks/states, chain endpoints, public inputs/results, clocks/counts, oracle index/provenance, per-model coverage and optional FST |
 | `r10b-rtl/` | Complete real-pass measurements, SHA blocks/states and stages, gate records, exact input binaries, independent oracle hashes, coverage and optional FST |
+| `r10c-rtl/` | Both complete real passes, shared-path/final-commit faults, seeded actions, exact public replay bytes, SHA/stage/read evidence and coverage |
+| `r10c-integration/` | Full production-top SPI ARM/RENEW for all pairs, withholding/stall expiry, actual guard operation and end-to-end timing |
+| `r10c-evidence/` | Validation of saved public inputs/hashes, physical work, sparse authorizing codes and job budgets |
 | `r10b-evidence/` | Validation of actual complete-pass traces, replay inputs and oracle provenance |
 | `r10a-evidence/` | Validation of the actual retained JSONL, measurements and independent oracle provenance |
 | `rtl-lint/output.log` | Standalone production-module checks with assertions and with `SYNTHESIS` defined |
@@ -1008,6 +1073,13 @@ For the full `make tests` suite, the main paths are:
 | `reference-fixtures/output.log` | Pinned new corpus and optional supplied-Python signature cross-check |
 | `reference-report/reference-replays-*/` | All six stateful scenarios, duplicate semantic reports, input traces and negative-case diagnostics |
 | `baseline/`, `tool-regressions/` | Source/fixture review and test-infrastructure results |
+
+R10c's evidence check prints a compact console timing summary after the test
+groups finish. It includes actual SHA work, two-pass computation, receive-job
+time and budget margins, ARM/guard timing and response-window margins, assumed
+authority/relay delay versus measured host signing time, and simulator throughput.
+The same text remains in `runner.log` and `r10c-evidence/output.log`; individual
+measurements remain in each R10c group's `timing-summary.json`.
 
 The quick suite skips the larger software host-signing cases, extended RTL fuzz
 and some slower infrastructure checks; it still runs R05's bounded signed-lease
@@ -1043,9 +1115,9 @@ fresh memory reads in each host pass. R08 supplies dynamic permit, dual local
 guards, queue containment and actual stop completion. R09 implements independent
 local grants/configuration/Merkle hashing in each pass. R10a adds real SLH
 addresses, framing, H_msg/MGF1 and WOTS+ with independent intermediate checks.
-R10b completes FORS/hypertree and single-pass verification. Protected two-pass acceptance,
-R03 internal fault campaigns and physical
-qualification remain separate work. Passing SHA tests does not establish safe
+R10b completes FORS/hypertree and single-pass verification. R10c integrates two
+complete independent passes into the production SPI/lease/enforcement top.
+R03 general fault campaigns and physical qualification remain separate work. Passing SHA tests does not establish safe
 sharing between verification passes. The software mutation/stale/stall cases
 establish only their declared software behaviors.
 

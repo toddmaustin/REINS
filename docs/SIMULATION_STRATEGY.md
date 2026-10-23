@@ -49,8 +49,8 @@ retain their internal/external algorithm interfaces, including contexts unsuppor
 by production. Both supplied REINS signatures also traverse the actual sealed
 SRAM. Every physical compression block/state and 29 stages are cross-checked,
 with mutation/fault/lifecycle/fuzz evidence and exact retained replay inputs.
-See [R10B_SLH_VERIFIER.md](R10B_SLH_VERIFIER.md). Two-pass acceptance and
-whole-device crypto integration remain R10c.
+See [R10B_SLH_VERIFIER.md](R10B_SLH_VERIFIER.md). R10c now integrates independent two-pass acceptance and
+whole-device cryptography.
 
 ## Boundaries and APIs
 
@@ -161,15 +161,26 @@ independent Python outcomes anchor the C++ implementation.
 | RTL R10b single pass | Complete real-SHA FORS, WOTS/XMSS hypertree and strict production gate | All 28 official outcomes, real sealed-memory REINS signatures, every block/state and 29 stages, section mutations, gates, twelve fault sites, scratch lifecycle and seeded fuzz; no two-pass vote/commit integration |
 | RTL R07 memory | Isolated exact-production SRAM wrapper | Exhaustive single/double codeword errors, address/owner substitution and seal/control checks in declared digital fault domains |
 | Crypto control | Deferred until measurements justify a software SHA compression backend | Later: real sequencing with abstracted compression datapath |
-| Full RTL | SHA, independent grant/Merkle and complete single-pass SLH available; pending independent two-pass acceptance and whole-device integration | Later: actual complete digital crypto/control and cycle measurements |
-| RTL fault | Pending fault-site implementation | Later: declared implementation-level injection evidence |
+| Full RTL | R10c production device: pin-level SPI, sealed SRAM, two independent complete Merkle/SLH lanes, protected vote/lease acceptance and real endpoint guards | All-pair ARM/RENEW, withholding expiry, stalled/stale work, every SHA block/state/stage and actual job/whole-ARM latency under the declared profile |
+| RTL fault | Targeted R04–R10c instrumented component/integration tops; R03 general campaign framework deferred | Evidence for declared sequencer, memory, handoff, shared mux/data/capture, final join/commit and endpoint sites; no physical qualification |
 
 These new modes identify test-executable reports; the existing `reins-sim` CLI
 still accepts only its reference mode. Unavailable CLI modes fail with status 2.
 There is no silent fallback to software.
-Production RTL will not contain a simulation-verifier bypass. Optional compression
-acceleration and full production-timing verification RTL remain with the components
-they require. R07 measures real SPI exchanges, actual memory reads and software-backed
+R10c adds **rtl-r10c-two-pass** (actual controller/verifier/SRAM at a qualified
+platform boundary) and **rtl-r10c-full-device** (the exact production top from
+SPI pins through both real cryptographic passes to lease and endpoint guards).
+Each lane independently reconstructs all inputs and uses three separate SHA
+cores. C++ signs replies, checks physical blocks/states/stages and compares
+semantic outcomes with its independent device model; it cannot drive a verdict.
+Full-device tests clock every monitor/guard edge, including authority/relay
+latency assumptions, receive transport, stalled work and enforcement expiry.
+See [R10C_FULL_RTL.md](R10C_FULL_RTL.md) for exact work, protected ownership,
+declared shared fault domains and measured end-to-end timing.
+
+The production `reins_device` top contains no simulation-verifier bypass. Optional compression
+compression acceleration remains deferred; R10c measures full production-top
+verification at its declared clock/service profile. R07 measures real SPI exchanges, actual memory reads and software-backed
 authorization; these are not full-RTL SLH-DSA or physical throughput claims.
 Component/integration tests provide optional bounded FST through the Make interface.
 

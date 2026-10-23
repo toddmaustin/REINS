@@ -143,7 +143,7 @@ make tests
 make sanitize-tests JOBS=2
 ```
 
-`make rtl-build` builds all thirteen SHA and R05–R10b component/integration test executables, including the C++ oracle
+`make rtl-build` builds all fifteen SHA and R05–R10c component/integration test executables, including the C++ oracle
 objects needed by R05; `make software-build` builds the independent software
 simulator. Normal build includes all of them. Builds
 enable SystemVerilog assertions, fatal RTL lint warnings and line coverage.
@@ -396,7 +396,7 @@ Run `make r09-unit-tests` for vectors, faults and seeded fuzz; `make r09-tests`
 also clocks real signed ARM/RENEW through the complete device. Both are included
 in normal builds/tests. The integration adapter verifies actual RTL outputs with
 host SLH-DSA. R10b implements complete single-pass signature hardware; R10c
-will integrate independent two-pass acceptance.
+integrates independent two-pass acceptance.
 See [R09_MERKLE.md](../docs/R09_MERKLE.md) for every port/code, exact framing,
 pass independence, saved reports, timing measurements and remaining limits.
 
@@ -432,7 +432,7 @@ saved-evidence validation. They also run through normal Make suites, including
 fatal-warning assertion/synthesis lint. See the [R10a guide](../docs/R10A_SLH_COMPONENTS.md)
 for exact ports, work formulas, trusted memory/reset boundaries and retained
 artifacts. Complete single-pass FORS/hypertree verification is now in R10b;
-independent two-pass acceptance remains R10c;
+independent two-pass acceptance is integrated in R10c;
 R03 general physical fault qualification remains deferred.
 
 
@@ -456,7 +456,7 @@ There is one real SHA engine for H_msg/FORS/XMSS and one in WOTS, with exclusive
 sequenced ownership. The signature stays in the sole R07 receive SRAM; bounded
 FORS/WOTS workspaces are erased at request boundaries. Cancel suppresses reads
 and acceptance immediately and preserves sticky failure. A valid single pass
-awards no vote or lease; R10c still owns complete independent two-pass integration.
+awards no vote or lease by itself; R10c integrates complete independent two-pass acceptance.
 
 Run `make r10b-tests` for all 28 official outcomes, supplied REINS signatures,
 29 section mutations, twelve fault sites, gate/lifecycle checks and seeded fuzz.
@@ -465,3 +465,33 @@ The C++ harness checks every real core block/state and 29 independent stages;
 `make tests` and `make quick-tests` include this group and production lint.
 The [R10b guide](../docs/R10B_SLH_VERIFIER.md) supplies detailed ports, parser
 ranges, work formulas and measurements.
+
+## R10c production device and two-pass acceptance
+
+`reins_device.sv` is the full production authorization top. Platform/commissioning
+and SPI are its inputs; verifier jobs, read state, results, permit and enforcement
+are passive outputs. It instantiates R05–R08 internally and supplies all verifier
+results from `reins_verifier`, with no simulation result or software hash input.
+
+`reins_verifier.sv` sequences two independent `reins_verifier_pass` engines. Each
+owns fresh local configuration/grant/Merkle reconstruction, full SLH work, checked
+scratch and three SHA cores. The six cores are initially separate. A protected
+exclusive mux checks its physical read address against a lane's independently
+observed position. Sparse code captures stay checked against held lane results.
+Pass-one full-root equality and pass-two byte/XOR counting are dissimilar.
+
+Each pass independently observes physical starts/completions, 29 stages, 245 WOTS
+chains, exact digit-dependent work and all accepted read positions. The expected
+count is `339 + 2*depth + sum(15-digit)`, never the 4,100 maximum budget. Captured
+Merkle and SLH inputs are audited against independently held sources. The final
+R06 path additionally checks complemented identity, sparse pass evidence and
+separate slot certificates/unique tokens before a distinct vote or lease commit.
+
+Run `make r10c-tests` for all unit and complete pin-level scenarios, or select
+`r10c-unit-tests` / `r10c-integration-tests`. Normal builds/tests include both and
+fatal-warning production lint with assertions and `SYNTHESIS`. Full integration
+performs ARM/RENEW for every quorum pair and tests withholding/expiry, frozen
+verification, stale work and actual local stop. Every hash uses the RTL datapath.
+The [R10c guide](../docs/R10C_FULL_RTL.md) documents all new source files,
+interfaces, exact work, fault domains, saved artifacts and timing assumptions.
+Separate cores and logical redundancy do not establish physical fault coverage.

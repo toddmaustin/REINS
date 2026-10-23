@@ -15,7 +15,8 @@ configuration binding and Merkle reconstruction with real SHA-256. R10a adds
 canonical FIPS addresses, pure framing, message hashing/MGF1 and WOTS+ hardware,
 cross-checked against independent component intermediates. R10b completes real-SHA
 single-pass FORS/seven-layer verification, strict production gating and official
-case/operation/stage cross-checks. Independent two-pass integration remains R10c. R07 includes
+case/operation/stage cross-checks. R10c integrates two independent complete real-SHA
+passes, protected acceptance and full production-top SPI/lease/guard tests. R07 includes
 an independent byte-level C++ oracle, actual memory-backed host verification and
 real R05/R06/R07 pin integration. Remaining RTL milestones
 are open; software/Python validation is not evidence that their RTL exists.
@@ -35,8 +36,8 @@ state/lease reporting, pinned public replay corpus and semantic completion tests
 Component RTL modes, real-cycle measurements and bounded FST now exist for R04/05.
 Pin-level SPI, native receive timeouts and sealed-memory fault evidence now exist
 in R07. R08 now supplies digital endpoint enforcement and real-time clock/fault
-evidence. Full two-pass integration and physical authorization/enforcement qualification remain with
-their dependent milestones. R03 protected primitives/internal fault campaigns are
+evidence. R10c now supplies full two-pass integration; physical authorization/
+enforcement qualification remains with its dependent milestones. R03 protected primitives/internal fault campaigns are
 deferred by the current development decision.
 
 ## 1. Fixed scope and source of truth
@@ -408,6 +409,16 @@ stage results and operation traces. Exercise the real SHA datapath in this gate.
 
 ### PR 10c — Independent two-pass acceptance and full RTL integration
 
+**Status: implemented as digital RTL with targeted fault evidence.** See the
+[R10c architecture/evidence guide](R10C_FULL_RTL.md). The designated production top
+is `reins_device`, with no host verdict/read/stop-ack bypass. Each complete lane
+owns three separate SHA datapaths, fresh grant/Merkle/SLH reconstruction and
+independent exact work/read/stage observations. Sparse captures, dissimilar root
+comparisons and independent slot certificates protect the final vote/commit path.
+`make r10c-tests` runs directed/fault/fuzz tests and full SPI ARM/RENEW for all
+three pairs, withholding expiry and a stalled second pass with actual guards.
+R03 general campaigns and physical qualification remain deferred.
+
 **Deliver:** two complete independently sequenced passes, initially using separate
 SHA datapaths, dissimilar root comparisons, sparse accept codewords, protected
 read paths, and redundant final vote/commit checks. Each pass reconstructs its own
@@ -575,10 +586,9 @@ behavior; and measure environmental/fault coverage and the actual stop bound.
 Sharing SHA hardware or broadening N/Q is a later change requiring renewed
 performance, fault, and regression evidence.
 
-**Next development action: PR 10c.** Integrate two complete independently
-sequenced Merkle/SLH passes with initially separate SHA datapaths, dissimilar
-root comparisons and protected vote/commit acceptance. Preserve R09 context
-binding, R07 ownership/deadlines and R08 endpoint enforcement. Measure full-RTL
-SPI ARM/RENEW and exercise shared-input, memory, join and stale-result faults.
-Keep R03 protected primitives and general internal fault campaigns explicitly
-deferred until their implementation and integration are resumed.
+**Next development action: PR 11 campaign closure**, with an explicit decision
+on resuming deferred R03 protected primitives/general fault campaigns. R10c now
+integrates complete independent passes with initially separate SHA datapaths and
+measures full-RTL SPI ARM/RENEW and local guard operation. Expand common-domain
+and repeated-fault coverage, minimized replay tooling and requirement closure;
+keep physical fault, entropy, clock and isolation qualification explicit.
