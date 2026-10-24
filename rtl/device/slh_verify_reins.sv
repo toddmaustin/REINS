@@ -6,8 +6,8 @@
 // context bytes are exposed. A caller supplies its locally reconstructed batch
 // message and the immutable sealed job descriptor; this is one pass, not a vote.
 `default_nettype none
-// CHECK_LIVE_INPUTS adds a held-source audit for R10c's Merkle-to-SLH handoff.
-// Default snapshot semantics remain unchanged for standalone R10b callers.
+// CHECK_LIVE_INPUTS adds a held-source audit for Two-pass verifier's Merkle-to-SLH handoff.
+// Default snapshot semantics remain unchanged for standalone SLH verifier callers.
 module slh_verify_reins #(parameter bit CHECK_LIVE_INPUTS=1'b0) (
     input logic clk_i, rst_ni, cancel_i, // Trusted clock/reset; cancel wins over a same-cycle completion.
     input logic req_valid_i, // One immutable request captured on valid/ready.

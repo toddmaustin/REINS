@@ -59,8 +59,8 @@ def main():
         if not shutil.which(compiler[0]) or not shutil.which(runtime[0]):
             status = "unavailable"
         else:
-            files = ["rtl/device/reins_permit_guard_a.sv", "rtl/device/reins_permit_guard_b.sv", "rtl/device/reins_endpoint_actuator.sv", "rtl/test/r11_reset_tb.sv"]
-            records.append(command(compiler + ["-g2012", "-DSYNTHESIS", "-s", "r11_reset_tb", "-o", str(directory / "reset.vvp")] + files, directory, "compile"))
+            files = ["rtl/device/reins_permit_guard_a.sv", "rtl/device/reins_permit_guard_b.sv", "rtl/device/reins_endpoint_actuator.sv", "rtl/test/endpoint_reset_tb.sv"]
+            records.append(command(compiler + ["-g2012", "-DSYNTHESIS", "-s", "endpoint_reset_tb", "-o", str(directory / "reset.vvp")] + files, directory, "compile"))
             if records[-1]["exit_code"] == 0:
                 records.append(command(runtime + [str(directory / "reset.vvp")], directory, "simulate"))
             status = "passed" if all(item["exit_code"] == 0 for item in records) else "failed"
@@ -73,10 +73,10 @@ def main():
             records.append(command(yosys + ["-V"], directory, "version"))
             if args.check == "formal":
                 cases = [
-                    ("arithmetic", "r11_arithmetic", ["rtl/device/reins_round_schedule.sv", "rtl/device/reins_lease_check.sv", "rtl/test/formal/r11_arithmetic.sv"], 1),
-                    ("protected-time", "r03_time", ["rtl/device/reins_trusted_time.sv", "rtl/test/formal/r03_time.sv"], 12),
-                    ("seal", "r11_seal", ["rtl/device/reins_receive_sram.sv", "rtl/test/formal/r11_seal.sv"], 6),
-                    ("controller", "r11_controller", ["rtl/device/reins_round_schedule.sv", "rtl/device/reins_lease_check.sv", "rtl/device/reins_controller.sv", "rtl/test/formal/r11_controller.sv"], 16),
+                    ("arithmetic", "timer_arithmetic_properties", ["rtl/device/reins_round_schedule.sv", "rtl/device/reins_lease_check.sv", "rtl/test/formal/timer_arithmetic_properties.sv"], 1),
+                    ("protected-time", "trusted_time_properties", ["rtl/device/reins_trusted_time.sv", "rtl/test/formal/trusted_time_properties.sv"], 12),
+                    ("seal", "receive_seal_properties", ["rtl/device/reins_receive_sram.sv", "rtl/test/formal/receive_seal_properties.sv"], 6),
+                    ("controller", "controller_priority_properties", ["rtl/device/reins_round_schedule.sv", "rtl/device/reins_lease_check.sv", "rtl/device/reins_controller.sv", "rtl/test/formal/controller_priority_properties.sv"], 16),
                     ("guard-a", "reins_permit_guard_a", ["rtl/device/reins_permit_guard_a.sv"], 8),
                     ("guard-b", "reins_permit_guard_b", ["rtl/device/reins_permit_guard_b.sv"], 8)]
                 for name,top,files,depth in cases:

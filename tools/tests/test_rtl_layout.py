@@ -30,7 +30,7 @@ class RtlLayoutTests(unittest.TestCase):
         """Read the real device manifest and require its production top and separate formal harnesses."""
         report = inspect(ROOT)
         self.assertIn("rtl/device/reins_device.sv", report["device_sources"])
-        self.assertIn("rtl/test/formal/r11_controller.sv", report["test_sources"])
+        self.assertIn("rtl/test/formal/controller_priority_properties.sv", report["test_sources"])
         inspect(self.root)
 
     def test_test_sources_and_build_options_cannot_enter_device_manifest(self):

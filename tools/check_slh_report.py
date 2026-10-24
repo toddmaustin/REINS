@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 # License: https://polyformproject.org/licenses/noncommercial/1.0.0/
 
-"""Validate the actual retained R10a JSONL, measurements and oracle provenance."""
+"""Validate the actual retained SLH components JSONL, measurements and oracle provenance."""
 import json
 import hashlib
 import os
@@ -16,9 +16,9 @@ def hexadecimal(value, size):
 
 
 def check(directory):
-    """Parse and validate R10a artifacts within directory, including filtered runs."""
+    """Parse and validate SLH components artifacts within directory, including filtered runs."""
     performance = json.loads((directory / "performance.json").read_text())
-    assert performance["mode"] == "rtl-r10a-components" and performance["exit_code"] == 0
+    assert performance["mode"] == "rtl-slh-components-unit" and performance["exit_code"] == 0
     assert performance["monitor_clocks"] > 0
     provenance = json.loads((directory / "oracle-provenance.json").read_text())
     assert provenance["generator_version"] == 1 and len(provenance["cases"]) == 6
@@ -55,12 +55,12 @@ def check(directory):
                 assert event["starts"] == event["completions"]
                 assert event["starts"] in [event["steps"] + 1, event["steps"] + 11]
                 assert event["read_samples"] in [0, 1120]
-    print("PASS: actual R10a JSONL, measurements and independent oracle provenance", counts)
+    print("PASS: actual SLH components JSONL, measurements and independent oracle provenance", counts)
 
 
 def main():
     """Locate the sibling component results from the collector environment; no parameters."""
-    check(Path(os.environ["REINS_TEST_OUTPUT_DIR"]).parent / "r10a-rtl")
+    check(Path(os.environ["REINS_TEST_OUTPUT_DIR"]).parent / "slh-components-unit")
 
 
 if __name__ == "__main__":

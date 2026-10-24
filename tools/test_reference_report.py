@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 # License: https://polyformproject.org/licenses/noncommercial/1.0.0/
 
-"""Exercise the actual stateful R02 CLI and retain public replay/negative-case output."""
+"""Exercise the actual stateful Reference CLI and retain public replay/negative-case output."""
 import argparse
 import json
 import os
@@ -76,7 +76,7 @@ def main():
         code, _, _ = run(name, [args.executable, "--fixtures", args.fixtures, "--scenario", str(invalid)],
                          "exit 2; empty or unsupported scenarios must not pass")
         assert code == 2
-    print(f"PASS: six deterministic R02 scenarios, actual state/lease reports and failure status; artifacts: {output}")
+    print(f"PASS: six deterministic Reference scenarios, actual state/lease reports and failure status; artifacts: {output}")
 
 
 if __name__ == "__main__":

@@ -36,7 +36,7 @@ class CampaignChecks(unittest.TestCase):
     def test_release_rejects_missing_tests_and_stale_source(self):
         """A green-looking empty or stale summary cannot establish current digital closure; no parameters."""
         directory = Path(self.scratch.name)
-        (directory / "summary.json").write_text(json.dumps(dict(steps=[],source_digest="stale",suite="r11-release")))
+        (directory / "summary.json").write_text(json.dumps(dict(steps=[],source_digest="stale",suite="campaign-release")))
         errors = generate(directory,self.output,"release",2,128)
         self.assertTrue(any("Source digest" in error for error in errors))
         self.assertTrue(any("Required release groups" in error for error in errors))
@@ -51,7 +51,7 @@ class CampaignChecks(unittest.TestCase):
         (directory / "a.dat").write_text(prefix+"\x01h\x02instance-a' 0\n"+prefix.replace("n\x021","n\x022")+"' 0\n")
         (directory / "b.dat").write_text(prefix+"\x01h\x02instance-b' 7\n")
         # Test wrappers now live under rtl/ too; they must not inflate device coverage.
-        (directory / "test.dat").write_text(prefix.replace("rtl/device/reins_controller.sv", "rtl/test/r06_test_top.sv")+"' 99\n")
+        (directory / "test.dat").write_text(prefix.replace("rtl/device/reins_controller.sv", "rtl/test/controller_unit_top.sv")+"' 99\n")
         report = coverage_report(Path(self.scratch.name))
         self.assertEqual((report["source_points"],report["hit_points"]),(2,1))
         self.assertEqual(len(report["uncovered"]),1)
@@ -63,11 +63,11 @@ class CampaignChecks(unittest.TestCase):
             directory.mkdir()
             log = directory / "output.log"
             log.write_text(text)
-            summary = dict(suite="r11-directed",source_digest=source_digest(),steps=[dict(name="r11-directed",status="passed",log=str(log),executed_tests=1)])
+            summary = dict(suite="spi-directed",source_digest=source_digest(),steps=[dict(name="spi-directed",status="passed",log=str(log),executed_tests=1)])
             (directory / "summary.json").write_text(json.dumps(summary))
             output = self.output / str(index)
             self.assertEqual(generate(directory,output,"directed",2,128),[])
-            self.assertEqual(json.loads((output / "campaign.json").read_text())["executed_tests"]["r11-directed"],["actual executed case"])
+            self.assertEqual(json.loads((output / "campaign.json").read_text())["executed_tests"]["spi-directed"],["actual executed case"])
 
     def test_zero_budget_is_rejected_before_build(self):
         """Reject a zero-work campaign at its CLI boundary; no parameters."""
@@ -79,13 +79,13 @@ class CampaignChecks(unittest.TestCase):
     def test_attempt_rows_without_applied_readback_get_no_fault_credit(self):
         """Reject a claimed safe attempt when no actual target application/effect was observed."""
         directory=Path(self.scratch.name)
-        group=directory / "r11-repeated-fault"
+        group=directory / "persistent-fault"
         group.mkdir()
         event=dict(event="campaign_fault",campaign="persistent_shared_read",site=22,attempt=0,
             duration_clocks=10,outcome="safely_tolerated",dangerous=False,bench=1,activation_clock=3)
         (group / "events.jsonl").write_text(json.dumps(event)+"\n")
-        (directory / "summary.json").write_text(json.dumps(dict(suite="r11-fault",source_digest=source_digest(),
-            steps=[dict(name="r11-repeated-fault",status="passed")])))
+        (directory / "summary.json").write_text(json.dumps(dict(suite="campaign-fault",source_digest=source_digest(),
+            steps=[dict(name="persistent-fault",status="passed")])))
         errors=generate(directory,self.output,"fault",2,128)
         self.assertTrue(any("application/effect evidence" in error for error in errors))
         self.assertEqual(json.loads((self.output / "campaign.json").read_text())["faults"]["applied"],0)
@@ -94,14 +94,14 @@ class CampaignChecks(unittest.TestCase):
         """Retain default smoke work without letting it replace or inflate separately requested seed runs; no parameters."""
         directory = Path(self.scratch.name)
         steps = []
-        for group,seed in [("r11-spi",100),("r11-fuzz-0",100),("r11-fuzz-1",101)]:
+        for group,seed in [("spi-regression",100),("spi-fuzz-0",100),("spi-fuzz-1",101)]:
             destination = directory / group
             destination.mkdir()
             (destination / "fuzz.trace").write_text("frame 0 ff\n")
             event = dict(event="campaign_fuzz",seed=seed,budget=4,executed=4,reproducer="fuzz.trace")
             (destination / "events.jsonl").write_text(json.dumps(event)+"\n")
             steps.append(dict(name=group,status="passed"))
-        summary = dict(suite="r11-fuzz",source_digest=source_digest(),steps=steps)
+        summary = dict(suite="spi-fuzz",source_digest=source_digest(),steps=steps)
         (directory / "summary.json").write_text(json.dumps(summary))
         self.assertEqual(generate(directory,self.output,"fuzz",2,4),[])
         data = json.loads((self.output / "campaign.json").read_text())["fuzz"]
@@ -124,7 +124,7 @@ class CampaignChecks(unittest.TestCase):
         """Exercise a synthetic failing child to test tool mechanics, never label it a DUT defect; no parameters."""
         scratch = Path(self.scratch.name)
         binary = scratch / "synthetic-oracle"
-        binary.write_text("#!/usr/bin/env python3\nimport os\nfrom pathlib import Path\ntext=Path(os.environ['REINS_R11_REPLAY']).read_text()\nif 'trigger' in text:\n print('ERROR: CHECK( synthetic_target ) is NOT correct!')\n raise SystemExit(1)\n")
+        binary.write_text("#!/usr/bin/env python3\nimport os\nfrom pathlib import Path\ntext=Path(os.environ['REINS_SPI_FUZZ_REPLAY']).read_text()\nif 'trigger' in text:\n print('ERROR: CHECK( synthetic_target ) is NOT correct!')\n raise SystemExit(1)\n")
         binary.chmod(0o700)
         trace = scratch / "input.trace"
         trace.write_text("noise\ntrigger\nnoise2\n")

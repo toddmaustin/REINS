@@ -96,7 +96,7 @@ def generate(directory, output, profile, seeds, iterations):
         path = directory / name / "qualification.json"
         if path.is_file():
             qualification[name] = json.loads(path.read_text())
-    required_selected = {"directed": ["r11-directed"], "fault": ["r11-repeated-fault"],
+    required_selected = {"directed": ["spi-directed"], "fault": ["persistent-fault"],
         "production": ["production-build", "production-audit", "production-full", "production-evidence"]}.get(profile, [])
     for group in required_selected:
         if steps.get(group,{}).get("status")!="passed":
@@ -111,11 +111,11 @@ def generate(directory, output, profile, seeds, iterations):
             event["reproducer_sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
     # The ordinary full suite also executes its default smoke seed. Retain it,
     # but require the separately named budgeted groups to execute independently.
-    budgeted_fuzz = [event for event in fuzz if re.fullmatch(r"r11-fuzz-\d+",event["group"])]
+    budgeted_fuzz = [event for event in fuzz if re.fullmatch(r"spi-fuzz-\d+",event["group"])]
     smoke_fuzz = [event for event in fuzz if event not in budgeted_fuzz]
     if profile in ["fuzz", "release", "nightly"]:
         if (len(budgeted_fuzz)!=seeds or len({event["seed"] for event in budgeted_fuzz})!=seeds or
-            {event["group"] for event in budgeted_fuzz}!={f"r11-fuzz-{index}" for index in range(seeds)} or
+            {event["group"] for event in budgeted_fuzz}!={f"spi-fuzz-{index}" for index in range(seeds)} or
             any(event["executed"]!=iterations for event in budgeted_fuzz)):
             errors.append("Requested fuzz seed/iteration budget was not actually executed.")
     if profile in ["fault", "release", "nightly"]:
@@ -161,7 +161,7 @@ def generate(directory, output, profile, seeds, iterations):
         if strict and (missing or any(code!=0 for code in extra)):
             errors.append(f"Uncovered or unexplained safety states in {domain}: {missing}, {extra}")
     if strict:
-        protected=list((directory / "r03-protected/runs").glob("*/protected-report.json"))
+        protected=list((directory / "protected-state/runs").glob("*/protected-report.json"))
         if len(protected)!=1 or json.loads(protected[0].read_text()).get("status")!="passed":
             errors.append("Protected-state campaign lacks a passing application/effect/release report.")
         missing = [name for name in manifest["required_groups"] if steps.get(name,{}).get("status")!="passed"]
@@ -217,7 +217,7 @@ def main():
     output = Path(os.environ["REINS_TEST_OUTPUT_DIR"])
     directory = args.results or output.parent
     summary = json.loads((directory / "summary.json").read_text())
-    profile = args.profile or summary["suite"].removeprefix("r11-")
+    profile = args.profile or summary["suite"].removeprefix("campaign-")
     return int(bool(generate(directory,output,profile,args.seeds,args.iterations)))
 
 

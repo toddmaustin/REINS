@@ -3,7 +3,7 @@
 // License: https://polyformproject.org/licenses/noncommercial/1.0.0/
 
 // Exact v0.3 SPI mailbox and receive owner. This component does not verify
-// signatures: only the R06 controller can turn trusted two-pass evidence into a vote.
+// signatures: only the CONTROLLER controller can turn trusted two-pass evidence into a vote.
 `default_nettype none
 module reins_spi_mailbox (
     input logic clk_i, por_ni, reset_i, trusted_tick_i, // Independent monitor, power/reset and always-progressing time.
@@ -11,25 +11,25 @@ module reins_spi_mailbox (
     input logic sclk_i, cs_ni, mosi_i,                // Untrusted asynchronous mode-0 pins.
     output logic miso_o, miso_oe_o,                  // Technology pad data/output-enable, Z when deselected.
     input logic [1:0] lifecycle_i,                   // Public encoding: 0 open, 1 closed, 2 invalid.
-    input logic config_valid_i, entropy_hold_i, fault_i, // Checked R05/R06 state, never host assertions.
+    input logic config_valid_i, entropy_hold_i, fault_i, // Checked PLATFORM/CONTROLLER state, never host assertions.
     input logic [2175:0] configuration_i,            // Whole checked 272-byte public OTP snapshot.
     input logic [255:0] config_digest_i,             // Checked C_cfg for captured context binding.
-    input logic [7:0] state_i,                       // R06 sparse state code, mapped to public 0..6.
+    input logic [7:0] state_i,                       // CONTROLLER sparse state code, mapped to public 0..6.
     input logic pending_i, request_valid_i,          // Exact live pending publication (all three fixed slots).
-    output logic [1:0] request_slot_o,               // R06 request selection; stable owner slot during reception.
+    output logic [1:0] request_slot_o,               // CONTROLLER request selection; stable owner slot during reception.
     input logic [1023:0] request_i,                  // Coherent request selected by request_slot_o.
     input logic [63:0] run_i, round_i, epoch_i, now_i, deadline_i, // Protected context and pre-edge local time.
     input logic run_tick_i,                         // Whether this edge advances local run time.
     output logic submit_valid_o,                   // Valid FINISH boundary, never an authenticated vote.
-    input logic submit_ready_i,                    // R06's edge-qualified job admission.
+    input logic submit_ready_i,                    // CONTROLLER's edge-qualified job admission.
     output logic [1:0] submit_slot_o,               // Captured owner slot.
-    output logic abort_valid_o,                     // Abort/cancel dominates a simultaneous completion in R06.
-    output logic [63:0] abort_token_o,              // Internal R06 token; distinct from the SPI owner token.
+    output logic abort_valid_o,                     // Abort/cancel dominates a simultaneous completion in CONTROLLER.
+    output logic [63:0] abort_token_o,              // Internal CONTROLLER token; distinct from the SPI owner token.
     input logic job_active_i,                       // Current internal verifier ownership.
     input logic [63:0] job_token_i, job_run_i, job_round_i, // Immutable internal job identity.
     input logic [1:0] job_slot_i,                    // Captured fixed OTP key/authority slot.
     input logic [1023:0] job_request_i,              // Exact locally constructed job request.
-    input logic result_valid_i,                     // R06's asynchronous completed/canceled result.
+    input logic result_valid_i,                     // CONTROLLER's asynchronous completed/canceled result.
     input logic [63:0] result_token_i,              // Internal token whose result completed on this pulse.
     input logic [1:0] result_code_i,                // 0 cryptographically verified, 1 rejected, 2 canceled.
     input logic vote_event_i, commit_event_i,       // Distinguish an actual new vote from a duplicate.
@@ -91,9 +91,9 @@ module reins_spi_mailbox (
     logic [1023:0] selected_request;
     logic [7:0] argument_result;
     logic [1023:0] argument_snapshot;
-    logic [2:0] last_reason_q;                      // Verifier diagnostic captured on R06's completion edge.
+    logic [2:0] last_reason_q;                      // Verifier diagnostic captured on CONTROLLER's completion edge.
 
-    // Encode R06 sparse state as the specification's public diagnostic enum.
+    // Encode CONTROLLER sparse state as the specification's public diagnostic enum.
     function automatic logic [7:0] public_state(input logic [7:0] state_code);
         case (state_code)
             8'h0f: return 0; 8'h33: return 1; 8'h55: return 2; 8'h66: return 3;
@@ -124,7 +124,7 @@ module reins_spi_mailbox (
     assign submit_slot_o=owner_q.slot;
     assign verifier_allowed_o=por_ni && !reset_i && !fault_i && !integrity_alarm_o && !cancel_owner &&
         owner_q.phase==VERIFYING && sealed_o && job_match && !abort_commit;
-    // Feed cancellation into R06 before its acceptance edge, not one cycle later.
+    // Feed cancellation into CONTROLLER before its acceptance edge, not one cycle later.
     assign abort_valid_o=job_match && (cancel_owner || abort_commit);
     assign abort_token_o=job_token_i;
     assign submit_valid_o=finish_commit;

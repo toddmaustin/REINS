@@ -107,8 +107,8 @@ class ProtectedFaultTests(unittest.TestCase):
         catalog = load_catalog(ROOT / "fault_sites.json")
         ids = {site["id"] for site in catalog["sites"]}
         self.assertTrue(set(range(1,25)).issubset(ids))
-        first = generate(catalog, "r05")
-        self.assertEqual(first, generate(catalog, "r05"))
+        first = generate(catalog, "platform")
+        self.assertEqual(first, generate(catalog, "platform"))
         self.assertIn("$bits(control.entropy", first)
         self.assertIn("fault_observed_o=read_fault_site", first)
         self.assertIn("`ifndef SYNTHESIS", first)

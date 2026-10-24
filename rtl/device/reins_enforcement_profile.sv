@@ -2,13 +2,13 @@
 // SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 // License: https://polyformproject.org/licenses/noncommercial/1.0.0/
 
-// R08 implements one documented digital platform, not arbitrary physical clocks.
-// R05 accepts the specification's broader schema; this additional platform gate
+// ENFORCEMENT implements one documented digital platform, not arbitrary physical clocks.
+// PLATFORM accepts the specification's broader schema; this additional platform gate
 // prevents an otherwise valid image from claiming tighter delays or a faster
 // minimum tick clock than this simulation profile supports. The protocol is unchanged.
 `default_nettype none
 module reins_enforcement_profile (
-    input logic config_valid_i,         // R05's fully checked, closed public OTP snapshot.
+    input logic config_valid_i,         // PLATFORM's fully checked, closed public OTP snapshot.
     input logic [2175:0] configuration_i,
     output logic compatible_o, alarm_o  // Qualified platform view / unsupported checked configuration.
 );

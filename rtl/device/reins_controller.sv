@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 // License: https://polyformproject.org/licenses/noncommercial/1.0.0/
 
-// R06 operational controller. Verification ports are TRUSTED INTERNAL hardware
+// CONTROLLER operational controller. Verification ports are TRUSTED INTERNAL hardware
 // boundaries, not host/SPI inputs. Only the separate simulation top exposes them
-// to host cryptography. Sparse/mirrored checks here do not replace deferred R03
+// to host cryptography. Sparse/mirrored checks here do not replace deferred Protected state
 // independent capture, protected datapaths, placement or physical fault evidence.
 `default_nettype none
 module reins_controller #(
@@ -14,19 +14,19 @@ module reins_controller #(
 ) (
     input logic clk_i, por_ni,               // Always-on monitor clock / actual retention loss.
     input logic logic_reset_i, cold_clear_i, // Cancel authorization / trusted cold fault requalification.
-    input logic config_closed_i, config_valid_i, // Retained closure / completely checked R05 snapshot.
+    input logic config_closed_i, config_valid_i, // Retained closure / completely checked PLATFORM snapshot.
     input logic [2175:0] configuration_i,    // Exact public OTP, immutable throughout a run.
-    input logic [255:0] config_digest_i,     // Actual R05 C_cfg, checked against captured copies.
+    input logic [255:0] config_digest_i,     // Actual PLATFORM C_cfg, checked against captured copies.
     input logic [63:0] lease_i, period_i, window_i, // Checked L/P/W in local ticks.
-    input logic fault_i, entropy_failure_i, grant_enable_i, // General alarm / effective hold / R05 grants gate.
+    input logic fault_i, entropy_failure_i, grant_enable_i, // General alarm / effective hold / PLATFORM grants gate.
     input logic [63:0] now_i,                // Current trusted time BEFORE the clock edge.
-    input logic tick_i,                     // This edge advances R05 time by one; deadlines include it.
-    input logic run_begin_i,                // R05 established new tick zero/generation after qualification.
-    input logic [63:0] platform_generation_i,// R05's powered run generation; strictly increases on admission.
-    output logic restart_ready_o,           // Qualified stop boundary permits requesting R05 startup.
+    input logic tick_i,                     // This edge advances PLATFORM time by one; deadlines include it.
+    input logic run_begin_i,                // PLATFORM established new tick zero/generation after qualification.
+    input logic [63:0] platform_generation_i,// PLATFORM's powered run generation; strictly increases on admission.
+    output logic restart_ready_o,           // Qualified stop boundary permits requesting PLATFORM startup.
     input logic stop_ack_i,                 // Trusted enforcement acknowledgement, never a host command.
-    output logic stop_request_o, run_end_o,  // Complete physical stop / pulse canceling R05's old run.
-    output logic [7:0] state_o,              // Sparse public diagnostic state (documented in R06 guide).
+    output logic stop_request_o, run_end_o,  // Complete physical stop / pulse canceling PLATFORM's old run.
+    output logic [7:0] state_o,              // Sparse public diagnostic state (documented in CONTROLLER guide).
     output logic fault_o, permit_o,          // Immediate-or-sticky fault / independently gated lease.
     output logic [63:0] run_generation_o, round_o, job_generation_o,
     output logic pending_o, request_valid_o, // One context / coherent current request publication.
@@ -34,15 +34,15 @@ module reins_controller #(
     output logic [1023:0] request_o,         // Exact 128 bytes, byte zero in bits 1023:1016.
     output logic [63:0] issue_o, deadline_o, proposed_expiry_o, // Fixed pending I/B/E, never arrival-relative.
     output logic [2:0] votes_o,              // Distinct pending slots; zero when the round closes.
-    output logic draw_valid_o,              // R05 draw for a subsequent fixed scheduled round.
-    input logic draw_ready_i,               // R05 accepts draw_round/issue on this edge.
+    output logic draw_valid_o,              // PLATFORM draw for a subsequent fixed scheduled round.
+    input logic draw_ready_i,               // PLATFORM accepts draw_round/issue on this edge.
     output logic [63:0] draw_round_o, draw_issue_o,
-    input logic nonce_valid_i,              // R05 conditioned result, with complete captured identity.
+    input logic nonce_valid_i,              // PLATFORM conditioned result, with complete captured identity.
     output logic nonce_ready_o,
     input logic [255:0] nonce_i,
     input logic [255:0] nonce_audit_i,        // Independently conditioned complemented nonce, on a separate route.
     input logic [63:0] nonce_round_i, nonce_issue_i, nonce_generation_i,
-    input logic submit_valid_i,             // R07 sealed-buffer admission, not an authenticated vote.
+    input logic submit_valid_i,             // SPI sealed-buffer admission, not an authenticated vote.
     output logic submit_ready_o,            // Only one live job and one immutable context snapshot.
     input logic [1:0] submit_slot_i,         // Locally selects fixed OTP authority key / slot request.
     input logic abort_valid_i,              // RX_ABORT cancels only its matching job, preserving prior votes.
@@ -91,7 +91,7 @@ module reins_controller #(
     context_t context_q, context_inv_q;       // Exactly one pending context and complemented mirror.
     context_t context_without_nonce, audit_without_nonce, scheduled_inverse;
     logic nonce_capture_q, nonce_capture_inverse_q, nonce_admit_audit;
-    logic nonce_history_q, nonce_history_inverse_q; // Per-run repeat rejection; R05 retains powered history.
+    logic nonce_history_q, nonce_history_inverse_q; // Per-run repeat rejection; PLATFORM retains powered history.
     logic [255:0] last_nonce_q, last_nonce_inverse_q;
     job_t job_q, job_inv_q;                   // Immutable live job and complemented identity/input mirror.
     logic pending_q, published_q, draw_pending_q, stop_needed_q, reset_active;
@@ -420,7 +420,7 @@ module reins_controller #(
                 else begin
                     close_context(); state_q<=WAIT_ARM; state_inv_q<=~WAIT_ARM;
                     nonce_history_q<=0; nonce_history_inverse_q<=1;
-                    // R05 may have begun a run that reset canceled before this
+                    // PLATFORM may have begun a run that reset canceled before this
                     // controller sampled it. Such gaps never reuse an identity.
                     run_q<=platform_generation_i; run_inv_q<=~platform_generation_i;
                     round_q<=64'd1; round_inv_q<=~64'd1; observed_now_q<=at_edge;
@@ -507,7 +507,7 @@ module reins_controller #(
     end
 `ifndef SYNTHESIS
     initial assert (ID_WIDTH>1 && ID_WIDTH<=64 && ROUND_WIDTH>1 && ROUND_WIDTH<=64 && TIME_WIDTH>1 && TIME_WIDTH<=64)
-        else $fatal(1,"invalid R06 reduced test widths");
+        else $fatal(1,"invalid CONTROLLER reduced test widths");
     assert property (@(posedge clk_i) disable iff (!por_ni) permit_o |-> state_q==RUNNING && lease_q && !fault_o);
     assert property (@(posedge clk_i) disable iff (!por_ni) request_valid_o |-> pending_q && published_q && !entropy_failure_i);
 `endif

@@ -33,7 +33,7 @@ jobs:
       - name: Bounded byte fuzz and exact replay artifacts
         run: make fuzz-smoke CAMPAIGN_SEEDS=2 CAMPAIGN_ITERATIONS=128 JOBS=2
       - name: Protected capture storage and fault accounting
-        run: make r03-tests JOBS=2
+        run: make protected-state-tests JOBS=2
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:

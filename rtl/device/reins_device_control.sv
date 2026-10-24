@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 // License: https://polyformproject.org/licenses/noncommercial/1.0.0/
 
-// Production R05/R06 composition, still an internal device component, not a chip top.
-// Host-backed completion pins exist only in rtl/test/r06_test_top.sv. A production
-// integration must bind these internal ports to the real protected verifier/R07 RAM.
+// Production PLATFORM/CONTROLLER composition, still an internal device component, not a chip top.
+// Host-backed completion pins exist only in rtl/test/controller_unit_top.sv. A production
+// integration must bind these internal ports to the real protected verifier/SPI RAM.
 `default_nettype none
 module reins_device_control (
     input logic  clk_i, // Independent always-on monitor clock / real power reset.
@@ -64,10 +64,10 @@ module reins_device_control (
     output logic  invalidate_o, // Immediate/stored general fault / cancel pending work.
     output logic [63:0] now_o, // Trusted local tick and nonwrapping run identity.
     output logic [63:0] generation_o, // Trusted local tick and nonwrapping run identity.
-    output logic  restart_ready_o, // Qualified stop boundary permits requesting R05 startup.
+    output logic  restart_ready_o, // Qualified stop boundary permits requesting PLATFORM startup.
     input logic  stop_ack_i, // Trusted enforcement acknowledgement, never a host command.
-    output logic  stop_request_o, // Complete physical stop / pulse canceling R05's old run.
-    output logic [7:0] state_o, // Sparse public diagnostic state (documented in R06 guide).
+    output logic  stop_request_o, // Complete physical stop / pulse canceling PLATFORM's old run.
+    output logic [7:0] state_o, // Sparse public diagnostic state (documented in CONTROLLER guide).
     output logic [63:0] run_generation_o, // Powered run identity; never a wire/session field.
     output logic [63:0] round_o, // Current protocol round, starting at one.
     output logic [63:0] job_generation_o, // Powered monotonic job epoch.
@@ -79,7 +79,7 @@ module reins_device_control (
     output logic [63:0] deadline_o, // Fixed pending I/B/E, never arrival-relative.
     output logic [63:0] proposed_expiry_o, // Fixed pending I/B/E, never arrival-relative.
     output logic [2:0] votes_o, // Distinct pending slots; zero when the round closes.
-    input logic  submit_valid_i, // R07 sealed-buffer admission, not an authenticated vote.
+    input logic  submit_valid_i, // SPI sealed-buffer admission, not an authenticated vote.
     output logic  submit_ready_o, // Only one live job and one immutable context snapshot.
     input logic [1:0] submit_slot_i, // Locally selects fixed OTP authority key / slot request.
     input logic  abort_valid_i, // RX_ABORT cancels only its matching job, preserving prior votes.
@@ -115,9 +115,9 @@ module reins_device_control (
     output logic  commit_event_o, // Semantic diagnostics, not acceptance bypasses.
     output logic [63:0] committed_issue_o, // I_c of the actual committed lease.
     output logic [63:0] remaining_o, // Saturating remaining down-counter, not an arrival-relative lease.
-    output logic  permit_o, // Combined controller/R05 qualified lease permit.
+    output logic  permit_o, // Combined controller/PLATFORM qualified lease permit.
     output logic  fault_o, // Immediate or stored controller/platform general fault.
-    output logic [63:0] lease_expiry_o // Fixed committed expiry, owned by R06.
+    output logic [63:0] lease_expiry_o // Fixed committed expiry, owned by CONTROLLER.
 );
     logic platform_fault, controller_fault, controller_permit, platform_permit;
     logic run_seen_q, controller_run_end, lease_valid;

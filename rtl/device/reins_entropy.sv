@@ -14,9 +14,9 @@ module reins_entropy (
     input logic run_start_i,                   // Full OTP/time/source startup checks have passed.
     input logic [63:0] now_i, generation_i, window_i, // Trusted local time, identity and W.
     input logic tick_i,                       // This monitor edge advances trusted time by one.
-    input logic draw_valid_i,                  // Trusted R06 request for a subsequent round.
+    input logic draw_valid_i,                  // Trusted CONTROLLER request for a subsequent round.
     output logic draw_ready_o, draw_rejected_o,// Capture availability / invalid schedule diagnostic.
-    input logic [63:0] draw_round_i, draw_issue_i, // Caller supplies the fixed R06 issue schedule.
+    input logic [63:0] draw_round_i, draw_issue_i, // Caller supplies the fixed CONTROLLER issue schedule.
     input logic a_valid_i, a_bit_i,             // New source A event, not a queued host byte.
     input logic [63:0] a_time_i,                // Trusted acquisition tick, stamped before any queue.
     input logic b_valid_i, b_bit_i,             // Independent source B event.

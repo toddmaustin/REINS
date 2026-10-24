@@ -6,12 +6,33 @@
 
 #include "reins/simulation.h"
 #include <algorithm>
+#include <cstdlib>
 #include <iomanip>
 #include <ostream>
 #include <sstream>
 #include <string_view>
 
 namespace reins::sim::diagnostic {
+
+// Read environment variable name, preferring its descriptive spelling over a legacy stage alias.
+inline const char* environment(const char* name) {
+    if (const char* value = std::getenv(name)) return value;
+    static constexpr const char* aliases[][2] = {
+        {"REINS_PLATFORM_SEED", "REINS_R05_SEED"}, {"REINS_PLATFORM_TRACE", "REINS_R05_TRACE"},
+        {"REINS_CONTROLLER_SEED", "REINS_R06_SEED"}, {"REINS_CONTROLLER_TRACE", "REINS_R06_TRACE"},
+        {"REINS_SPI_SEED", "REINS_R07_SEED"}, {"REINS_SPI_TRACE", "REINS_R07_TRACE"},
+        {"REINS_ENFORCEMENT_SEED", "REINS_R08_SEED"}, {"REINS_ENFORCEMENT_TRACE", "REINS_R08_TRACE"},
+        {"REINS_MERKLE_SEED", "REINS_R09_SEED"}, {"REINS_MERKLE_TRACE", "REINS_R09_TRACE"},
+        {"REINS_SLH_COMPONENTS_SEED", "REINS_R10A_SEED"}, {"REINS_SLH_COMPONENTS_TRACE", "REINS_R10A_TRACE"},
+        {"REINS_SLH_VERIFY_SEED", "REINS_R10B_SEED"}, {"REINS_SLH_VERIFY_TRACE", "REINS_R10B_TRACE"},
+        {"REINS_VERIFIER_SEED", "REINS_R10C_SEED"}, {"REINS_VERIFIER_TRACE", "REINS_R10C_TRACE"},
+        {"REINS_SPI_FUZZ_SEED", "REINS_R11_SEED"}, {"REINS_SPI_FUZZ_ITERATIONS", "REINS_R11_ITERATIONS"},
+        {"REINS_SPI_FUZZ_REPLAY", "REINS_R11_REPLAY"},
+    };
+    for (const auto& alias : aliases)
+        if (std::string_view(name) == alias[0]) return std::getenv(alias[1]);
+    return nullptr;
+}
 
 // Encode bytes as lowercase hexadecimal without changing a caller's stream flags.
 inline std::string hex(std::span<const std::uint8_t> bytes) {

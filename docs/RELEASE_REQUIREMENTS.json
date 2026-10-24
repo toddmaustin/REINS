@@ -6,9 +6,9 @@
       "id": "SAFE-01",
       "goal": "Authorization withdrawal and stopped protected effects",
       "groups": [
-        "r06-rtl",
-        "r08-rtl",
-        "r10c-integration"
+        "controller-unit",
+        "enforcement-unit",
+        "device-integration"
       ],
       "required_test": "*two withholding*"
     },
@@ -16,9 +16,9 @@
       "id": "BOUND-01",
       "goal": "Fixed issue, expiry, clock and stop bounds",
       "groups": [
-        "r06-rtl",
-        "r08-rtl",
-        "r10c-integration"
+        "controller-unit",
+        "enforcement-unit",
+        "device-integration"
       ],
       "required_test": "*stalled second pass*"
     },
@@ -26,7 +26,7 @@
       "id": "CFG-01",
       "goal": "Fixed N=3 Q=2 and public OTP checks",
       "groups": [
-        "r05-rtl"
+        "platform-unit"
       ],
       "required_test": "*fixed OTP fields*"
     },
@@ -34,8 +34,8 @@
       "id": "PROV-01",
       "goal": "Commissioning interlocks and permanent closure",
       "groups": [
-        "r05-rtl",
-        "r07-integration"
+        "platform-unit",
+        "spi-integration"
       ],
       "required_test": "*commissioning interlocks*"
     },
@@ -43,9 +43,9 @@
       "id": "SIG-01",
       "goal": "Selected official cases and real complete signatures",
       "groups": [
-        "r10a-rtl",
-        "r10b-rtl",
-        "r10c-integration"
+        "slh-components-unit",
+        "slh-verify-unit",
+        "device-integration"
       ],
       "required_test": "*full RTL SPI ARM RENEW pair 0 1"
     },
@@ -53,8 +53,8 @@
       "id": "FRESH-01",
       "goal": "No pre-issue samples or future nonce pool",
       "groups": [
-        "r05-rtl",
-        "r06-rtl"
+        "platform-unit",
+        "controller-unit"
       ],
       "required_test": "*samples before issue*"
     },
@@ -62,8 +62,8 @@
       "id": "FRESH-02",
       "goal": "Repeat history and reset freshness",
       "groups": [
-        "r05-rtl",
-        "r06-rtl"
+        "platform-unit",
+        "controller-unit"
       ],
       "required_test": "*warm and recognized cold retain repeat history*"
     },
@@ -71,7 +71,7 @@
       "id": "ENT-01",
       "goal": "Digital raw health and conditioner accounting",
       "groups": [
-        "r05-rtl"
+        "platform-unit"
       ],
       "required_test": "*exact raw RCT APT*"
     },
@@ -79,9 +79,9 @@
       "id": "VOTE-01",
       "goal": "Distinct authorities and fixed 2-of-3 quorum",
       "groups": [
-        "r06-rtl",
-        "r10c-rtl",
-        "r10c-integration"
+        "controller-unit",
+        "verifier-unit",
+        "device-integration"
       ],
       "required_test": "*all quorum pairs*"
     },
@@ -89,8 +89,8 @@
       "id": "BATCH-01",
       "goal": "Local expected grant and canonical Merkle paths",
       "groups": [
-        "r09-rtl",
-        "r10c-rtl"
+        "merkle-unit",
+        "verifier-unit"
       ],
       "required_test": "*proof mutations fail both*"
     },
@@ -98,8 +98,8 @@
       "id": "ACCEPT-01",
       "goal": "Independent two-pass acceptance and final join",
       "groups": [
-        "r10c-rtl",
-        "r10c-integration"
+        "verifier-unit",
+        "device-integration"
       ],
       "required_test": "*complete independent passes*"
     },
@@ -107,8 +107,8 @@
       "id": "LEASE-01",
       "goal": "Issue-relative nonbanking lease and strict deadlines",
       "groups": [
-        "r06-rtl",
-        "r10c-integration"
+        "controller-unit",
+        "device-integration"
       ],
       "required_test": "*second pass before at and after B*"
     },
@@ -116,9 +116,9 @@
       "id": "TIME-01",
       "goal": "Independent trusted progress and overflow rejection",
       "groups": [
-        "r05-rtl",
-        "r06-rtl",
-        "r10c-integration"
+        "platform-unit",
+        "controller-unit",
+        "device-integration"
       ],
       "required_test": "*stalled second pass*"
     },
@@ -126,9 +126,9 @@
       "id": "RX-01",
       "goal": "Single sealed receive SRAM and exact SPI envelopes",
       "groups": [
-        "r07-rtl",
-        "r07-memory",
-        "r10c-rtl"
+        "spi-unit",
+        "receive-memory-unit",
+        "verifier-unit"
       ],
       "required_test": "*sealed write attempts*"
     },
@@ -136,8 +136,8 @@
       "id": "FAULT-02",
       "goal": "Declared SRAM and common read/capture fault domains",
       "groups": [
-        "r07-memory",
-        "r10c-rtl"
+        "receive-memory-unit",
+        "verifier-unit"
       ],
       "required_test": "*shared read data substitution*"
     },
@@ -145,17 +145,17 @@
       "id": "FAULT-03",
       "goal": "Repeated/persistent acceptance-path campaigns",
       "groups": [
-        "r10c-rtl"
+        "verifier-unit"
       ],
-      "required_test": "R11 extended*"
+      "required_test": "SPI regression: extended*"
     },
     {
       "id": "STOP-01",
       "goal": "Two independently enforcing local guard paths",
       "groups": [
-        "r08-rtl",
-        "r08-integration",
-        "r10c-integration"
+        "enforcement-unit",
+        "enforcement-integration",
+        "device-integration"
       ],
       "required_test": "*two withholding*"
     },
@@ -163,8 +163,8 @@
       "id": "FAULT-01",
       "goal": "Static rails, frozen source and permissive local guard faults",
       "groups": [
-        "r08-rtl",
-        "r08-integration"
+        "enforcement-unit",
+        "enforcement-integration"
       ],
       "required_test": "*static*"
     },
@@ -174,7 +174,7 @@
       "groups": [
         "sim-directed",
         "reference-fixtures",
-        "r10c-integration"
+        "device-integration"
       ],
       "required_test": "*two withholding*"
     },
@@ -191,33 +191,33 @@
       "id": "PROTECT-01",
       "goal": "Independent protected state/capture updates and confirmed general fault applications",
       "groups": [
-        "r03-protected",
-        "r05-rtl",
-        "r10c-rtl"
+        "protected-state",
+        "platform-unit",
+        "verifier-unit"
       ],
       "required_test": "*independent controller capture and sequencer update faults*"
     }
   ],
   "required_groups": [
     "sim-directed",
-    "sha256-rtl",
-    "r05-rtl",
-    "r06-rtl",
-    "r06-integration",
-    "r07-rtl",
-    "r07-integration",
-    "r07-memory",
-    "r08-rtl",
-    "r08-integration",
-    "r09-rtl",
-    "r09-integration",
-    "r10a-rtl",
-    "r10b-rtl",
-    "r10c-rtl",
-    "r10c-integration",
-    "r10c-evidence",
-    "r10b-evidence",
-    "r10a-evidence",
+    "sha256-unit",
+    "platform-unit",
+    "controller-unit",
+    "controller-integration",
+    "spi-unit",
+    "spi-integration",
+    "receive-memory-unit",
+    "enforcement-unit",
+    "enforcement-integration",
+    "merkle-unit",
+    "merkle-integration",
+    "slh-components-unit",
+    "slh-verify-unit",
+    "verifier-unit",
+    "device-integration",
+    "verification-evidence",
+    "slh-verify-evidence",
+    "slh-components-evidence",
     "rtl-lint",
     "baseline",
     "tool-regressions",
@@ -231,10 +231,10 @@
     "synthesis",
     "reset",
     "cdc",
-    "r11-spi",
+    "spi-regression",
     "tool-versions",
     "production-audit",
-    "r03-protected"
+    "protected-state"
   ],
   "safety_states": {
     "controller": {
@@ -290,7 +290,7 @@
       "detail": "No assessed entropy, absolute clock floor, analog sensors, metastability, placement/isolation or physical stop qualification."
     },
     {
-      "id": "G-R03",
+      "id": "G-FAULT-COVERAGE",
       "requirements": [
         "ACCEPT-01",
         "FAULT-01",
@@ -299,7 +299,7 @@
         "RX-01"
       ],
       "disposition": "bounded_digital_coverage",
-      "detail": "R03 digital protections, catalog and confirmed applications are implemented. Sites/values/durations outside the declared campaigns, shared upstream/common physical faults and post-layout preservation remain unqualified. Public fault manifests replay initial ARM jobs only; masked persistent faults hold the whole selected site rather than leaving unmasked bits live."
+      "detail": "Protected state: digital protections, catalog and confirmed applications are implemented. Sites/values/durations outside the declared campaigns, shared upstream/common physical faults and post-layout preservation remain unqualified. Public fault manifests replay initial ARM jobs only; masked persistent faults hold the whole selected site rather than leaving unmasked bits live."
     },
     {
       "id": "G-SIGNOFF",
@@ -363,22 +363,22 @@
   ],
   "required_case_counts": {
     "sim-directed": 33,
-    "sha256-rtl": 9,
-    "r05-rtl": 23,
-    "r06-rtl": 21,
-    "r06-integration": 3,
-    "r07-rtl": 30,
-    "r07-integration": 2,
-    "r07-memory": 4,
-    "r08-rtl": 13,
-    "r08-integration": 2,
-    "r09-rtl": 9,
-    "r09-integration": 2,
-    "r10a-rtl": 12,
-    "r10b-rtl": 9,
-    "r10c-rtl": 18,
-    "r10c-integration": 5,
-    "r11-spi": 2,
+    "sha256-unit": 9,
+    "platform-unit": 23,
+    "controller-unit": 21,
+    "controller-integration": 3,
+    "spi-unit": 30,
+    "spi-integration": 2,
+    "receive-memory-unit": 4,
+    "enforcement-unit": 13,
+    "enforcement-integration": 2,
+    "merkle-unit": 9,
+    "merkle-integration": 2,
+    "slh-components-unit": 12,
+    "slh-verify-unit": 9,
+    "verifier-unit": 18,
+    "device-integration": 5,
+    "spi-regression": 2,
     "production-full": 1
   }
 }

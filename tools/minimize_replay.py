@@ -68,7 +68,7 @@ def main():
         directory.mkdir()
         trace = directory / "input.trace"
         trace.write_text("\n".join(candidate)+"\n")
-        environment = dict(os.environ, REINS_R11_REPLAY=str(trace.resolve()), REINS_TEST_OUTPUT_DIR=str(directory / "rtl"))
+        environment = dict(os.environ, REINS_SPI_FUZZ_REPLAY=str(trace.resolve()), REINS_TEST_OUTPUT_DIR=str(directory / "rtl"))
         command = [str(args.binary.resolve()), "--no-colors", "--duration", "--test-case=*explicit SPI trace replay", "--no-skip"]
         with (directory / "output.log").open("w") as log:
             try:

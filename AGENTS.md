@@ -17,3 +17,9 @@
 - Use the Makefile as the build/test interface; do not add CMake or Ninja setup.
 - Run tests through the Make targets and preserve each run's logs/reports on disk.
   Delete retained results only through an explicit clean target.
+- Name tests, targets, support headers and output groups after the unit or
+  integration boundary they exercise. Keep the test catalog and release manifest
+  consistent; stage-numbered Make targets are compatibility aliases only.
+- Describe the current design and workflow in the README and architecture guides.
+  Preserve dated build reports, intermediate milestones and old measurements in
+  `BUILD_NOTES.md`; do not rewrite historical results or pinned input bytes.

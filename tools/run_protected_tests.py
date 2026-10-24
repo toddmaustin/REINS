@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 # License: https://polyformproject.org/licenses/noncommercial/1.0.0/
 
-"""Execute bounded R03 storage, capture, control and fault-accounting campaigns."""
+"""Execute bounded Protected state storage, capture, control and fault-accounting campaigns."""
 import argparse
 import os
 from pathlib import Path
@@ -15,17 +15,17 @@ from tools.run_tests import Step, run_suite
 
 
 def steps(build):
-    """Return protected test/evidence steps using build's actual R05/R10c executables."""
+    """Return protected test/evidence steps using build's actual PLATFORM/Two-pass verifier executables."""
     python = [sys.executable,"-E","-s","-B"]
     return [Step("protected-encodings",python+[str(ROOT / "tools/check_protected_encodings.py")],console_output=True),
-        Step("r03-platform",[str(build / "r05-rtl/reins-r05-tests"),"--no-colors","--duration","--test-case=R03*"],timeout=600,count_kind="doctest"),
-        Step("r03-verifier",[str(build / "r10c-rtl/reins-r10c-tests"),"--no-colors","--duration","--test-case=R03*","--test-case-exclude=*manifest replay"],timeout=1200,count_kind="doctest"),
-        Step("r11-repeated-fault",[str(build / "r10c-rtl/reins-r10c-tests"),"--no-colors","--duration","--test-case=R11*"],timeout=1200,count_kind="doctest"),
+        Step("platform-protection",[str(build / "platform-unit/reins-platform-unit-tests"),"--no-colors","--duration","--test-case=Protected state*"],timeout=600,count_kind="doctest"),
+        Step("verifier-protection",[str(build / "verifier-unit/reins-verifier-unit-tests"),"--no-colors","--duration","--test-case=Protected state*","--test-case-exclude=*manifest replay"],timeout=1200,count_kind="doctest"),
+        Step("persistent-fault",[str(build / "verifier-unit/reins-verifier-unit-tests"),"--no-colors","--duration","--test-case=Persistent fault:*"],timeout=1200,count_kind="doctest"),
         Step("protected-report",python+[str(ROOT / "tools/protected_report.py")],console_output=True)]
 
 
 def main():
-    """Parse build/jobs and execute every R03 campaign through the retained collector."""
+    """Parse build/jobs and execute every Protected state campaign through the retained collector."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--build-dir",type=Path,required=True)
     parser.add_argument("--jobs",type=int,default=2)
@@ -37,8 +37,8 @@ def main():
     for name in ("MAKEFLAGS","MFLAGS","MAKEOVERRIDES"):
         environment.pop(name,None)
     results = Path(environment["REINS_TEST_OUTPUT_DIR"]) / "runs" if args.nested else ROOT / "test-results"
-    code,_ = run_suite("r03-protected","sanitize" if environment.get("SANITIZE")=="1" else "release",results,steps(args.build_dir.resolve()),
-        build=Step("build",["make","--no-print-directory",f"-j{args.jobs}","BUILD_DIR="+str(args.build_dir.resolve()),str(args.build_dir.resolve() / "r05-rtl/reins-r05-tests"),"r10c-unit-build"],timeout=1800),environment=environment)
+    code,_ = run_suite("protected-state","sanitize" if environment.get("SANITIZE")=="1" else "release",results,steps(args.build_dir.resolve()),
+        build=Step("build",["make","--no-print-directory",f"-j{args.jobs}","BUILD_DIR="+str(args.build_dir.resolve()),str(args.build_dir.resolve() / "platform-unit/reins-platform-unit-tests"),"verifier-unit-build"],timeout=1800),environment=environment)
     raise SystemExit(code)
 
 

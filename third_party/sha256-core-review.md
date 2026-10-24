@@ -1,4 +1,4 @@
-# R04 SHA-256 implementation selection
+# SHA-256 SHA-256 implementation selection
 
 Reviewed candidate: [secworks/sha256](https://github.com/secworks/sha256), commit
 [`837c5cc396f001d18f2c765721c585716eb439ae`](https://github.com/secworks/sha256/tree/837c5cc396f001d18f2c765721c585716eb439ae).

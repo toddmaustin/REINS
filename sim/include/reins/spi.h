@@ -29,7 +29,7 @@ public:
     bool finish(Tick now, unsigned partial_bits=0, bool electrical_error=false);
     // Reset public transaction/ownership metadata; power_loss permits token reuse. Reset the bound Device separately.
     void reset(bool power_loss=false);
-    // Set the R05 public view using lifecycle (0/1/2) and config_valid; does not program OTP.
+    // Set the PLATFORM public view using lifecycle (0/1/2) and config_valid; does not program OTP.
     void configuration_view(unsigned lifecycle, bool config_valid);
     // Select independent software pass timing for subsequent FINISH commands using latency.
     void verification_latency(Latency latency);

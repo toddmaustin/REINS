@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 // License: https://polyformproject.org/licenses/noncommercial/1.0.0/
 
-// R05 configuration/startup/time/entropy integration for digital simulation profile 1.
-// lease_* are TRUSTED INTERNAL inputs from the future R06 quorum/lease controller.
+// PLATFORM configuration/startup/time/entropy integration for digital simulation profile 1.
+// lease_* are TRUSTED INTERNAL inputs from the future CONTROLLER quorum/lease controller.
 // This component cannot authorize execution by itself and is not a chip top.
 `default_nettype none
 module reins_platform_control (
@@ -35,11 +35,11 @@ module reins_platform_control (
     input logic [63:0] source_b_time_i,         // Trusted B acquisition tick, before any queue.
     output logic source_a_request_o, source_b_request_o, // Startup or active fresh-draw demand.
     output logic [8:0] source_a_count_o, source_b_count_o, // Actual accepted nonce bits, not entropy.
-    input logic draw_valid_i,                 // Trusted R06 subsequent-round schedule proposal.
+    input logic draw_valid_i,                 // Trusted CONTROLLER subsequent-round schedule proposal.
     output logic draw_ready_o, draw_rejected_o, // Proposal availability / invalid-command pulse.
-    input logic [63:0] draw_round_i, draw_issue_i, // Increasing R06 round and scheduled I.
+    input logic [63:0] draw_round_i, draw_issue_i, // Increasing CONTROLLER round and scheduled I.
     output logic nonce_valid_o,               // Retained, timely conditioned nonce response.
-    input logic nonce_ready_i,                // Trusted R06 consumer captures response.
+    input logic nonce_ready_i,                // Trusted CONTROLLER consumer captures response.
     output logic [255:0] nonce_o,             // Actual dedicated-SHA result; never host supplied.
     output logic [255:0] nonce_audit_o,       // Independent complemented conditioner result, for protected consumers.
     output logic [63:0] nonce_round_o, nonce_issue_o, nonce_generation_o, // Captured draw identity.
@@ -47,9 +47,9 @@ module reins_platform_control (
     output logic checking_o, run_active_o, startup_complete_o, new_grants_o, // Startup/new-grant gates.
     output logic fatal_o, invalidate_o,        // Immediate/stored general fault / cancel pending work.
     output logic [63:0] now_o, generation_o,   // Trusted local tick and nonwrapping run identity.
-    input logic lease_valid_i,                  // R06's independently authorized committed lease.
+    input logic lease_valid_i,                  // CONTROLLER's independently authorized committed lease.
     input logic [63:0] lease_expiry_i, lease_generation_i, // Original committed expiry/context.
-    output logic lease_permission_o            // R05 qualification/health/time gate on that lease.
+    output logic lease_permission_o            // PLATFORM qualification/health/time gate on that lease.
 );
     typedef enum logic [7:0] {STOPPED=8'h0f, CHECKING=8'h33, RUN=8'h55} phase_t;
     phase_t phase_q;                           // Startup progress; not the future armed/quorum FSM.

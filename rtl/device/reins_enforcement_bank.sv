@@ -12,9 +12,9 @@ module reins_enforcement_bank (
     input logic reset_i, cold_clear_i,        // Cancel source; trusted cold clear is allowed only when stopped.
     input logic tick_i,                      // Qualified source progress; never a host/SPI clock.
     input logic authorize_a_i, authorize_b_i, // Independent lease/health qualifications for the two rails.
-    input logic stop_request_i,              // Trusted R06 stop, not an acknowledgement or host command.
+    input logic stop_request_i,              // Trusted CONTROLLER stop, not an acknowledgement or host command.
     input logic profile_valid_i, profile_alarm_i, // Checked OTP matches the documented clock/delay profile.
-    input logic [63:0] generation_i,          // Trusted R06 run identity, used only in outbound test work.
+    input logic [63:0] generation_i,          // Trusted CONTROLLER run identity, used only in outbound test work.
     output logic permit_a_o, permit_b_o, epoch_o, // Internal protected fan-out sources / fresh ARM toggle.
     input logic [2:0] routed_a_i, routed_b_i, // Technology-local routes, not externally accessible pins.
     input logic [2:0] guard_clock_a_i, guard_clock_b_i, // Six local independent always-on clock branches.

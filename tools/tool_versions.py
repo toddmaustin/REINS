@@ -26,7 +26,7 @@ def main():
     directory.mkdir(parents=True,exist_ok=True)
     report, errors = {}, []
     if args.production:
-        for name,top in [("production-top","reins_device"),("r10c-integration","r10c_integration_top")]:
+        for name,top in [("production-top","reins_device"),("device-integration","device_integration_top")]:
             path = ROOT / "build/production" / name
             generated = path / ("V"+top+"__verFiles.dat")
             flags = path / ("V"+top+"_classes.mk")
@@ -43,7 +43,7 @@ def main():
             (directory / (name+"-verFiles.dat")).write_text(command)
             (directory / (name+"-classes.mk")).write_text(makefile)
             report[name] = dict(verFiles_sha256=hashlib.sha256(generated.read_bytes()).hexdigest(),classes_sha256=hashlib.sha256(flags.read_bytes()).hexdigest())
-        binary = ROOT / "build/production/r10c-integration/reins-r10c-integration-tests"
+        binary = ROOT / "build/production/device-integration/reins-device-integration-tests"
         report["binary_sha256"] = hashlib.sha256(binary.read_bytes()).hexdigest()
         report["build_config"] = json.loads((ROOT / "build/production/build-config.json").read_text())
         if report["build_config"]["INSTRUMENT"]!="0" or report["build_config"]["SANITIZE"]!="0":

@@ -91,7 +91,7 @@ def main():
     assert result.returncode == 1 and not json.loads(result.stdout)["all_verified"]
     assert result.stderr.count("verdict=signature_error") == 2
     assert result.stderr.count("verdict=verified") == 2
-    options = [["--mode", "full-rtl"], ["--mode", "fast-control"],
+    options = [["--mode", "full-rtl"], ["--mode", "rtl-controller-unit"],
                ["--first-pass-ticks", "-1"], ["--second-pass-ticks", str(2**64)]]
     for index, option in enumerate(options):
         result = run(f"invalid-options-{index}", command + option,

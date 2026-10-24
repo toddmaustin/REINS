@@ -10,7 +10,7 @@ module reins_permit_source (
     input logic clk_i, por_ni, reset_i, // Always-on source clock, power loss and logical withdrawal.
     input logic tick_i,                // Qualified reference-A progress event, nominally 1 MHz.
     input logic run_i, stop_i,         // Trusted sequencing; run alone is never authorization.
-    input logic authorize_a_i,         // R06's checked permit path.
+    input logic authorize_a_i,         // CONTROLLER's checked permit path.
     input logic authorize_b_i,         // Independently derived state/time/remaining/health path.
     output logic permit_a_o, permit_b_o, // Separate protected fan-out rails, nominal 500-tick intervals.
     output logic fault_o              // Immediate/sticky counter-integrity failure; inhibits both rails.

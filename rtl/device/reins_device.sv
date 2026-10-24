@@ -63,9 +63,9 @@ module reins_device (
     output logic invalidate_o, // Immediate/stored general fault / cancel pending work.
     output logic [63:0] now_o, // Trusted local tick and nonwrapping run identity.
     output logic [63:0] generation_o, // Trusted local tick and nonwrapping run identity.
-    output logic restart_ready_o, // Qualified stop boundary permits requesting R05 startup.
-    output logic stop_request_o, // Complete physical stop / pulse canceling R05's old run.
-    output logic [7:0] state_o, // Sparse public diagnostic state (documented in R06 guide).
+    output logic restart_ready_o, // Qualified stop boundary permits requesting PLATFORM startup.
+    output logic stop_request_o, // Complete physical stop / pulse canceling PLATFORM's old run.
+    output logic [7:0] state_o, // Sparse public diagnostic state (documented in CONTROLLER guide).
     output logic [63:0] run_generation_o, // Powered run identity; never a wire/session field.
     output logic [63:0] round_o, // Current protocol round, starting at one.
     output logic [63:0] job_generation_o, // Powered monotonic job epoch.
@@ -97,9 +97,9 @@ module reins_device (
     output logic commit_event_o, // Semantic diagnostics, not acceptance bypasses.
     output logic [63:0] committed_issue_o, // I_c of the actual committed lease.
     output logic [63:0] remaining_o, // Saturating remaining down-counter, not an arrival-relative lease.
-    output logic permit_o, // Combined controller/R05 qualified lease permit.
+    output logic permit_o, // Combined controller/PLATFORM qualified lease permit.
     output logic fault_o, // Immediate or stored controller/platform general fault.
-    output logic [63:0] lease_expiry_o, // Fixed committed expiry, owned by R06.
+    output logic [63:0] lease_expiry_o, // Fixed committed expiry, owned by CONTROLLER.
     input logic sclk_i, // Untrusted asynchronous SPI mode-0 clock.
     input logic cs_ni, // Untrusted active-low SPI selection.
     input logic mosi_i, // Untrusted MSB-first MOSI data.

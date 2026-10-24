@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 # License: https://polyformproject.org/licenses/noncommercial/1.0.0/
 
-"""Validate and replay a public R03 fault manifest through the retained test runner."""
+"""Validate and replay a public Protected state fault manifest through the retained test runner."""
 import argparse
 import hashlib
 import json
@@ -27,7 +27,7 @@ def validate(path):
         raise ValueError("manifest format/catalog identity mismatch")
     site = next((site for site in catalog["sites"] if site["id"] == data["site"]), None)
     if not site or site["target"] != "r10c":
-        raise ValueError("public job replay requires a supported r10c site")
+        raise ValueError("public job replay requires a supported verifier site")
     width = sum(part["width"] for part in site["parts"])
     operations = dict(bit_flip=1, replace=2, stuck_low=3, stuck_high=4, control_glitch=2)
     if data["operation"] not in operations or data["expected"] not in ("detected", "safely_tolerated"):
@@ -108,13 +108,13 @@ def main():
     validate(args.manifest)  # Reject unsafe paths/budgets before starting a simulator.
     # Each child gets this collector run's own group directory; no old output is overwritten.
     wrapper = [sys.executable, "-E", "-s", "-B", str(ROOT / "tools/run_fault_replay.py"),
-               "--manifest", str(args.manifest.resolve()), "--binary", str(args.build_dir.resolve() / "r10c-rtl/reins-r10c-tests")]
+               "--manifest", str(args.manifest.resolve()), "--binary", str(args.build_dir.resolve() / "verifier-unit/reins-verifier-unit-tests")]
     environment=dict(os.environ)
     for name in ("MAKEFLAGS","MFLAGS","MAKEOVERRIDES"):
         environment.pop(name,None)
-    code, _ = run_suite("r03-fault-replay", "sanitize" if os.environ.get("SANITIZE")=="1" else "release", ROOT / "test-results",
+    code, _ = run_suite("fault-replay", "sanitize" if os.environ.get("SANITIZE")=="1" else "release", ROOT / "test-results",
         [Step("public-replay", wrapper, timeout=1200, count_kind="doctest", console_output=True)],
-        build=Step("build", ["make", "--no-print-directory", "BUILD_DIR="+str(args.build_dir.resolve()), "r10c-unit-build"], timeout=1800), environment=environment)
+        build=Step("build", ["make", "--no-print-directory", "BUILD_DIR="+str(args.build_dir.resolve()), "verifier-unit-build"], timeout=1800), environment=environment)
     raise SystemExit(code)
 
 

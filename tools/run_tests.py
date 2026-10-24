@@ -24,6 +24,8 @@ import traceback
 import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from tools.test_catalog import BY_NAME, COMBINATIONS, select
 
 
 def source_digest(cwd=ROOT):
@@ -221,160 +223,72 @@ def run_suite(suite, configuration, output_root, steps, *, build=None, cwd=ROOT,
     return code, directory
 
 
-def suite_steps(suite, build_dir, test_filter, make_command="make", configuration="release"):
-    """Select suite's commands using build_dir, test_filter, make_command and configuration's wall-time allowance."""
+def rtl_steps(selection, build_dir, test_filter="", *, quick=False, configuration="release"):
+    """Select RTL selection's cases from build_dir; test_filter/quick bound cases and configuration sets host timeouts."""
+    steps = []
+    names = {suite.name for suite in select(selection)}
+    for suite in select(selection):
+        command = [str(build_dir / suite.binary), "--no-colors", "--duration"]
+        if test_filter:
+            command.append("--test-case=" + test_filter)
+        elif quick:
+            command.append("--test-case=*minimized*" if suite.name == "spi-regression" else "--test-case-exclude=*extended*")
+        timeout = 7200 if configuration == "sanitize" or suite.name == "device-integration" else 2400 if suite.name == "verifier-unit" else 1200
+        steps.append(Step(suite.name, command, timeout=timeout, count_kind="doctest"))
     python = [sys.executable, "-E", "-s", "-B"]
-    # Instrumenting generated RTL is substantially slower than native simulation;
-    # hardware tick deadlines stay identical in both configurations.
-    r07_timeout = 7200 if configuration == "sanitize" else 1200
-    # The expanded fault-instrumented bank executes many complete signatures on
-    # Verilator 5.008. This host wall-time limit is separate from RTL tick budgets.
-    r10c_timeout = 7200 if configuration == "sanitize" else 2400
-    if suite == "software":
-        groups = {"sim-directed", "baseline", "tool-regressions", "reference-fixtures", "sim-report", "reference-report"}
-        return [step for step in suite_steps("full", build_dir, test_filter, make_command, configuration) if step.name in groups]
-    if suite == "r10c-integration":
-        command = [str(build_dir / "r10c-integration/reins-r10c-integration-tests"), "--no-colors", "--duration"]
-        if test_filter:
-            command += ["--test-case=" + test_filter]
-        return [Step("r10c-integration", command, timeout=7200, count_kind="doctest"),
-                Step("r10c-evidence", python + [str(ROOT / "tools/check_two_pass_report.py"), "--group", "integration"], console_output=True)]
-    if suite in ["r10c", "r10c-unit"]:
-        command = [str(build_dir / "r10c-rtl/reins-r10c-tests"), "--no-colors", "--duration"]
-        if test_filter:
-            command += ["--test-case=" + test_filter]
-        result = [Step("r10c-rtl", command, timeout=r10c_timeout, count_kind="doctest")]
-        if suite == "r10c":
-            result.append(Step("r10c-integration", [str(build_dir / "r10c-integration/reins-r10c-integration-tests"), "--no-colors", "--duration"], timeout=7200, count_kind="doctest"))
-        result.append(Step("r10c-evidence", python + [str(ROOT / "tools/check_two_pass_report.py"), "--group", "both" if suite == "r10c" else "unit"], console_output=True))
-        return result
-    if suite == "r10b":
-        command = [str(build_dir / "r10b-rtl/reins-r10b-tests"), "--no-colors", "--duration"]
-        if test_filter:
-            command += ["--test-case=" + test_filter]
-        return [Step("r10b-rtl", command, timeout=r07_timeout, count_kind="doctest"),
-            Step("r10b-evidence", python + [str(ROOT / "tools/check_slh_verifier_report.py")])]
-    if suite == "r10a":
-        command = [str(build_dir / "r10a-rtl/reins-r10a-tests"), "--no-colors", "--duration"]
-        if test_filter:
-            command += ["--test-case=" + test_filter]
-        return [Step("r10a-rtl", command, timeout=r07_timeout, count_kind="doctest"),
-            Step("r10a-evidence", python + [str(ROOT / "tools/check_slh_report.py")])]
-    if suite in ["r09", "r09-unit"]:
-        command = [str(build_dir / "r09-rtl/reins-r09-tests"), "--no-colors", "--duration"]
-        if test_filter:
-            command += ["--test-case=" + test_filter]
-        result = [Step("r09-rtl", command, timeout=r07_timeout, count_kind="doctest")]
-        if suite == "r09":
-            result.append(Step("r09-integration", [str(build_dir / "r09-integration/reins-r09-integration-tests"),
-                "--no-colors", "--duration"], timeout=r07_timeout, count_kind="doctest"))
-        return result
-    if suite in ["r08", "r08-unit"]:
-        command = [str(build_dir / "r08-rtl/reins-r08-tests"), "--no-colors", "--duration"]
-        if test_filter:
-            command += ["--test-case=" + test_filter]
-        result = [Step("r08-rtl", command, timeout=r07_timeout, count_kind="doctest")]
-        if suite == "r08":
-            result.append(Step("r08-integration", [str(build_dir / "r08-integration/reins-r08-integration-tests"),
-                "--no-colors", "--duration"], timeout=r07_timeout, count_kind="doctest"))
-        return result
-    if suite == "r07":
-        r07 = [str(build_dir / "r07-rtl/reins-r07-tests"), "--no-colors", "--duration"]
-        if test_filter:
-            r07 += ["--test-case=" + test_filter]
-        return [Step("r07-rtl", r07,
-                     timeout=r07_timeout, count_kind="doctest"),
-                Step("r07-integration", [str(build_dir / "r07-integration/reins-r07-integration-tests"), "--no-colors", "--duration"],
-                     timeout=r07_timeout, count_kind="doctest"),
-                Step("r07-memory", [str(build_dir / "r07-memory/reins-r07-memory-tests"), "--no-colors", "--duration"],
-                     timeout=120, count_kind="doctest")]
+    for name, group, tool in (
+        ("slh-components-unit", "slh-components-evidence", "check_slh_report.py"),
+        ("slh-verify-unit", "slh-verify-evidence", "check_slh_verifier_report.py"),
+    ):
+        if name in names:
+            steps.append(Step(group, python + [str(ROOT / "tools" / tool)]))
+    if names & {"verifier-unit", "device-integration"}:
+        group = "both" if {"verifier-unit", "device-integration"} <= names else "unit" if "verifier-unit" in names else "integration"
+        steps.append(Step("verification-evidence", python + [str(ROOT / "tools/check_two_pass_report.py"), "--group", group], console_output=True))
+    return steps
+
+
+def suite_steps(suite, build_dir, test_filter, make_command="make", configuration="release"):
+    """Return suite's checks using build_dir, test_filter, make_command and configuration's host timeout profile."""
+    if suite == "inventory":
+        return [Step("test-inventory", [sys.executable, "-E", "-s", "-B", str(ROOT / "tools/check_test_inventory.py"),
+                                       "--build-dir", str(build_dir)], timeout=600, console_output=True)]
+    if suite in BY_NAME or suite in COMBINATIONS:
+        return rtl_steps(suite, build_dir, test_filter, configuration=configuration)
+    python = [sys.executable, "-E", "-s", "-B"]
     baseline = python + [str(ROOT / "tools/check_baseline.py")]
     if suite != "quick":
-        baseline += ["--validate-fixtures"]
-    # Full discovery includes regression tests for the output collector itself.
+        baseline.append("--validate-fixtures")
     regression = python + ["-m", "unittest", "discover", "-s", "tools/tests", "-v"]
     if suite == "quick":
         regression = python + ["-m", "unittest", "discover", "-s", "tools/tests", "-p", "test_check_baseline.py", "-v"]
-    steps = [Step("rtl-layout", python + [str(ROOT / "tools/check_rtl_layout.py")]), Step("baseline", baseline), Step("tool-regressions", regression, count_kind="unittest")]
-    if suite != "baseline":
-        crosscheck = python + [str(ROOT / "tools/check_reference_fixtures.py")]
-        if suite != "quick":
-            crosscheck += ["--python-crypto"]
-        steps.append(Step("reference-fixtures", crosscheck))
-        cpp = [str(build_dir / "reins-sim-tests"), "--success", "--no-colors"]
-        if suite == "quick":
-            cpp += ["--test-case-exclude=*host authorities*"]
-        if test_filter:
-            cpp += ["--test-case=" + test_filter]
-        steps.insert(0, Step("sim-directed", cpp, count_kind="doctest"))
-        rtl = [str(build_dir / "sha256-rtl/reins-sha256-tests"), "--no-colors", "--duration"]
-        if suite == "quick":
-            rtl += ["--test-case-exclude=*extended*"]
-        steps.insert(1, Step("sha256-rtl", rtl, count_kind="doctest"))
-        r05 = [str(build_dir / "r05-rtl/reins-r05-tests"), "--no-colors", "--duration"]
-        if suite == "quick":
-            r05 += ["--test-case-exclude=*extended*"]
-        steps.insert(2, Step("r05-rtl", r05, count_kind="doctest"))
-        r06 = [str(build_dir / "r06-rtl/reins-r06-tests"), "--no-colors", "--duration"]
-        if suite == "quick":
-            r06 += ["--test-case-exclude=*extended*"]
-        steps.insert(3, Step("r06-rtl", r06, count_kind="doctest"))
-        steps.insert(4, Step("r06-integration", [str(build_dir / "r06-integration/reins-r06-integration-tests"),
-            "--no-colors", "--duration"], count_kind="doctest"))
-        r07 = [str(build_dir / "r07-rtl/reins-r07-tests"), "--no-colors", "--duration"]
-        if suite == "quick":
-            r07 += ["--test-case-exclude=*extended*"]
-        steps.insert(5, Step("r07-rtl", r07, timeout=r07_timeout, count_kind="doctest"))
-        steps.insert(6, Step("r07-integration", [str(build_dir / "r07-integration/reins-r07-integration-tests"),
-            "--no-colors", "--duration"], timeout=r07_timeout, count_kind="doctest"))
-        steps.insert(7, Step("r07-memory", [str(build_dir / "r07-memory/reins-r07-memory-tests"),
-            "--no-colors", "--duration"], count_kind="doctest"))
-        r08 = [str(build_dir / "r08-rtl/reins-r08-tests"), "--no-colors", "--duration"]
-        if suite == "quick":
-            r08 += ["--test-case-exclude=*extended*"]
-        steps.insert(8, Step("r08-rtl", r08, timeout=r07_timeout, count_kind="doctest"))
-        steps.insert(9, Step("r08-integration", [str(build_dir / "r08-integration/reins-r08-integration-tests"),
-            "--no-colors", "--duration"], timeout=r07_timeout, count_kind="doctest"))
-        r09 = [str(build_dir / "r09-rtl/reins-r09-tests"), "--no-colors", "--duration"]
-        if suite == "quick":
-            r09 += ["--test-case-exclude=*extended*"]
-        steps.insert(10, Step("r09-rtl", r09, timeout=r07_timeout, count_kind="doctest"))
-        steps.insert(11, Step("r09-integration", [str(build_dir / "r09-integration/reins-r09-integration-tests"),
-            "--no-colors", "--duration"], timeout=r07_timeout, count_kind="doctest"))
-        r10a = [str(build_dir / "r10a-rtl/reins-r10a-tests"), "--no-colors", "--duration"]
-        if suite == "quick":
-            r10a += ["--test-case-exclude=*extended*"]
-        steps.insert(12, Step("r10a-rtl", r10a, timeout=r07_timeout, count_kind="doctest"))
-        steps.insert(13, Step("r10a-evidence", python + [str(ROOT / "tools/check_slh_report.py")]))
-        r10b = [str(build_dir / "r10b-rtl/reins-r10b-tests"), "--no-colors", "--duration"]
-        if suite == "quick":
-            r10b += ["--test-case-exclude=*extended*"]
-        steps.insert(14, Step("r10b-rtl", r10b, timeout=r07_timeout, count_kind="doctest"))
-        steps.insert(15, Step("r10b-evidence", python + [str(ROOT / "tools/check_slh_verifier_report.py")]))
-        r10c = [str(build_dir / "r10c-rtl/reins-r10c-tests"), "--no-colors", "--duration"]
-        integrated = [str(build_dir / "r10c-integration/reins-r10c-integration-tests"), "--no-colors", "--duration"]
-        if suite == "quick":
-            r10c += ["--test-case-exclude=*extended*"]
-            integrated += ["--test-case-exclude=*extended*"]
-        steps.insert(16, Step("r10c-rtl", r10c, timeout=r10c_timeout, count_kind="doctest"))
-        steps.insert(17, Step("r10c-integration", integrated, timeout=7200, count_kind="doctest"))
-        steps.insert(18, Step("r10c-evidence", python + [str(ROOT / "tools/check_two_pass_report.py")], console_output=True))
-        r11 = [str(build_dir / "r11-spi/reins-r11-spi-tests"), "--no-colors", "--duration"]
-        if suite == "quick":
-            r11.append("--test-case=*minimized*")
-        steps.insert(19, Step("r11-spi", r11, timeout=r07_timeout, count_kind="doctest"))
-        steps.insert(1, Step("rtl-lint", shlex.split(make_command)+["--no-print-directory", "rtl-lint"]))
-        steps.append(Step("sim-report", python + [str(ROOT / "tools/test_sim_report.py"),
-            "--executable", str(build_dir / "reins-sim"), "--fixtures", str(build_dir / "fixtures")]))
-        steps.append(Step("reference-report", python + [str(ROOT / "tools/test_reference_report.py"),
-            "--executable", str(build_dir / "reins-reference"), "--fixtures", str(build_dir / "fixtures")]))
+    steps = [Step("rtl-layout", python + [str(ROOT / "tools/check_rtl_layout.py")]),
+             Step("documentation", python + [str(ROOT / "tools/check_documentation.py")]),
+             Step("baseline", baseline), Step("tool-regressions", regression, count_kind="unittest")]
+    if suite == "baseline":
+        return steps
+    crosscheck = python + [str(ROOT / "tools/check_reference_fixtures.py")]
+    if suite != "quick":
+        crosscheck.append("--python-crypto")
+    cpp = [str(build_dir / "reins-sim-tests"), "--success", "--no-colors"]
+    if suite == "quick":
+        cpp.append("--test-case-exclude=*host authorities*")
+    if test_filter:
+        cpp.append("--test-case=" + test_filter)
+    steps.insert(0, Step("sim-directed", cpp, count_kind="doctest"))
+    if suite != "software":
+        steps.insert(1, Step("rtl-lint", shlex.split(make_command) + ["--no-print-directory", "rtl-lint"]))
+        steps += rtl_steps("full", build_dir, quick=suite == "quick", configuration=configuration)
+    steps += [Step("reference-fixtures", crosscheck),
+              Step("sim-report", python + [str(ROOT / "tools/test_sim_report.py"), "--executable", str(build_dir / "reins-sim"), "--fixtures", str(build_dir / "fixtures")]),
+              Step("reference-report", python + [str(ROOT / "tools/test_reference_report.py"), "--executable", str(build_dir / "reins-reference"), "--fixtures", str(build_dir / "fixtures")])]
     return steps
 
 
 def main():
     """Parse process arguments and run the selected logged Make suite; no formal parameters."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--suite", choices=["quick", "full", "software", "baseline", "r07", "r08", "r08-unit", "r09", "r09-unit", "r10a", "r10b", "r10c-unit", "r10c", "r10c-integration"], default="full")
+    parser.add_argument("--suite", choices=["quick", "full", "software", "baseline", "inventory", *BY_NAME, *COMBINATIONS], default="full")
     parser.add_argument("--configuration", choices=["release", "sanitize", "production"], default="release")
     parser.add_argument("--build-dir", type=Path, default=ROOT / "build/release")
     parser.add_argument("--make-command", default="make")
@@ -387,11 +301,9 @@ def main():
     # build settings are explicitly exported by the Makefile.
     for name in ["MAKEFLAGS", "MFLAGS", "MAKEOVERRIDES"]:
         environment.pop(name, None)
-    build = None if args.suite == "baseline" else Step("build",
-        shlex.split(args.make_command) + ["--no-print-directory", "-j" + args.jobs,
-            {"software": "software-build", "r10c-integration": "r10c-integration-build", "r10c": "r10c-build", "r10c-unit": "r10c-unit-build", "r10b": "r10b-build", "r10a": "r10a-build", "r09": "r09-build", "r09-unit": "r09-unit-build", "r07": "r07-build", "r08": "r08-build", "r08-unit": "r08-unit-build"}.get(args.suite, "build")],
-        # Instrumented generated models can exceed the release build budget on a first build.
-        timeout=7200 if args.configuration == "sanitize" else 1200)
+    targets = ["software-build"] if args.suite == "software" else ["build"] if args.suite in ("quick", "full", "inventory") else [suite.build_target for suite in select(args.suite)] if args.suite != "baseline" else []
+    build = Step("build", shlex.split(args.make_command) + ["--no-print-directory", "-j" + args.jobs] + targets,
+                 timeout=7200 if args.configuration == "sanitize" else 1200) if targets else None
     code, _ = run_suite(args.suite, args.configuration, ROOT / "test-results",
         suite_steps(args.suite, build_dir, args.test_filter, args.make_command, args.configuration), build=build, environment=environment,
         build_config=build_dir / "build-config.json")
