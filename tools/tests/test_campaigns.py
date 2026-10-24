@@ -47,9 +47,11 @@ class CampaignChecks(unittest.TestCase):
         """Union actual coverage records, preserving a zero-count point instead of crediting a whole line; no parameters."""
         directory = Path(self.scratch.name) / "group/coverage"
         directory.mkdir(parents=True)
-        prefix = "C '\x01f\x02rtl/reins_controller.sv\x01l\x02118\x01n\x021\x01o\x02block"
+        prefix = "C '\x01f\x02rtl/device/reins_controller.sv\x01l\x02118\x01n\x021\x01o\x02block"
         (directory / "a.dat").write_text(prefix+"\x01h\x02instance-a' 0\n"+prefix.replace("n\x021","n\x022")+"' 0\n")
         (directory / "b.dat").write_text(prefix+"\x01h\x02instance-b' 7\n")
+        # Test wrappers now live under rtl/ too; they must not inflate device coverage.
+        (directory / "test.dat").write_text(prefix.replace("rtl/device/reins_controller.sv", "rtl/test/r06_test_top.sv")+"' 99\n")
         report = coverage_report(Path(self.scratch.name))
         self.assertEqual((report["source_points"],report["hit_points"]),(2,1))
         self.assertEqual(len(report["uncovered"]),1)

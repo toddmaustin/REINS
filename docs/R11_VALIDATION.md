@@ -1,5 +1,10 @@
 # R11 local validation — Verilator 5.008
 
+This is historical evidence from before the subsequent R03 changes and RTL source
+reorganization. Its source identity and measurements below remain unchanged.
+See the [current implementation review](IMPLEMENTATION_REVIEW.md) for remaining
+work and the validation scope of the reorganized tree.
+
 The 2026-10-23 local release passed all 39 selected groups in **3,984.31 seconds
 (66 minutes 24 seconds)**, after a separate 405.20-second rebuild of all sixteen
 RTL executables. The active local and CI baseline is **Verilator 5.008 only**.

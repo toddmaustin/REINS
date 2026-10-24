@@ -1,4 +1,18 @@
-# REINS RTL: hashing and platform control
+# REINS RTL
+
+[`device/`](device) contains the device implementation and reusable hardware
+components; [`test/`](test/README.md) contains all simulation tops, the behavioral
+OTP model, fault declarations, reset testbench and formal harnesses. C++ drivers
+and independent oracles remain under [`sim/`](../sim/README.md).
+
+The designated complete production top is
+[`reins_device.sv`](device/reins_device.sv). Bare-device lint/build consume the
+explicit [`device/files.f`](device/files.f) source list, whose paths are relative
+to the repository root. Intermediate composition modules expose component
+interfaces and are not complete deployment boundaries. `make baseline-tests`
+and `make rtl-lint` check source separation; coverage reports count only device
+sources. See the [implementation review](../docs/IMPLEMENTATION_REVIEW.md) for
+remaining work and the distinction between digital and platform evidence.
 
 R04 supplies real SystemVerilog SHA-256 hardware and C++ tests on Verilator.
 R03 protected state, independent capture/update paths and the bounded fault
@@ -10,12 +24,13 @@ fully documents its technology interfaces, raw sample counts/cutoffs and framing
 R06 now supplies the actual operational quorum/lease controller and connects that
 R05 gate internally. Its [controller guide](../docs/R06_CONTROLLER.md) describes
 the exact request/job interfaces, tick priority, mirrored state and independent
-age/remaining checks. Signature verification is software-backed in these tests;
-real verifier hardware and R03 physical protections remain later work.
+age/remaining checks. Signature verification is software-backed in the earlier
+component tests; full verifier hardware is integrated in R10c. Physical
+qualification of the R03 protections remains later work.
 R07 adds [mode-0 SPI and sealed receive memory](../docs/R07_SPI_RECEIVE.md), with
 an independent C++ byte oracle, native transaction/job budgets, protected ownership
 and memory-backed verification tests. R08 wraps it in the complete current
-[`reins_device_enforced.sv`](reins_device_enforced.sv), with independently enforcing
+[`reins_device_enforced.sv`](device/reins_device_enforced.sv), with independently enforcing
 local guards, representative work/transaction generators and trusted stop
 completion derived from actual modeled cells and queues. See the
 [R08 enforcement profile](../docs/R08_ENDPOINT_ENFORCEMENT.md).
@@ -62,9 +77,9 @@ four-state startup, macros, placement/separation and physical qualification rema
 
 | File | Purpose |
 |---|---|
-| [sha256_compress.sv](sha256_compress.sv) | One SHA-256 compression from an arbitrary chaining state and one 512-bit block |
-| [sha256_message.sv](sha256_message.sv) | Bounded byte-stream input, standard IV, block chaining, padding and message completion |
-| [sha256_test_top.sv](../sim/rtl/sha256_test_top.sv) | Simulation-only top exposing both public interfaces and passive internal block-interface taps |
+| [sha256_compress.sv](device/sha256_compress.sv) | One SHA-256 compression from an arbitrary chaining state and one 512-bit block |
+| [sha256_message.sv](device/sha256_message.sv) | Bounded byte-stream input, standard IV, block chaining, padding and message completion |
+| [sha256_test_top.sv](../rtl/test/sha256_test_top.sv) | Simulation-only top exposing both public interfaces and passive internal block-interface taps |
 | [sha256_rtl_tests.cc](../sim/tests/sha256_rtl_tests.cc) | Clock driver, independent pin scoreboard, OpenSSL oracle, directed tests, seeded fuzz, logs and measurements |
 | [SHA core selection review](../third_party/sha256-core-review.md) | License, behavior and integration review of a reusable candidate; reason for a first-party implementation |
 
@@ -252,20 +267,20 @@ platform integration.
 
 ## R05 configuration, reset, time and entropy control
 
-[`reins_platform_control.sv`](reins_platform_control.sv) integrates four component
+[`reins_platform_control.sv`](device/reins_platform_control.sv) integrates four component
 types. The production port comments specify each input/output; the
 [platform profile](../docs/R05_PLATFORM_PROFILE.md) gives the complete schema,
 reset matrix, source framing, sample accounting and wrapper obligations.
 
 | Module | State and role |
 |---|---|
-| [`reins_config.sv`](reins_config.sv) | Checked 272-byte snapshot and digest; fixed N=3/Q=2/schema/profile/timing/distinctness checks; physically enabled programming and permanent-close requests |
-| [`reins_trusted_time.sv`](reins_trusted_time.sv) | Two reference progress monitors, startup qualification and nonwrapping 64-bit local ticks independent of crypto/host |
-| [`reins_source_health.sv`](reins_source_health.sv) | Per-source startup/availability, binary repetition and proportion tests, required-event timeout |
-| [`reins_entropy.sv`](reins_entropy.sv) | Per-draw fresh buffers, dedicated SHA conditioning, retained previous nonce and sticky hold |
-| [`reins_platform_control.sv`](reins_platform_control.sv) | Startup sequencing, generation, immediate general-fault gate and original-expiry gate on R06's trusted internal lease |
-| [`reins_otp_model.sv`](../sim/rtl/reins_otp_model.sv) | Simulation-only retained logical OTP/lifecycle wrapper |
-| [`r05_test_top.sv`](../sim/rtl/r05_test_top.sv) | Simulation-only integration and passive actual-SHA observations |
+| [`reins_config.sv`](device/reins_config.sv) | Checked 272-byte snapshot and digest; fixed N=3/Q=2/schema/profile/timing/distinctness checks; physically enabled programming and permanent-close requests |
+| [`reins_trusted_time.sv`](device/reins_trusted_time.sv) | Two reference progress monitors, startup qualification and nonwrapping 64-bit local ticks independent of crypto/host |
+| [`reins_source_health.sv`](device/reins_source_health.sv) | Per-source startup/availability, binary repetition and proportion tests, required-event timeout |
+| [`reins_entropy.sv`](device/reins_entropy.sv) | Per-draw fresh buffers, dedicated SHA conditioning, retained previous nonce and sticky hold |
+| [`reins_platform_control.sv`](device/reins_platform_control.sv) | Startup sequencing, generation, immediate general-fault gate and original-expiry gate on R06's trusted internal lease |
+| [`reins_otp_model.sv`](../rtl/test/reins_otp_model.sv) | Simulation-only retained logical OTP/lifecycle wrapper |
+| [`r05_test_top.sv`](../rtl/test/r05_test_top.sv) | Simulation-only integration and passive actual-SHA observations |
 | [`r05_rtl_tests.cc`](../sim/tests/r05_rtl_tests.cc) | Independent parser/health/hash checks, signed reference leases, directed and seeded timeline tests |
 
 The controller starts off and stays off for open/invalid OTP. It checks all bytes
@@ -301,14 +316,14 @@ interfaces. R03 now adds protected replicas and confirmed internal fault campaig
 
 | Module | State and role |
 |---|---|
-| [`reins_round_schedule.sv`](reins_round_schedule.sv) | Exact checked `(r-1)*P`, I+W, I+L and next issue |
-| [`reins_lease_check.sv`](reins_lease_check.sv) | Independent age/remaining consistency, complemented values and strict expiry |
-| [`reins_controller.sv`](reins_controller.sv) | Sparse operational FSM, mirrored pending/job contexts, 128-byte requests, distinct bitmap, fixed-issue commits, down-counter and cancellation |
-| [`reins_device_control.sv`](reins_device_control.sv) | Production R05/R06 composition with internally owned lease, scheduled draws and trusted completed-stop restart |
+| [`reins_round_schedule.sv`](device/reins_round_schedule.sv) | Exact checked `(r-1)*P`, I+W, I+L and next issue |
+| [`reins_lease_check.sv`](device/reins_lease_check.sv) | Independent age/remaining consistency, complemented values and strict expiry |
+| [`reins_controller.sv`](device/reins_controller.sv) | Sparse operational FSM, mirrored pending/job contexts, 128-byte requests, distinct bitmap, fixed-issue commits, down-counter and cancellation |
+| [`reins_device_control.sv`](device/reins_device_control.sv) | Production R05/R06 composition with internally owned lease, scheduled draws and trusted completed-stop restart |
 
-The simulation-only [`r06_test_top.sv`](../sim/rtl/r06_test_top.sv) drives qualified
+The simulation-only [`r06_test_top.sv`](../rtl/test/r06_test_top.sv) drives qualified
 platform inputs and the internal software-verifier boundary. The separate
-[`r06_integration_top.sv`](../sim/rtl/r06_integration_top.sv) exercises real R05
+[`r06_integration_top.sv`](../rtl/test/r06_integration_top.sv) exercises real R05
 configuration/source/time/SHA startup plus R06. Their C++ drivers submit actual
 immutable job bytes to two independently computed software verification passes;
 the real controller checks full identity, hold, current deadline/expiry and
@@ -337,11 +352,11 @@ These production components are not a finished chip top.
 
 | File | Responsibility |
 |---|---|
-| [`reins_spi_slave.sv`](reins_spi_slave.sv) | Mode-0 synchronized pad sampling, MSB-first bytes, timing/framing checks and the independent 100,000-tick transaction limit |
-| [`reins_spi_mailbox.sv`](reins_spi_mailbox.sv) | Exact eight-command table, frozen public/result snapshots, BEGIN/token/context ownership, sequential chunks, FINISH/ABORT, asynchronous outcomes and absolute 5,000,000-tick budget |
-| [`reins_receive_sram.sv`](reins_receive_sram.sv) | One 9,216-byte payload, SECDED-protected row/owner tags, checked address/control interfaces and independent seal/write inhibition |
-| [`reins_spi_control.sv`](reins_spi_control.sv) | Qualified-platform R06/R07 composition used by isolated pin tests |
-| [`reins_device_spi.sv`](reins_device_spi.sv) | Actual R05/R06/R07 composition; receive integrity feeds the general fail-off path |
+| [`reins_spi_slave.sv`](device/reins_spi_slave.sv) | Mode-0 synchronized pad sampling, MSB-first bytes, timing/framing checks and the independent 100,000-tick transaction limit |
+| [`reins_spi_mailbox.sv`](device/reins_spi_mailbox.sv) | Exact eight-command table, frozen public/result snapshots, BEGIN/token/context ownership, sequential chunks, FINISH/ABORT, asynchronous outcomes and absolute 5,000,000-tick budget |
+| [`reins_receive_sram.sv`](device/reins_receive_sram.sv) | One 9,216-byte payload, SECDED-protected row/owner tags, checked address/control interfaces and independent seal/write inhibition |
+| [`reins_spi_control.sv`](device/reins_spi_control.sv) | Qualified-platform R06/R07 composition used by isolated pin tests |
+| [`reins_device_spi.sv`](device/reins_device_spi.sv) | Actual R05/R06/R07 composition; receive integrity feeds the general fail-off path |
 
 The pad wrapper must use `miso_o` and `miso_oe_o` to drive high impedance whenever
 CS_N is high. At the nominal simulation assignment of 4 MHz monitor / 1 MHz
@@ -371,17 +386,17 @@ synthesis preservation, a qualified SRAM macro or a silicon stopping bound.
 
 | File | Interface and state |
 |---|---|
-| [`reins_permit_source.sv`](reins_permit_source.sv) | Two independently qualified 500-tick transition rails; separate up/down counters and complements; withdrawal holds levels |
-| [`reins_permit_guard_a.sv`](reins_permit_guard_a.sv) | Local two-edge qualification, up-counter missing/fast-edge detector, sparse code 96/69 |
-| [`reins_permit_guard_b.sv`](reins_permit_guard_b.sv) | Separate synchronizers and down-counter detector on independent local clock; code a5/5a |
-| [`reins_endpoint_actuator.sv`](reins_endpoint_actuator.sv) | One path's protected OPEN/CLOSING/CLOSED state; isolate/reset before clock clamp; no reopening during closing |
-| [`reins_clock_isolation.sv`](reins_clock_isolation.sv) | Technology wrapper: fail-off clamp, falling-edge release, actual modeled gate readback; two serial instances per endpoint |
-| [`reins_transaction_isolation.sv`](reins_transaction_isolation.sv) | One independent final outbound cut and fresh-generation check; no downstream queue storage |
-| [`reins_endpoint_queue.sv`](reins_endpoint_queue.sv) | One-outstanding bundled mailbox and four-entry always-on queue, complementary metadata, independent purge |
-| [`reins_protected_endpoint.sv`](reins_protected_endpoint.sv) | Representative CPU/accelerator/DMA generator with two serial clock cells and two final outbound cuts |
-| [`reins_enforcement_bank.sv`](reins_enforcement_bank.sv) | Three endpoints/six local guards, fresh ARM epochs, synchronized closure/empty readback, four-sample trusted stop certificate and sticky fault |
-| [`reins_enforcement_profile.sv`](reins_enforcement_profile.sv) | Checked OTP compatibility with actual platform frequency/guard/actuation promises |
-| [`reins_device_enforced.sv`](reins_device_enforced.sv) | Complete R05/R06/R07/R08 composition; independent secondary expiry authorization; internal stop acknowledgement, live management interfaces |
+| [`reins_permit_source.sv`](device/reins_permit_source.sv) | Two independently qualified 500-tick transition rails; separate up/down counters and complements; withdrawal holds levels |
+| [`reins_permit_guard_a.sv`](device/reins_permit_guard_a.sv) | Local two-edge qualification, up-counter missing/fast-edge detector, sparse code 96/69 |
+| [`reins_permit_guard_b.sv`](device/reins_permit_guard_b.sv) | Separate synchronizers and down-counter detector on independent local clock; code a5/5a |
+| [`reins_endpoint_actuator.sv`](device/reins_endpoint_actuator.sv) | One path's protected OPEN/CLOSING/CLOSED state; isolate/reset before clock clamp; no reopening during closing |
+| [`reins_clock_isolation.sv`](device/reins_clock_isolation.sv) | Technology wrapper: fail-off clamp, falling-edge release, actual modeled gate readback; two serial instances per endpoint |
+| [`reins_transaction_isolation.sv`](device/reins_transaction_isolation.sv) | One independent final outbound cut and fresh-generation check; no downstream queue storage |
+| [`reins_endpoint_queue.sv`](device/reins_endpoint_queue.sv) | One-outstanding bundled mailbox and four-entry always-on queue, complementary metadata, independent purge |
+| [`reins_protected_endpoint.sv`](device/reins_protected_endpoint.sv) | Representative CPU/accelerator/DMA generator with two serial clock cells and two final outbound cuts |
+| [`reins_enforcement_bank.sv`](device/reins_enforcement_bank.sv) | Three endpoints/six local guards, fresh ARM epochs, synchronized closure/empty readback, four-sample trusted stop certificate and sticky fault |
+| [`reins_enforcement_profile.sv`](device/reins_enforcement_profile.sv) | Checked OTP compatibility with actual platform frequency/guard/actuation promises |
+| [`reins_device_enforced.sv`](device/reins_device_enforced.sv) | Complete R05/R06/R07/R08 composition; independent secondary expiry authorization; internal stop acknowledgement, live management interfaces |
 
 `guard_clock_a_i[2:0]` and `guard_clock_b_i[2:0]` are six independent protected
 always-on clocks; `raw_clock_i[2:0]` are the stoppable compute clocks. Separate
@@ -403,9 +418,9 @@ stop delays or synthesis preservation.
 
 | Production file | Interface and ownership |
 |---|---|
-| [`reins_expected_grant.sv`](reins_expected_grant.sv) | Combinational 128-byte grant from local typed D/C, request kind, slot, round and nonce; no received-body input |
-| [`reins_merkle_pass.sv`](reins_merkle_pass.sv) | Fresh OTP/context capture, own real SHA, configuration binding, proof parsing, leaf/node construction and tagged root/message/key evidence |
-| [`reins_merkle_pair.sv`](reins_merkle_pair.sv) | Two independent engines; protected lane selection and exclusive read ownership over the one R07 sealed SRAM |
+| [`reins_expected_grant.sv`](device/reins_expected_grant.sv) | Combinational 128-byte grant from local typed D/C, request kind, slot, round and nonce; no received-body input |
+| [`reins_merkle_pass.sv`](device/reins_merkle_pass.sv) | Fresh OTP/context capture, own real SHA, configuration binding, proof parsing, leaf/node construction and tagged root/message/key evidence |
+| [`reins_merkle_pair.sv`](device/reins_merkle_pair.sv) | Two independent engines; protected lane selection and exclusive read ownership over the one R07 sealed SRAM |
 
 Each start captures the current checked 272-byte OTP and local immutable request.
 The selected lane recomputes `C_cfg`, constructs the complete local grant and
@@ -434,12 +449,12 @@ pass independence, saved reports, timing measurements and remaining limits.
 
 | File | Interface and ownership |
 |---|---|
-| [`slh_address.sv`](slh_address.sv) | Stateless 32-byte ADRS/22-byte ADRSc construction, canonical unused fields and selected-profile bounds |
-| [`slh_wots_digits.sv`](slh_wots_digits.sv) | Thirty-two message nibbles and three correctly shifted checksum nibbles |
-| [`slh_sha256_stream.sv`](slh_sha256_stream.sv) | Standard SHA, continuation after one public-seed block, or raw seed-state compression; one real R04 core |
-| [`slh_hash_transaction.sv`](slh_hash_transaction.sv) | Independent byte audit, complementary descriptors/counts, physical events, tag and digest hand-off checks |
-| [`slh_message_hash.sv`](slh_message_hash.sv) | Pure/empty-context H_msg gate, bounded standalone MGF1, actual mask/tree/leaf and separate expected PK.root |
-| [`slh_wots.sv`](slh_wots.sv) | One bounded chain or 35-chain reconstruction/T_l; fresh prefix, canonical signature read port and endpoint scratch |
+| [`slh_address.sv`](device/slh_address.sv) | Stateless 32-byte ADRS/22-byte ADRSc construction, canonical unused fields and selected-profile bounds |
+| [`slh_wots_digits.sv`](device/slh_wots_digits.sv) | Thirty-two message nibbles and three correctly shifted checksum nibbles |
+| [`slh_sha256_stream.sv`](device/slh_sha256_stream.sv) | Standard SHA, continuation after one public-seed block, or raw seed-state compression; one real R04 core |
+| [`slh_hash_transaction.sv`](device/slh_hash_transaction.sv) | Independent byte audit, complementary descriptors/counts, physical events, tag and digest hand-off checks |
+| [`slh_message_hash.sv`](device/slh_message_hash.sv) | Pure/empty-context H_msg gate, bounded standalone MGF1, actual mask/tree/leaf and separate expected PK.root |
+| [`slh_wots.sv`](device/slh_wots.sv) | One bounded chain or 35-chain reconstruction/T_l; fresh prefix, canonical signature read port and endpoint scratch |
 
 H_msg computes the actual `00 || 00 || application_message` framing and uses four
 compressions. The WOTS prefix is the raw compression of `PK.seed || zero[48]`;
@@ -544,7 +559,7 @@ audit next-state logic never consumes the primary next-state bus.
 
 Run `make r03-tests` for actual RTL storage/control/capture faults and application
 readback evidence. The generated injection headers and `fault_ports.svh` exist
-only in `sim/rtl` wrappers. Normal production sources and builds contain no fault
+only in `rtl/test` wrappers. Normal production sources and builds contain no fault
 ports or injection controls. Force-related `MULTIDRIVEN` suppression is limited
 to those wrappers; production lint retains every warning. Physical preservation
 of independent paths and resistance to shared upstream faults require technology

@@ -32,6 +32,8 @@ def main():
             flags = path / ("V"+top+"_classes.mk")
             command = generated.read_text()
             makefile = flags.read_text()
+            if name == "production-top" and any(prefix in command for prefix in ("rtl/test/", "sim/rtl/", "sim/formal/")):
+                errors.append("Bare production build contains simulation/formal RTL")
             for option in ["--assert","--coverage","--trace"]:
                 if option in command:
                     errors.append(f"{name} contains forbidden production instrumentation: {option}")

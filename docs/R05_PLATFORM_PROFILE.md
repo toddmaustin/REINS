@@ -19,13 +19,13 @@ describe the R05 component's unit-test contract and original evidence scope.
 
 | File | Responsibility |
 |---|---|
-| [`reins_config.sv`](../rtl/reins_config.sv) | Read/check all logical OTP bytes, validate fixed fields and distinct identities/keys, hash the complete image, admit physically enabled programming/closure |
-| [`reins_trusted_time.sv`](../rtl/reins_trusted_time.sv) | Independent reference progress, startup qualification, missing-edge alarm and nonwrapping local time |
-| [`reins_source_health.sv`](../rtl/reins_source_health.sv) | One source's availability, startup samples, repetition-count test, reference-symbol adaptive-proportion test and required-sample gap |
-| [`reins_entropy.sv`](../rtl/reins_entropy.sv) | Fresh two-source acquisition, fixed conditioner serialization, real SHA-256, retained previous nonce, sticky hold and cancellation |
-| [`reins_platform_control.sv`](../rtl/reins_platform_control.sv) | Startup sequencing and reset/health/time gates; trusted internal boundary for R06 lease and scheduled-round inputs |
-| [`reins_otp_model.sv`](../sim/rtl/reins_otp_model.sv) | Simulation-only nonvolatile wrapper model, including incomplete closure |
-| [`r05_test_top.sv`](../sim/rtl/r05_test_top.sv) | Simulation-only integration, passive SHA pin observations and isolated health/time boundary probes |
+| [`reins_config.sv`](../rtl/device/reins_config.sv) | Read/check all logical OTP bytes, validate fixed fields and distinct identities/keys, hash the complete image, admit physically enabled programming/closure |
+| [`reins_trusted_time.sv`](../rtl/device/reins_trusted_time.sv) | Independent reference progress, startup qualification, missing-edge alarm and nonwrapping local time |
+| [`reins_source_health.sv`](../rtl/device/reins_source_health.sv) | One source's availability, startup samples, repetition-count test, reference-symbol adaptive-proportion test and required-sample gap |
+| [`reins_entropy.sv`](../rtl/device/reins_entropy.sv) | Fresh two-source acquisition, fixed conditioner serialization, real SHA-256, retained previous nonce, sticky hold and cancellation |
+| [`reins_platform_control.sv`](../rtl/device/reins_platform_control.sv) | Startup sequencing and reset/health/time gates; trusted internal boundary for R06 lease and scheduled-round inputs |
+| [`reins_otp_model.sv`](../rtl/test/reins_otp_model.sv) | Simulation-only nonvolatile wrapper model, including incomplete closure |
+| [`r05_test_top.sv`](../rtl/test/r05_test_top.sv) | Simulation-only integration, passive SHA pin observations and isolated health/time boundary probes |
 | [`r05_rtl_tests.cc`](../sim/tests/r05_rtl_tests.cc) | Clock driver, independent C++ configuration/health/hash oracles, real authority/reference-model lease examples and seeded timelines |
 
 ```mermaid

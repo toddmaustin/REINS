@@ -14,12 +14,12 @@ run/job identities are never a session field or a wire replay credential.
 
 | Source | Responsibility |
 |---|---|
-| [`reins_round_schedule.sv`](../rtl/reins_round_schedule.sv) | Full 128-bit product and carry-checked 64-bit I/B/E/next-issue arithmetic |
-| [`reins_lease_check.sv`](../rtl/reins_lease_check.sv) | Independent age-based remaining time, complemented issue/remaining checks and strict permit predicates |
-| [`reins_controller.sv`](../rtl/reins_controller.sv) | Operational FSM, one mirrored pending context, exact requests, immutable jobs, distinct votes, committed lease, down-counter and cancellation |
-| [`reins_device_control.sv`](../rtl/reins_device_control.sv) | Actual R05 configuration/time/entropy plus R06 composition; lease inputs are wired internally, not supplied by a host |
-| [`r06_test_top.sv`](../sim/rtl/r06_test_top.sv) | Simulation-only qualified-platform and software-verifier boundary; separate narrow overflow instances and arithmetic/checker probes |
-| [`r06_integration_top.sv`](../sim/rtl/r06_integration_top.sv) | Simulation-only actual R05/R06 composition with retained logical OTP |
+| [`reins_round_schedule.sv`](../rtl/device/reins_round_schedule.sv) | Full 128-bit product and carry-checked 64-bit I/B/E/next-issue arithmetic |
+| [`reins_lease_check.sv`](../rtl/device/reins_lease_check.sv) | Independent age-based remaining time, complemented issue/remaining checks and strict permit predicates |
+| [`reins_controller.sv`](../rtl/device/reins_controller.sv) | Operational FSM, one mirrored pending context, exact requests, immutable jobs, distinct votes, committed lease, down-counter and cancellation |
+| [`reins_device_control.sv`](../rtl/device/reins_device_control.sv) | Actual R05 configuration/time/entropy plus R06 composition; lease inputs are wired internally, not supplied by a host |
+| [`r06_test_top.sv`](../rtl/test/r06_test_top.sv) | Simulation-only qualified-platform and software-verifier boundary; separate narrow overflow instances and arithmetic/checker probes |
+| [`r06_integration_top.sv`](../rtl/test/r06_integration_top.sv) | Simulation-only actual R05/R06 composition with retained logical OTP |
 | [`r06_test_support.h`](../sim/include/reins/r06_test_support.h) | Public batched test corpus, actual two-pass software verifier adapter, immutable pin capture and retained evidence |
 | [`r06_rtl_tests.cc`](../sim/tests/r06_rtl_tests.cc) | Directed fast controller tests, C++ semantic comparisons and seeded stateful traffic |
 | [`r06_integration_tests.cc`](../sim/tests/r06_integration_tests.cc) | Real OTP/source/SHA/time startup, ARM/RENEW, hold/expiry, alarms and cold recovery |

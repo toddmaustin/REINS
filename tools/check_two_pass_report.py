@@ -121,7 +121,7 @@ def check(directory, mode):
 def main():
     """Read the current collector run's actual unit/full-device artifacts; no parameters."""
     # Audit the designated production boundary; legacy component tops deliberately retain host adapters.
-    source = (Path(__file__).resolve().parents[1] / "rtl/reins_device.sv").read_text()
+    source = (Path(__file__).resolve().parents[1] / "rtl/device/reins_device.sv").read_text()
     header = source.split(");", 1)[0]
     # Adding any production input requires an explicit review of this technology/SPI boundary.
     allowed = set("""endpoint_por_ni clk_i por_ni cold_reset_i warm_reset_i startup_i

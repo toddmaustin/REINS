@@ -77,11 +77,11 @@ equivalent, reviewed protection scheme; no area or timing qualification is claim
 
 | Source | Role |
 |---|---|
-| `rtl/reins_spi_slave.sv` | Two-stage pin synchronization, mode-0 sampling, registered MISO bits, phase/setup/gap checks, protected bit/byte/transaction-age counters |
-| `rtl/reins_spi_mailbox.sv` | Command decoding, atomic public snapshots, frozen result bytes, protected receive context, token/offset/budget ownership, sealing, cancellation and asynchronous outcomes |
-| `rtl/reins_receive_sram.sv` | One payload array, extended Hamming code, row/full-owner tags, coded controls, checked addresses and independent write seal |
-| `rtl/reins_spi_control.sv` | Qualified-platform R06/R07 composition for isolated controller testing |
-| `rtl/reins_device_spi.sv` | Actual R05/R06/R07 composition; receive alarms enter the general fail-off path |
+| `rtl/device/reins_spi_slave.sv` | Two-stage pin synchronization, mode-0 sampling, registered MISO bits, phase/setup/gap checks, protected bit/byte/transaction-age counters |
+| `rtl/device/reins_spi_mailbox.sv` | Command decoding, atomic public snapshots, frozen result bytes, protected receive context, token/offset/budget ownership, sealing, cancellation and asynchronous outcomes |
+| `rtl/device/reins_receive_sram.sv` | One payload array, extended Hamming code, row/full-owner tags, coded controls, checked addresses and independent write seal |
+| `rtl/device/reins_spi_control.sv` | Qualified-platform R06/R07 composition for isolated controller testing |
+| `rtl/device/reins_device_spi.sv` | Actual R05/R06/R07 composition; receive alarms enter the general fail-off path |
 | `sim/include/reins/spi.h`, `sim/src/reference_spi.cc` | Independent C++ byte-transaction oracle using the event-driven software device |
 | `sim/include/reins/spi_driver.h` | GPIO-only mode-0 host driver, including fresh deselected gaps after reset |
 | `sim/include/reins/r07_test_support.h` | Isolated/full-platform pin harness, transcript scoreboard, actual-memory software verifier adapter and retained evidence |

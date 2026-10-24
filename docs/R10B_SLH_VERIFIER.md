@@ -15,11 +15,11 @@ R03 physical fault qualification remains deferred.
 
 | File | Responsibility |
 |---|---|
-| [`rtl/slh_verify.sv`](../rtl/slh_verify.sv) | Algorithm-interface H_msg, FORS, seven hypertree layers, bounded signature reads, complementary sequencer/scratch, exact operation accounting and final root comparison |
-| [`rtl/slh_verify_reins.sv`](../rtl/slh_verify_reins.sv) | Strict production profile gate, immutable public message/key/job snapshot and response ownership |
-| [`rtl/slh_wots.sv`](../rtl/slh_wots.sv) | R10a WOTS reconstruction; signature-only extent is enabled explicitly for the algorithm parent |
-| [`rtl/slh_hash_transaction.sv`](../rtl/slh_hash_transaction.sv) | R10a protected hash adapter, now parameterized for bounded long algorithm messages; defaults preserve R10a limits |
-| [`sim/rtl/r10b_test_top.sv`](../sim/rtl/r10b_test_top.sv) | Separate algorithm and production instances, one actual R07 receive SRAM, passive core taps, scratch observations and twelve simulation-only fault sites |
+| [`rtl/device/slh_verify.sv`](../rtl/device/slh_verify.sv) | Algorithm-interface H_msg, FORS, seven hypertree layers, bounded signature reads, complementary sequencer/scratch, exact operation accounting and final root comparison |
+| [`rtl/device/slh_verify_reins.sv`](../rtl/device/slh_verify_reins.sv) | Strict production profile gate, immutable public message/key/job snapshot and response ownership |
+| [`rtl/device/slh_wots.sv`](../rtl/device/slh_wots.sv) | R10a WOTS reconstruction; signature-only extent is enabled explicitly for the algorithm parent |
+| [`rtl/device/slh_hash_transaction.sv`](../rtl/device/slh_hash_transaction.sv) | R10a protected hash adapter, now parameterized for bounded long algorithm messages; defaults preserve R10a limits |
+| [`rtl/test/r10b_test_top.sv`](../rtl/test/r10b_test_top.sv) | Separate algorithm and production instances, one actual R07 receive SRAM, passive core taps, scratch observations and twelve simulation-only fault sites |
 | [`sim/include/reins/r10b_test_support.h`](../sim/include/reins/r10b_test_support.h) | Independent C++/OpenSSL reconstruction, every-block/state and stage scoreboards, memory driver and retained replay inputs |
 | [`sim/tests/r10b_rtl_tests.cc`](../sim/tests/r10b_rtl_tests.cc) | Official cases, real REINS signatures, mutations, gates, faults, cancellation, scratch lifetime and seeded backpressure fuzz |
 | [`tools/prepare_slh_verifier_vectors.py`](../tools/prepare_slh_verifier_vectors.py) | Observes the unchanged pinned Python verifier and records all 30 public cases and stage/artifact hashes |
