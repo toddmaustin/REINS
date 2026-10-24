@@ -36,6 +36,7 @@ module reins_controller #(
     input logic nonce_valid_i,              // R05 conditioned result, with complete captured identity.
     output logic nonce_ready_o,
     input logic [255:0] nonce_i,
+    input logic [255:0] nonce_audit_i,        // Independently conditioned complemented nonce, on a separate route.
     input logic [63:0] nonce_round_i, nonce_issue_i, nonce_generation_i,
     input logic submit_valid_i,             // R07 sealed-buffer admission, not an authenticated vote.
     output logic submit_ready_o,            // Only one live job and one immutable context snapshot.
@@ -84,6 +85,10 @@ module reins_controller #(
     } job_t;
     logic [7:0] state_q, state_inv_q;         // Dissimilar complemented state plus sparse state code.
     context_t context_q, context_inv_q;       // Exactly one pending context and complemented mirror.
+    context_t context_without_nonce, audit_without_nonce, scheduled_inverse;
+    logic nonce_capture_q, nonce_capture_inverse_q, nonce_admit_audit;
+    logic nonce_history_q, nonce_history_inverse_q; // Per-run repeat rejection; R05 retains powered history.
+    logic [255:0] last_nonce_q, last_nonce_inverse_q;
     job_t job_q, job_inv_q;                   // Immutable live job and complemented identity/input mirror.
     logic pending_q, published_q, draw_pending_q, stop_needed_q, reset_active;
     logic active_q, issued_q, pass1_seen_q, pass1_ok_q, eligible_edge;
@@ -105,14 +110,20 @@ module reins_controller #(
     logic [63:0] token_q, epoch_q, token_inv_q, epoch_inv_q;
     logic [63:0] issue_q, issue_inv_q, expiry_q, remaining_q, remaining_inv_q, observed_now_q;
     logic lease_q, running, context_live, match_completion, abort_match, rollover;
+    (* keep="true", dont_touch="true" *) logic [7:0] lease_certificate_q;
+    logic [63:0] committed_issue_inverse_q, committed_expiry_audit_q;
+    logic lease_certificate_bad, audit_commit;
+    logic [2:0] audit_votes;
     logic state_bad, context_bad, job_bad, config_bad, lease_bad, lease_permit, counters_bad, clock_bad;
     logic [64:0] edge_time;
     logic [63:0] at_edge, age, decremented, candidate_round;
     logic [63:0] schedule_issue, schedule_deadline, schedule_expiry, schedule_next;
+    logic [63:0] audit_issue, audit_deadline, audit_expiry, audit_next, audit_round;
+    logic audit_schedule_valid;
     logic schedule_valid, schedule_bad, schedule_limit_bad, run_limit_bad, edge_expired, immediate_fault;
     logic [2:0] voted;
     context_t scheduled;
-    job_t proposed_job;
+    job_t proposed_job, proposed_job_inverse;
 
     // Return slot's internal sparse certificate code; these are not protocol or SPI values.
     function automatic logic [7:0] certificate_code(input logic [1:0] slot);
@@ -122,6 +133,18 @@ module reins_controller #(
         2: certificate_code=8'h5a;
         default: certificate_code=8'd0;
         endcase
+    endfunction
+
+    // Independently serialize slot's complemented request from the audit stores;
+    // reserved zero bytes become ones without consuming the primary serializer.
+    function automatic logic [1023:0] make_audit_request(input logic [1:0] slot);
+        logic [1023:0] body;
+        body='1;
+        body[1023 -: 64]={~32'h5245494e,~8'd2,context_inv_q.kind,~6'd0,~slot,~8'd0};
+        body[959 -: 256]=config_inv_q[2047 -: 256];
+        body[447 -: 64]=context_inv_q.round_id;
+        body[383 -: 256]=context_inv_q.nonce;
+        make_audit_request=body;
     endfunction
     // Independently authenticate stored votes from separate sparse certificates and unique job tokens.
     always_comb begin
@@ -156,12 +179,22 @@ module reins_controller #(
     assign decremented=tick_i && remaining_q!=0 ? remaining_q-64'd1 : remaining_q;
     assign state_bad=state_q!=~state_inv_q || !(state_q==UNPROVISIONED || state_q==CLOSED_INIT ||
         state_q==WAIT_ARM || state_q==RUNNING || state_q==STOPPING || state_q==STOPPED || state_q==FAULT);
-    assign context_bad=pending_q && context_q!=~context_inv_q;
+    always_comb begin
+        context_without_nonce=context_q; context_without_nonce.nonce=0;
+        audit_without_nonce=~context_inv_q; audit_without_nonce.nonce=0;
+    end
+    assign context_bad=pending_q && (context_without_nonce!=audit_without_nonce ||
+        (!nonce_capture_q && context_q.nonce!=~context_inv_q.nonce) ||
+        (published_q && context_q.nonce!=~nonce_audit_i));
     assign job_bad=active_q && job_q!=~job_inv_q;
-    assign counters_bad=run_q!=~run_inv_q || round_q!=~round_inv_q || token_q!=~token_inv_q || epoch_q!=~epoch_inv_q ||
+    assign lease_certificate_bad=!(lease_certificate_q==8'h0f || lease_certificate_q==8'h33) ||
+        lease_q!=(lease_certificate_q==8'h33) || (lease_q &&
+        (issue_q!=~committed_issue_inverse_q || expiry_q!=committed_expiry_audit_q));
+    assign counters_bad=lease_certificate_bad || run_q!=~run_inv_q || round_q!=~round_inv_q || token_q!=~token_inv_q || epoch_q!=~epoch_inv_q ||
         next_issue_q!=~next_issue_inv_q || votes_q!=~votes_inv_q || certificate_bad ||
         pass1_seen_q!=~pass1_seen_inv_q || pass1_ok_q!=~pass1_ok_inv_q || pass1_code_q!=~pass1_code_inv_q ||
-        (pass1_seen_q && pass1_ok_q!=(pass1_code_q==8'h96));
+        (pass1_seen_q && pass1_ok_q!=(pass1_code_q==8'h96)) || nonce_capture_q==nonce_capture_inverse_q ||
+        nonce_history_q==nonce_history_inverse_q || (nonce_history_q && last_nonce_q!=~last_nonce_inverse_q);
     assign config_bad=running && (!config_valid_i || !config_closed_i || config_q!=~config_inv_q ||
         config_q!=configuration_i || digest_q!=config_digest_i || length_q!=~timing_inv_q[0] ||
         period_q!=~timing_inv_q[1] || window_q!=~timing_inv_q[2] ||
@@ -185,6 +218,14 @@ module reins_controller #(
         .valid_o(schedule_valid), .issue_o(schedule_issue), .deadline_o(schedule_deadline),
         .expiry_o(schedule_expiry), .next_issue_o(schedule_next)
     );
+    // Audit arithmetic reads the encoded counter/timing stores and independently
+    // forms the next issue/deadline/expiry. A corrupted primary schedule cannot load both contexts.
+    assign audit_round=run_begin_i ? 64'd1 : ~(round_inv_q-64'd1);
+    (* keep_hierarchy="yes", dont_touch="true" *) reins_round_schedule schedule_audit (
+        .round_i(audit_round),.period_i(run_begin_i ? period_i : ~timing_inv_q[1]),
+        .window_i(run_begin_i ? window_i : ~timing_inv_q[2]),.lease_i(run_begin_i ? lease_i : ~timing_inv_q[0]),
+        .valid_o(audit_schedule_valid),.issue_o(audit_issue),.deadline_o(audit_deadline),.expiry_o(audit_expiry),.next_issue_o(audit_next)
+    );
     if (TIME_WIDTH<64) begin : reduced_schedule_bound
         assign schedule_limit_bad=schedule_expiry>TIME_MAX || schedule_next>TIME_MAX;
     end else begin : full_schedule_bound
@@ -195,7 +236,8 @@ module reins_controller #(
     end else begin : full_run_bound
         assign run_limit_bad=1'b0;
     end
-    assign schedule_bad=!schedule_valid || schedule_limit_bad ||
+    assign schedule_bad=!schedule_valid || !audit_schedule_valid || schedule_limit_bad ||
+        schedule_issue!=audit_issue || schedule_deadline!=audit_deadline || schedule_expiry!=audit_expiry || schedule_next!=audit_next ||
         (!run_begin_i && round_q==ROUND_MAX) ||
         (!run_begin_i && schedule_issue!=next_issue_q);
     always_comb begin
@@ -205,10 +247,20 @@ module reins_controller #(
         scheduled.run_id=run_begin_i ? platform_generation_i : run_q;
         scheduled.config_hash=run_begin_i ? config_digest_i : digest_q;
         scheduled.kind=state_q==RUNNING && !run_begin_i ? 8'd3 : 8'd1;
+        scheduled_inverse='1;
+        scheduled_inverse.round_id=~audit_round; scheduled_inverse.issue=~audit_issue;
+        scheduled_inverse.deadline=~audit_deadline; scheduled_inverse.expiry=~audit_expiry;
+        scheduled_inverse.run_id=run_begin_i ? ~platform_generation_i : run_inv_q;
+        scheduled_inverse.config_hash=run_begin_i ? ~config_digest_i : ~digest_q;
+        scheduled_inverse.kind=state_inv_q==~RUNNING && !run_begin_i ? ~8'd3 : ~8'd1;
         // Field assignments also elaborate in the independent Yosys formal frontend.
         proposed_job.token=token_q; proposed_job.run_id=run_q; proposed_job.round_id=context_q.round_id;
         proposed_job.epoch=epoch_q+64'd1; proposed_job.slot=submit_slot_i;
         proposed_job.request_body=make_request(submit_slot_i); proposed_job.config_hash=digest_q;
+        proposed_job_inverse.token=token_inv_q; proposed_job_inverse.run_id=run_inv_q;
+        proposed_job_inverse.round_id=context_inv_q.round_id; proposed_job_inverse.epoch=epoch_inv_q-64'd1;
+        proposed_job_inverse.slot=~submit_slot_i; proposed_job_inverse.request_body=make_audit_request(submit_slot_i);
+        proposed_job_inverse.config_hash=~digest_q;
     end
     assign restart_ready_o=(state_q==CLOSED_INIT || state_q==STOPPED) && !stop_needed_q && !fault_o && !reset_active;
     assign context_live=running && pending_q && published_q && !reset_active && !fault_o && !entropy_failure_i && grant_enable_i &&
@@ -220,9 +272,14 @@ module reins_controller #(
     assign submit_ready_o=eligible_edge && !active_q && submit_slot_i<3;
     assign draw_valid_o=draw_pending_q && pending_q && running && !fault_o && !entropy_failure_i && !reset_active;
     assign draw_round_o=context_q.round_id; assign draw_issue_o=context_q.issue;
-    assign nonce_ready_o=running && pending_q && !published_q && !draw_pending_q && !fault_o && !entropy_failure_i &&
+    assign nonce_ready_o=running && pending_q && !published_q && !nonce_capture_q && !draw_pending_q && !fault_o && !entropy_failure_i &&
         nonce_round_i==context_q.round_id && nonce_issue_i==context_q.issue && nonce_generation_i==run_q &&
         at_edge<context_q.deadline && !reset_active;
+    // Independent capture enable consumes encoded state and metadata, not nonce_ready_o.
+    assign nonce_admit_audit=(state_inv_q==~WAIT_ARM || state_inv_q==~RUNNING) && pending_q && !published_q &&
+        nonce_capture_inverse_q && !draw_pending_q && !immediate_fault && !entropy_failure_i && !reset_active &&
+        nonce_round_i==(~context_inv_q.round_id) && nonce_issue_i==(~context_inv_q.issue) && nonce_generation_i==(~run_inv_q) &&
+        at_edge<(~context_inv_q.deadline);
     assign job_valid_o=active_q && !issued_q && eligible_edge && !abort_match;
     assign job_active_o=active_q;
     assign job_token_o=job_q.token; assign job_run_o=job_q.run_id;
@@ -251,6 +308,26 @@ module reins_controller #(
         at_edge<(~context_inv_q.deadline) && at_edge<(~next_issue_inv_q) &&
         context_q.expiry>at_edge && at_edge>=context_q.issue && (context_q.expiry-context_q.issue)==length_q && !edge_expired;
     assign secondary_commit_ok=secondary_vote_ok && secondary_vote_count>=2 && secondary_voted==voted;
+    // This final authorization ledger is updated through its own equality/XOR,
+    // certificate, quorum and current-time path. It consumes neither primary
+    // match/quorum nor secondary_commit_ok and has separate lease data storage.
+    always_comb begin
+        audit_votes=0;
+        for (int slot=0;slot<3;slot++) begin
+            audit_votes[slot]=(vote_certificate_inv_q[slot]==~certificate_code(2'(slot)) && vote_token_inv_q[slot]!=~64'd0) ||
+                ((~job_inv_q.slot)==2'(slot));
+        end
+    end
+    assign audit_commit=completion_valid_i && active_q && issued_q && pending_q && published_q &&
+        (state_inv_q==~WAIT_ARM || state_inv_q==~RUNNING) && !reset_active && !entropy_failure_i && grant_enable_i &&
+        !abort_match && completion_pass_i==2 && (~pass1_seen_inv_q) && (~pass1_ok_inv_q) &&
+        pass1_code_inv_q==~8'h96 && completion_code_i==8'h69 &&
+        !(|({completion_token_i,completion_run_i,completion_round_i,completion_epoch_i,completion_slot_i,completion_request_i,completion_config_digest_i} ^
+            ~{job_inv_q.token,job_inv_q.run_id,job_inv_q.round_id,job_inv_q.epoch,job_inv_q.slot,job_inv_q.request_body,job_inv_q.config_hash})) &&
+        2'(~job_inv_q.slot)<2'd3 && (~job_inv_q.run_id)==(~run_inv_q) && (~job_inv_q.round_id)==(~context_inv_q.round_id) &&
+        (~job_inv_q.config_hash)==(~context_inv_q.config_hash) && at_edge<(~context_inv_q.deadline) && at_edge<(~next_issue_inv_q) &&
+        (!lease_q || (at_edge<committed_expiry_audit_q && decremented!=0)) &&
+        (({1'b0,audit_votes[0]}+{1'b0,audit_votes[1]}+{1'b0,audit_votes[2]})>=2);
     assign abort_match=abort_valid_i && active_q && abort_token_i==job_q.token;
     assign voted=votes_q | (3'b001<<job_q.slot);
     assign permit_o=state_q==RUNNING && lease_permit && !fault_o && !reset_active;
@@ -269,13 +346,14 @@ module reins_controller #(
             cancel_valid_o<=1'b1; cancel_token_o<=job_q.token;
             result_valid_o<=1'b1; result_token_o<=job_q.token; result_code_o<=2'd2;
             if (epoch_q==ID_MAX) begin state_q<=FAULT; state_inv_q<=~FAULT; stop_needed_q<=1'b1; end
-            else begin epoch_q<=epoch_q+64'd1; epoch_inv_q<=~(epoch_q+64'd1); end
+            else begin epoch_q<=epoch_q+64'd1; epoch_inv_q<=epoch_inv_q-64'd1; end
         end
         active_q<=1'b0; issued_q<=1'b0; pass1_seen_q<=1'b0; pass1_ok_q<=1'b0; pass1_seen_inv_q<=1'b1; pass1_ok_inv_q<=1'b1; pass1_code_q<=0; pass1_code_inv_q<='1;
     endtask
     // Cancel the sole pending context, including all votes and an outstanding draw.
     task automatic close_context;
         pending_q<=1'b0; published_q<=1'b0; draw_pending_q<=1'b0;
+        nonce_capture_q<=0; nonce_capture_inverse_q<=1;
         votes_q<='0; votes_inv_q<='1;
         for (int i=0;i<3;i++) begin vote_certificate_q[i]<=0; vote_certificate_inv_q[i]<='1; vote_token_q[i]<=0; vote_token_inv_q[i]<='1; end
         cancel_job();
@@ -288,10 +366,21 @@ module reins_controller #(
         stop_needed_q<=1'b1; run_end_o<=1'b1;
     endtask
 
+    // The independent lease ledger clears on every higher-priority withdrawal;
+    // an entropy-only hold preserves its original issue/expiry exactly as the primary path does.
+    always_ff @(posedge clk_i) begin
+        if (!por_ni) begin lease_certificate_q<=8'h0f; committed_issue_inverse_q<='1; committed_expiry_audit_q<=0; end
+        else if (cold_clear_i || logic_reset_i || immediate_fault || (edge_expired && state_q==RUNNING)) lease_certificate_q<=8'h0f;
+        else if (audit_commit) begin
+            lease_certificate_q<=8'h33; committed_issue_inverse_q<=context_inv_q.issue; committed_expiry_audit_q<=~context_inv_q.expiry;
+        end
+    end
     always_ff @(posedge clk_i) begin
         if (!por_ni) begin
             state_q<=UNPROVISIONED; state_inv_q<=~UNPROVISIONED; stop_needed_q<=1'b1;
             context_q<='0; context_inv_q<='1; job_q<='0; job_inv_q<='1;
+            nonce_capture_q<=0; nonce_capture_inverse_q<=1; nonce_history_q<=0; nonce_history_inverse_q<=1;
+            last_nonce_q<=0; last_nonce_inverse_q<='1;
             config_q<='0; config_inv_q<='1; digest_q<='0;
             length_q<='0; period_q<='0; window_q<='0;
             for (int i=0;i<3;i++) timing_inv_q[i]<='1;
@@ -326,6 +415,7 @@ module reins_controller #(
                     schedule_bad || now_i!=0) begin_stop(1'b1);
                 else begin
                     close_context(); state_q<=WAIT_ARM; state_inv_q<=~WAIT_ARM;
+                    nonce_history_q<=0; nonce_history_inverse_q<=1;
                     // R05 may have begun a run that reset canceled before this
                     // controller sampled it. Such gaps never reuse an identity.
                     run_q<=platform_generation_i; run_inv_q<=~platform_generation_i;
@@ -333,31 +423,45 @@ module reins_controller #(
                     config_q<=configuration_i; config_inv_q<=~configuration_i; digest_q<=config_digest_i;
                     length_q<=lease_i; period_q<=period_i; window_q<=window_i;
                     timing_inv_q[0]<=~lease_i; timing_inv_q[1]<=~period_i; timing_inv_q[2]<=~window_i;
-                    context_q<=scheduled; context_inv_q<=~scheduled; pending_q<=1'b1;
-                    next_issue_q<=schedule_next; next_issue_inv_q<=~schedule_next;
+                    context_q<=scheduled; context_inv_q<=scheduled_inverse; pending_q<=1'b1;
+                    next_issue_q<=schedule_next; next_issue_inv_q<=~audit_next;
                 end
             end else if (running) begin
                 if (entropy_failure_i) close_context();
                 else if (rollover) begin
                     if (schedule_bad) begin_stop(1'b1);
                     else begin
-                        close_context(); context_q<=scheduled; context_inv_q<=~scheduled; round_q<=candidate_round; round_inv_q<=~candidate_round;
+                        close_context(); context_q<=scheduled; context_inv_q<=scheduled_inverse; round_q<=candidate_round; round_inv_q<=round_inv_q-64'd1;
                         pending_q<=1'b1; draw_pending_q<=1'b1;
-                        next_issue_q<=schedule_next; next_issue_inv_q<=~schedule_next;
+                        next_issue_q<=schedule_next; next_issue_inv_q<=~audit_next;
                     end
                 end else if (pending_q && at_edge>=context_q.deadline) close_context();
                 else begin
                     if (draw_valid_o && draw_ready_i) draw_pending_q<=1'b0;
                     if (nonce_valid_i && nonce_ready_o) begin
-                        context_q.nonce<=nonce_i; context_inv_q.nonce<=~nonce_i; published_q<=1'b1;
+                        context_q.nonce<=nonce_i; nonce_capture_q<=1;
+                    end
+                    if (nonce_valid_i && nonce_admit_audit) nonce_capture_inverse_q<=0;
+                    // A later edge captures the separate conditioner route. A
+                    // permissive primary enable cannot manufacture the audit phase.
+                    if (nonce_capture_q && !nonce_capture_inverse_q) begin
+                        if (context_q.nonce!=~nonce_audit_i ||
+                            nonce_round_i!=context_q.round_id || nonce_issue_i!=context_q.issue || nonce_generation_i!=run_q ||
+                            (nonce_history_q && (context_q.nonce==last_nonce_q || nonce_audit_i==last_nonce_inverse_q))) begin_stop(1'b1);
+                        else begin
+                            context_inv_q.nonce<=nonce_audit_i; published_q<=1;
+                            nonce_capture_q<=0; nonce_capture_inverse_q<=1;
+                            last_nonce_q<=context_q.nonce; last_nonce_inverse_q<=nonce_audit_i;
+                            nonce_history_q<=1; nonce_history_inverse_q<=0;
+                        end
                     end
                     if (abort_match) cancel_job();
                     else if (submit_valid_i && submit_ready_o && at_edge<context_q.deadline) begin
                         if (token_q==ID_MAX || epoch_q==ID_MAX) begin_stop(1'b1);
                         else begin
-                            job_q<=proposed_job; job_inv_q<=~proposed_job;
-                            token_q<=token_q+64'd1; token_inv_q<=~(token_q+64'd1);
-                            epoch_q<=epoch_q+64'd1; epoch_inv_q<=~(epoch_q+64'd1);
+                            job_q<=proposed_job; job_inv_q<=proposed_job_inverse;
+                            token_q<=token_q+64'd1; token_inv_q<=token_inv_q-64'd1;
+                            epoch_q<=epoch_q+64'd1; epoch_inv_q<=epoch_inv_q-64'd1;
                             active_q<=1'b1; issued_q<=1'b0; pass1_seen_q<=1'b0; pass1_ok_q<=1'b0; pass1_seen_inv_q<=1'b1; pass1_ok_inv_q<=1'b1; pass1_code_q<=0; pass1_code_inv_q<='1;
                         end
                     end else if (job_valid_o && job_ready_i) issued_q<=1'b1;
@@ -377,9 +481,9 @@ module reins_controller #(
                                 if ((voted[0] && voted[1]) || (voted[0] && voted[2]) || (voted[1] && voted[2])) begin
                                     if (!secondary_commit_ok) begin_stop(1'b1);
                                     else begin
-                                    lease_q<=1'b1; issue_q<=context_q.issue; issue_inv_q<=~context_q.issue; expiry_q<=context_q.expiry;
+                                    lease_q<=1'b1; issue_q<=context_q.issue; issue_inv_q<=context_inv_q.issue; expiry_q<=context_q.expiry;
                                     remaining_q<=length_q-(at_edge-context_q.issue);
-                                    remaining_inv_q<=~(length_q-(at_edge-context_q.issue));
+                                    remaining_inv_q<=context_inv_q.expiry+at_edge;
                                     state_q<=RUNNING; state_inv_q<=~RUNNING; commit_event_o<=1'b1;
                                     pending_q<=1'b0; published_q<=1'b0; votes_q<='0; votes_inv_q<='1;
                                     for (int i=0;i<3;i++) begin vote_certificate_q[i]<=0; vote_certificate_inv_q[i]<='1; vote_token_q[i]<=0; vote_token_inv_q[i]<='1; end

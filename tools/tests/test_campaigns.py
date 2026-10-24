@@ -70,6 +70,20 @@ class CampaignChecks(unittest.TestCase):
         self.assertEqual(result.returncode,2)
         self.assertIn("zero work is invalid",result.stderr)
 
+    def test_attempt_rows_without_applied_readback_get_no_fault_credit(self):
+        """Reject a claimed safe attempt when no actual target application/effect was observed."""
+        directory=Path(self.scratch.name)
+        group=directory / "r11-repeated-fault"
+        group.mkdir()
+        event=dict(event="campaign_fault",campaign="persistent_shared_read",site=22,attempt=0,
+            duration_clocks=10,outcome="safely_tolerated",dangerous=False,bench=1,activation_clock=3)
+        (group / "events.jsonl").write_text(json.dumps(event)+"\n")
+        (directory / "summary.json").write_text(json.dumps(dict(suite="r11-fault",source_digest=source_digest(),
+            steps=[dict(name="r11-repeated-fault",status="passed")])))
+        errors=generate(directory,self.output,"fault",2,128)
+        self.assertTrue(any("application/effect evidence" in error for error in errors))
+        self.assertEqual(json.loads((self.output / "campaign.json").read_text())["faults"]["applied"],0)
+
     def test_requested_fuzz_budget_is_separate_from_default_suite_smoke(self):
         """Retain default smoke work without letting it replace or inflate separately requested seed runs; no parameters."""
         directory = Path(self.scratch.name)

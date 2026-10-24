@@ -1,7 +1,8 @@
 # REINS RTL: hashing and platform control
 
 R04 supplies real SystemVerilog SHA-256 hardware and C++ tests on Verilator.
-R03 protected primitives and general fault-injection infrastructure are deferred.
+R03 protected state, independent capture/update paths and the bounded fault
+infrastructure are implemented. Physical fault qualification remains separate.
 R05 uses that hashing core for public OTP validation and fresh two-source entropy
 conditioning, with configuration lifecycle, reset/startup, independent trusted
 time and a health/expiry gate. The [R05 profile](../docs/R05_PLATFORM_PROFILE.md)
@@ -239,7 +240,7 @@ valid/ready/reset pins. These are interface-corruption tests, not internal
 register fault injection or hardware error-detection guarantees: an ordinary
 hash core correctly hashes corrupted accepted input. Sparse/redundant encodings,
 protected counters/storage, stable internal injection sites and persistent-fault
-campaigns remain in deferred R03. The error-3 fallback is not a complete control
+campaigns now use the R03 catalog. The error-3 fallback is not a complete control
 integrity scheme.
 
 The performance report measures real simulated edges, not a configured latency.
@@ -294,7 +295,7 @@ Two predictable test sources each contribute 384 raw bits to a documented
 settings**: passing tests supplies no evidence of physical entropy, source
 independence, clock floor or actual stop latency. Production integration must
 replace/qualify the physical OTP, reset, reference, source, sensor and enforcement
-interfaces. R03 protected replicas/internal fault campaigns remain deferred.
+interfaces. R03 now adds protected replicas and confirmed internal fault campaigns.
 
 ## R06 operational controller and R05 composition
 
@@ -329,7 +330,7 @@ coverage, tool/mode/seed and ownership/performance measurements.
 The [R06 guide](../docs/R06_CONTROLLER.md) documents all interfaces and evidence
 limits. Digital mirrors and sparse encodings do not establish synthesis-preserved
 independent replicas, common fan-out fault containment or physical enforcement.
-R03 remains deferred; signature hardware and guards remain later milestones.
+R03 now adds protected state; R10c supplies complete signature hardware and R08 supplies guards.
 These production components are not a finished chip top.
 
 ## R07 SPI and sealed receive memory
@@ -524,3 +525,27 @@ verification, stale work and actual local stop. Every hash uses the RTL datapath
 The [R10c guide](../docs/R10C_FULL_RTL.md) documents all new source files,
 interfaces, exact work, fault domains, saved artifacts and timing assumptions.
 Separate cores and logical redundancy do not establish physical fault coverage.
+
+## R03 protection and simulation boundaries
+
+See [R03_PROTECTED_PRIMITIVES.md](../docs/R03_PROTECTED_PRIMITIVES.md) for the
+complete storage/capture/next-state inventory. Configuration, platform, entropy
+and SHA framing FSMs now use sparse eight-bit states. The source-derived audit
+checks minimum Hamming distance four across 20 actual state/phase groups.
+
+OTP bytes and held digest responses are captured on separate edges. Entropy has
+two real SHA conditioners, with the second frame built from encoded sample
+stores; `nonce_audit_o` carries the independently captured complemented result
+to `reins_controller.nonce_audit_i`. These are trusted internal signals, not
+host-authorized simulation results. Controller schedule/request construction and
+its final lease certificate have independent audit paths. Verifier bank, pass
+and SLH contexts use separate admission decodes/capture phases; pass and SLH
+audit next-state logic never consumes the primary next-state bus.
+
+Run `make r03-tests` for actual RTL storage/control/capture faults and application
+readback evidence. The generated injection headers and `fault_ports.svh` exist
+only in `sim/rtl` wrappers. Normal production sources and builds contain no fault
+ports or injection controls. Force-related `MULTIDRIVEN` suppression is limited
+to those wrappers; production lint retains every warning. Physical preservation
+of independent paths and resistance to shared upstream faults require technology
+implementation and qualification evidence.

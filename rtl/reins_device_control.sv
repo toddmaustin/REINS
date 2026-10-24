@@ -119,7 +119,7 @@ module reins_device_control (
     logic run_seen_q, controller_run_end, lease_valid;
     logic draw_valid, draw_ready, unused_draw_rejected, nonce_valid, nonce_ready;
     logic [63:0] draw_round, draw_issue, nonce_round, nonce_issue, nonce_generation;
-    logic [255:0] nonce;
+    logic [255:0] nonce, nonce_audit; // Separate conditioner routes; no shared complemented nonce fan-out.
     always_ff @(posedge clk_i) begin
         if (!por_ni) run_seen_q<=1'b0;
         else run_seen_q<=run_active_o;
@@ -183,6 +183,7 @@ module reins_device_control (
         .nonce_valid_o(nonce_valid),
         .nonce_ready_i(nonce_ready),
         .nonce_o(nonce),
+        .nonce_audit_o(nonce_audit),
         .nonce_round_o(nonce_round),
         .nonce_issue_o(nonce_issue),
         .nonce_generation_o(nonce_generation),
@@ -246,6 +247,7 @@ module reins_device_control (
         .nonce_valid_i(nonce_valid),
         .nonce_ready_o(nonce_ready),
         .nonce_i(nonce),
+        .nonce_audit_i(nonce_audit),
         .nonce_round_i(nonce_round),
         .nonce_issue_i(nonce_issue),
         .nonce_generation_i(nonce_generation),

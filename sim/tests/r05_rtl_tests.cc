@@ -3,6 +3,7 @@
 #define DOCTEST_CONFIG_IMPLEMENT
 #include <doctest/doctest.h>
 #include "Vr05_test_top.h"
+#include "reins/fault_driver.h"
 #include "reins/reference.h"
 #include <verilated.h>
 #include <verilated_cov.h>
@@ -118,7 +119,9 @@ public:
     VerilatedContext context;
     Vr05_test_top dut{&context};
     std::uint64_t clock=0, id=++evidence.models;
+    FaultDriver<Vr05_test_top> faults{dut,evidence.events,id};
     bool refs_a=true, refs_b=true, auto_startup=true, manual_samples=false;
+    bool strict=true; // Fault campaigns check safety instead of requiring corrupted SHA data to match.
     std::optional<std::uint64_t> time_a, time_b;
     Bytes expected_frame;
     std::optional<Bytes> cfg_job, rng_job;
@@ -163,11 +166,11 @@ public:
 #endif
     }
     // Reevaluate combinational outputs without advancing a clock or waveform timestamp.
-    void settle() { Verilated::threadContextp(&context); dut.clk_i=0; dut.eval(); }
+    void settle() { Verilated::threadContextp(&context); dut.clk_i=0; dut.eval(); faults.observe(clock); }
     // Evaluate one half-cycle and optionally dump this first model's first 4096 clocks.
     void evaluate() {
         Verilated::threadContextp(&context);
-        dut.eval();
+        dut.eval(); faults.observe(clock);
 #if VM_TRACE_FST
         if (trace && clock<4096) trace->dump(context.time());
 #endif
@@ -193,18 +196,18 @@ public:
         std::optional<Hash> cfg_result;
         if (dut.cfg_hash_done_o) {
             REQUIRE(cfg_job.has_value()); REQUIRE(cfg_job->size()==272);
-            cfg_result=sha256(*cfg_job); CHECK(*cfg_job==unpack(dut.configuration_o,272));
+            cfg_result=sha256(*cfg_job); if (strict) CHECK(*cfg_job==unpack(dut.configuration_o,272));
             cfg_job.reset(); ++evidence.cfg_done;
         }
         if (dut.rng_hash_done_o) {
-            REQUIRE(rng_job.has_value()); CHECK(rng_job->size()==124); CHECK(*rng_job==expected_frame);
-            CHECK(unpack(dut.rng_hash_digest_o,32)==bytes(sha256(*rng_job)));
+            REQUIRE(rng_job.has_value()); CHECK(rng_job->size()==124);
+            if (strict) { CHECK(*rng_job==expected_frame); CHECK(unpack(dut.rng_hash_digest_o,32)==bytes(sha256(*rng_job))); }
             evidence.events<<"{\"event\":\"conditioner\",\"bench\":"<<id<<",\"round\":"<<dut.nonce_round_o
                 <<",\"frame\":\""<<hex(*rng_job)<<"\",\"nonce\":\""<<hex(unpack(dut.rng_hash_digest_o,32))<<"\"}\n";
             rng_job.reset(); ++evidence.rng_done;
         }
         ++clock; ++evidence.clocks; context.timeInc(1); dut.clk_i=1; evaluate(); context.timeInc(1);
-        if (cfg_result) { REQUIRE(dut.config_valid_o); CHECK(unpack(dut.configuration_digest_o,32)==bytes(*cfg_result)); }
+        if (cfg_result && strict) { REQUIRE(dut.config_valid_o); CHECK(unpack(dut.configuration_digest_o,32)==bytes(*cfg_result)); }
         if (advancing && !reset && dut.run_active_o && !dut.fatal_o) CHECK(dut.now_o==old_now+1);
         if (dut.lease_permission_o) {
             CHECK(dut.config_valid_o); CHECK(dut.macro_lifecycle_o==3); CHECK_FALSE(dut.fatal_o);
@@ -293,6 +296,82 @@ public:
         CHECK_FALSE(dut.startup_complete_o); CHECK_FALSE(dut.nonce_valid_o);
     }
 };
+
+// Flip each retained control/data rail after qualification and prove denial,
+// sticky history protection and same-instance power-cycle recovery after release.
+TEST_CASE("R03 platform retained storage faults are applied detected and cleaned") {
+    for (unsigned site:{256U,257U,258U,259U,260U,261U,262U,263U,264U,265U,266U,267U,270U,271U,272U,273U,278U,280U}) {
+        CAPTURE(site); Bench bench(configuration(),3); bench.startup(); bench.acquire(samples(301),samples(302));
+        bench.strict=false; bench.faults.arm(site,bench.clock,1,{1}); bench.clocks(4);
+        REQUIRE(bench.faults.executed()); CHECK(bench.dut.fatal_o); CHECK_FALSE(bench.dut.new_grants_o); CHECK_FALSE(bench.dut.lease_permission_o);
+        bench.faults.arm(0,bench.clock); bench.clocks(3); CHECK(bench.dut.fault_clean_o);
+        bench.reset(false); CHECK_FALSE(bench.dut.lease_permission_o);
+        bench.reset(true,true); bench.strict=true; bench.startup(); bench.acquire(samples(303),samples(304));
+        CHECK(bench.dut.startup_complete_o); CHECK_FALSE(bench.dut.fatal_o);
+    }
+}
+
+// Exercise both stuck polarities, whole-register replacement and a one-clock
+// control glitch, retaining the actual application and post-release recovery.
+TEST_CASE("R03 parameterized stuck replacement and transient control faults") {
+    for (unsigned mode:{1U,2U,3U,4U}) {
+        CAPTURE(mode); Bench bench(configuration(),3); bench.startup(); bench.acquire(samples(601),samples(602)); bench.strict=false;
+        const auto mask=mode==1 ? 1U : 255U;
+        bench.faults.arm(265,bench.clock,mode,{mask},{0}); bench.step();
+        REQUIRE(bench.faults.executed()); CHECK(bench.dut.fatal_o);
+        if (mode!=1) bench.clocks(17);
+        bench.faults.arm(0,bench.clock); bench.clocks(3); CHECK(bench.dut.fault_clean_o); CHECK(bench.dut.fatal_o);
+        bench.reset(true,true); bench.strict=true; bench.startup(); bench.acquire(samples(603),samples(604));
+    }
+}
+
+// A permissive schema enable cannot validate invalid OTP through the audit
+// decoder; a premature published-valid signal cannot remove startup entropy hold.
+TEST_CASE("R03 permissive configuration and nonce publication enables cannot qualify") {
+    auto invalid=configuration(); invalid[9]=1;
+    Bench config(invalid,3); config.strict=false; config.faults.arm(281,config.clock,4,{1});
+    config.dut.startup_i=1; config.step(); config.dut.startup_i=0; config.clocks(800);
+    REQUIRE(config.faults.executed()); CHECK(config.dut.fatal_o); CHECK_FALSE(config.dut.config_valid_o);
+    config.faults.arm(0,config.clock); config.clocks(3); CHECK(config.dut.fault_clean_o);
+    Bench entropy(configuration(),3); entropy.startup(); entropy.strict=false;
+    // This deliberately violates the source output protocol asserted inside
+    // entropy. Keep C++ enforcement checks active while testing its consumer;
+    // restore HDL assertions immediately after releasing the forged wire.
+    entropy.context.assertOn(false);
+    entropy.faults.arm(279,entropy.clock,4,{1}); entropy.feed(samples(701),samples(702),8);
+    REQUIRE(entropy.faults.executed()); CHECK(entropy.dut.entropy_hold_o); CHECK_FALSE(entropy.dut.new_grants_o);
+    entropy.faults.arm(0,entropy.clock); entropy.clocks(3); CHECK(entropy.dut.fault_clean_o);
+    entropy.context.assertOn(true);
+    entropy.reset(true,true); entropy.strict=true; entropy.startup(); entropy.acquire(samples(703),samples(704));
+}
+
+// Corrupt fresh samples, their counts and either conditioner response before
+// nonce publication. The second acquisition/hash route must independently deny it.
+TEST_CASE("R03 fresh entropy input and conditioner faults never publish authorization") {
+    for (unsigned site:{268U,269U,274U,275U,276U,277U}) {
+        CAPTURE(site); Bench bench(configuration(),3); bench.startup(); bench.strict=false;
+        const auto a=samples(401),b=samples(402); bench.expected_frame=conditioner_frame(a,b);
+        bench.faults.arm(site,bench.clock,1,{1}); bench.feed(a,b,384); bench.clocks(600);
+        REQUIRE(bench.faults.executed()); CHECK(bench.dut.fatal_o); CHECK_FALSE(bench.dut.new_grants_o); CHECK_FALSE(bench.dut.lease_permission_o);
+        bench.faults.arm(0,bench.clock); bench.clocks(3); CHECK(bench.dut.fault_clean_o);
+        bench.reset(true,true); bench.strict=true; bench.startup(); bench.acquire(samples(403),samples(404));
+    }
+}
+
+// Injector self-tests deliberately miss a trigger, attempt a no-op, and use an
+// unsupported site. None is credited as an executed safety injection.
+TEST_CASE("R03 injection accounting separates missed no effect unsupported and executed") {
+    Bench bench(configuration(),3); bench.faults.arm(276,bench.clock,1,{1}); bench.clocks(16);
+    CHECK_FALSE(bench.faults.executed()); CHECK_FALSE(bench.faults.activations.back().triggered);
+    bench.faults.arm(0,bench.clock); bench.clocks(2); CHECK(bench.dut.fault_clean_o);
+    bench.startup(); bench.acquire(samples(501),samples(502));
+    bench.faults.arm(265,bench.clock,2,{255},{0x55}); bench.clocks(2);
+    REQUIRE(bench.faults.activations.back().acknowledged); CHECK_FALSE(bench.faults.activations.back().effect);
+    bench.faults.arm(0,bench.clock); bench.clocks(2);
+    bench.faults.arm(65535,bench.clock,1,{1}); bench.clocks(2);
+    CHECK(bench.dut.fault_unsupported_o); CHECK_FALSE(bench.faults.executed());
+    bench.faults.arm(0,bench.clock); bench.clocks(2);
+}
 
 TEST_CASE("R05: commissioning interlocks, all public bytes, digest and permanent closure") {
     Bench bench; const auto image=configuration();

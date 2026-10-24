@@ -45,7 +45,8 @@ module reins_verifier (
     } context_t;
     localparam logic [7:0] IDLE=8'h0f,START1=8'h33,WAIT1=8'h55,OUT1=8'h69,
         START2=8'h96,WAIT2=8'haa,OUT2=8'hcc;
-    logic [7:0] state_q, state_inv_q, capture_q, capture_inv_q;
+    (* keep="true", dont_touch="true" *) logic [7:0] state_q, state_inv_q, capture_q, capture_inv_q;
+    logic audit_live_same;
     context_t context_q, context_inv_q;
     logic [1:0] ready, valid, fault;
     logic [7:0] code [0:1], lane_state [0:1];
@@ -62,7 +63,8 @@ module reins_verifier (
     assign owned=state_q!=IDLE;
     assign second=state_q==START2 || state_q==WAIT2 || state_q==OUT2;
     assign live_same=context_q=={run_i,round_i,token_i,epoch_i,slot_i,reply_length_i,request_i,configuration_digest_i};
-    assign bad=state_q!=~state_inv_q || context_q!=~context_inv_q || capture_q!=~capture_inv_q ||
+    assign audit_live_same=(~context_inv_q)=={run_i,round_i,token_i,epoch_i,slot_i,reply_length_i,request_i,configuration_digest_i};
+    assign bad=state_q!=~state_inv_q || (state_q!=START1 && context_q!=~context_inv_q) || capture_q!=~capture_inv_q ||
         (owned && context_valid_i && !cancel_i && !live_same) ||
         !(state_q==IDLE || state_q==START1 || state_q==WAIT1 || state_q==OUT1 || state_q==START2 || state_q==WAIT2 || state_q==OUT2) ||
         (read_valid_o && ((read_owner_o==4'h3 && (read_address_o!=intended[0] || read_address_inverse_o!=~intended[0])) ||
@@ -102,9 +104,32 @@ module reins_verifier (
             .observed_stages_o(unused_stages[lane]),.observed_chains_o(unused_chains[lane]),.root_o(unused_root[lane]),
             .leaf_o(unused_leaf[lane]),.batch_root_o(unused_batch_root[lane]),.physical_start_o(physical_start[lane]),.physical_complete_o(physical_end[lane]));
     end
+    // The inverse bank uses its own state decode. Context is reread one clock
+    // after admission, before lane 1 starts; the primary capture enable is not reused.
+    always_ff @(posedge clk_i) begin
+        if (!rst_ni) begin state_inv_q<=~IDLE; context_inv_q<='1; capture_inv_q<='1; end
+        else if (cancel_i || !context_valid_i ||
+            (state_inv_q!=~IDLE && state_inv_q!=~START1 && (!live_i || !audit_live_same))) begin
+            state_inv_q<=~IDLE; context_inv_q<='1; capture_inv_q<='1;
+        end else if (!bad && !(|fault)) begin
+            case (state_inv_q)
+            ~IDLE: if (job_valid_i && live_i && (&ready) && !failed_q) state_inv_q<=~START1;
+            ~START1: begin
+                context_inv_q<=~{run_i,round_i,token_i,epoch_i,slot_i,reply_length_i,request_i,configuration_digest_i};
+                if (ready[0]) state_inv_q<=~WAIT1;
+            end
+            ~WAIT1: if (valid[0]) begin capture_inv_q<=~code[0]; state_inv_q<=~OUT1; end
+            ~OUT1: if (completion_valid_o && completion_ready_i) begin state_inv_q<=~START2; capture_inv_q<='1; end
+            ~START2: if (ready[1]) state_inv_q<=~WAIT2;
+            ~WAIT2: if (valid[1]) begin capture_inv_q<=~code[1]; state_inv_q<=~OUT2; end
+            ~OUT2: if (completion_valid_o && completion_ready_i) begin state_inv_q<=~IDLE; context_inv_q<='1; capture_inv_q<='1; end
+            default: begin state_inv_q<=~IDLE; context_inv_q<='1; capture_inv_q<='1; end
+            endcase
+        end
+    end
     // Erase only bank provenance/capture. Lane scratch and failures have their own reset/cancel ownership; no parameters.
     task automatic erase_bank();
-        state_q<=IDLE; state_inv_q<=~IDLE; context_q<='0; context_inv_q<='1; capture_q<=0; capture_inv_q<='1;
+        state_q<=IDLE; context_q<='0; capture_q<=0;
     endtask
     always_ff @(posedge clk_i) begin
         if (!rst_ni) begin erase_bank(); failed_q<=0; end
@@ -114,14 +139,14 @@ module reins_verifier (
         else case (state_q)
         IDLE: if (job_valid_i && job_ready_o) begin
             context_q<={run_i,round_i,token_i,epoch_i,slot_i,reply_length_i,request_i,configuration_digest_i};
-            context_inv_q<=~{run_i,round_i,token_i,epoch_i,slot_i,reply_length_i,request_i,configuration_digest_i};
-            state_q<=START1; state_inv_q<=~START1;
+
+            state_q<=START1;
         end
-        START1: if (ready[0]) begin state_q<=WAIT1; state_inv_q<=~WAIT1; end
-        WAIT1: if (valid[0]) begin capture_q<=code[0]; capture_inv_q<=~code[0]; state_q<=OUT1; state_inv_q<=~OUT1; end
-        OUT1: if (completion_valid_o && completion_ready_i) begin state_q<=START2; state_inv_q<=~START2; capture_q<=0; capture_inv_q<='1; end
-        START2: if (ready[1]) begin state_q<=WAIT2; state_inv_q<=~WAIT2; end
-        WAIT2: if (valid[1]) begin capture_q<=code[1]; capture_inv_q<=~code[1]; state_q<=OUT2; state_inv_q<=~OUT2; end
+        START1: if (ready[0]) begin state_q<=WAIT1;  end
+        WAIT1: if (valid[0]) begin capture_q<=code[0];  state_q<=OUT1;  end
+        OUT1: if (completion_valid_o && completion_ready_i) begin state_q<=START2;  capture_q<=0;  end
+        START2: if (ready[1]) begin state_q<=WAIT2;  end
+        WAIT2: if (valid[1]) begin capture_q<=code[1];  state_q<=OUT2;  end
         OUT2: if (completion_valid_o && completion_ready_i) erase_bank();
         default: begin erase_bank(); failed_q<=1; end
         endcase

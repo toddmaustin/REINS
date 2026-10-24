@@ -1,5 +1,10 @@
 # R11 campaigns and the local digital release workflow
 
+**R03 update:** protected storage, separate capture/update paths and the general
+fault catalog are now implemented. See [R03_PROTECTED_PRIMITIVES.md](R03_PROTECTED_PRIMITIVES.md).
+Earlier milestone descriptions below record their original bring-up boundaries;
+physical qualification and coverage outside the declared campaigns remain open.
+
 R11 makes a test run reviewable as a set of executed checks, budgets, public replay
 inputs and explicit gaps. A green local release means the declared digital checks
 passed for that source tree. It does not establish a production authority service,
@@ -206,7 +211,7 @@ in each run's uncovered-point list:
 
 | Path | Investigation and remaining work |
 |---|---|
-| Controller certificate-code default | Healthy operation validates slots 0–2; the default is defensive against corrupted control. Reachability under additional control faults is part of deferred R03, not credit from a valid-slot test. |
+| Controller certificate-code default | Healthy operation validates slots 0–2; the default is defensive against corrupted control. Reachability under additional control faults is part of the bounded R03 fault campaign, not credit from a valid-slot test. |
 | Duplicate stored vote tokens | A healthy second distinct vote commits and clears certificates for Q=2, so two stored certificates do not persist. Coherent corruption of certificates/identity remains a separate shared-domain campaign obligation. |
 | SRAM invalid acquire/seal commands | Malformed host commands are normally rejected upstream. The local symbolic seal proof establishes its stated store/ownership invariants; it does not replace directed tests of every invalid internal command or ECC/address macro behavior. |
 | Bank ready/completion backpressure and illegal-state fallback | Normal connected blocks are ready at the scheduled starts; earlier integrity/cancellation checks can preempt later fallback branches. General backpressure/control fault combinations remain outside the selected finite inventory. |
@@ -280,7 +285,17 @@ interrupted development runs remain useful diagnosis records; a later success
 does not overwrite them. Only `make clean-results` or `make clean` removes local
 results.
 
-Known gaps include deferred R03 general protections, physical qualification,
+Known gaps include bounded R03 fault coverage, physical qualification,
 whole-device synthesis/CDC/reset signoff, authority durability/custody/capacity,
 and the missing aggregate four-candidate rolling admission ledger in the current
 test authority model. None is silently converted into a passed requirement.
+
+### R03 campaign accounting
+
+`make r03-tests` adds confirmed trigger/application/effect/release evidence and
+public signature-job replay. `release-check` runs it as a required nested group.
+The repeated R11 report now separates nine attempt exposures from seven distinct
+activations: one read-data force persists across three jobs; comparison and
+identity faults each activate separately on three attempts. Missing triggers and
+no-effect forces cannot earn fault credit. A lane comparison corruption now
+latches integrity denial; repeated attempts use fresh qualified model instances.

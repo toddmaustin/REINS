@@ -3,6 +3,8 @@
 // Neither this selector nor host verification is part of the production composition.
 `default_nettype none
 module r06_test_top (
+    output logic audit_commit_o, lease_audit_bad_o, // Passive R03 final-ledger observations.
+    output logic [7:0] lease_audit_code_o,
     input logic small_i,
     input logic lease_probe_valid_i,
     input logic [63:0] lease_probe_now_i, lease_probe_length_i, lease_probe_issue_i,
@@ -183,6 +185,9 @@ module r06_test_top (
     assign lease_expiry_o=small_i ? small_lease_expiry_o : full_lease_expiry_o;
     logic [63:0] full_remaining_o, small_remaining_o;
     assign remaining_o=small_i ? small_remaining_o : full_remaining_o;
+    assign audit_commit_o=small_i ? reduced_limits.audit_commit : full_width.audit_commit;
+    assign lease_audit_bad_o=small_i ? reduced_limits.lease_certificate_bad : full_width.lease_certificate_bad;
+    assign lease_audit_code_o=small_i ? reduced_limits.lease_certificate_q : full_width.lease_certificate_q;
     reins_controller full_width (
         .clk_i(clk_i),
         .por_ni(por_ni),
@@ -226,7 +231,7 @@ module r06_test_top (
         .draw_issue_o(full_draw_issue_o),
         .nonce_valid_i(nonce_valid_i),
         .nonce_ready_o(full_nonce_ready_o),
-        .nonce_i(nonce_i),
+        .nonce_i(nonce_i),.nonce_audit_i(~nonce_i),
         .nonce_round_i(nonce_round_i),
         .nonce_issue_i(nonce_issue_i),
         .nonce_generation_i(nonce_generation_i),
@@ -312,7 +317,7 @@ module r06_test_top (
         .draw_issue_o(small_draw_issue_o),
         .nonce_valid_i(nonce_valid_i),
         .nonce_ready_o(small_nonce_ready_o),
-        .nonce_i(nonce_i),
+        .nonce_i(nonce_i),.nonce_audit_i(~nonce_i),
         .nonce_round_i(nonce_round_i),
         .nonce_issue_i(nonce_issue_i),
         .nonce_generation_i(nonce_generation_i),

@@ -32,6 +32,7 @@ module r05_test_top (
     output logic nonce_valid_o,
     input logic nonce_ready_i,
     output logic [255:0] nonce_o,
+    output logic [255:0] nonce_audit_o, // Passive second-conditioner result; never an injected response.
     output logic [63:0] nonce_round_o, nonce_issue_o, nonce_generation_o,
     output logic entropy_hold_o, cold_eligible_o, history_valid_o,
     output logic checking_o, run_active_o, startup_complete_o, new_grants_o, fatal_o, invalidate_o,
@@ -54,7 +55,8 @@ module r05_test_top (
     // Isolated health instance to exercise precise RCT/APT/missing-sample boundaries.
     input logic unit_health_reset_ni, unit_health_required_i, unit_health_valid_i, unit_health_bit_i,
     output logic unit_health_qualified_o, unit_health_failed_o,
-    output logic [31:0] unit_health_samples_o
+    output logic [31:0] unit_health_samples_o,
+    `include "fault_ports.svh"
 );
     logic macro_write_o, macro_close_o, macro_complete_i;
     logic [8:0] macro_address_o;
@@ -68,7 +70,25 @@ module r05_test_top (
         .model_bad_close_i(model_bad_close_i), .model_bad_code_i(model_bad_code_i),
         .read_data_o(macro_read_data_i), .lifecycle_o(macro_lifecycle_i), .complete_o(macro_complete_i)
     );
-    reins_platform_control control (.*);
+    // Keep passive observations from aliasing forced child nets onto top-level ports
+    // (force on a primary port is unsupported by the selected Verilator 5.008).
+    logic [2175:0] observed_configuration;
+    logic [255:0] observed_digest, observed_nonce, observed_nonce_audit;
+    logic [63:0] observed_now, observed_generation;
+    logic [8:0] observed_a_count;
+    logic observed_nonce_valid;
+    assign configuration_o=por_ni ? observed_configuration : 2176'd0;
+    assign configuration_digest_o=por_ni ? observed_digest : 256'd0;
+    assign nonce_o=por_ni ? observed_nonce : 256'd0;
+    assign nonce_audit_o=por_ni ? observed_nonce_audit : 256'd0;
+    assign now_o=por_ni ? observed_now : 64'd0;
+    assign generation_o=por_ni ? observed_generation : 64'd0;
+    assign source_a_count_o=por_ni ? observed_a_count : 9'd0;
+    assign nonce_valid_o=por_ni && observed_nonce_valid;
+    reins_platform_control control (
+        .configuration_o(observed_configuration),.configuration_digest_o(observed_digest),
+        .nonce_o(observed_nonce),.nonce_audit_o(observed_nonce_audit),.now_o(observed_now),
+        .generation_o(observed_generation),.source_a_count_o(observed_a_count),.nonce_valid_o(observed_nonce_valid),.*);
     assign cfg_hash_start_o=control.config_checker.hasher.req_valid_i && control.config_checker.hasher.req_ready_o;
     assign cfg_hash_byte_o=control.config_checker.hasher.byte_valid_i && control.config_checker.hasher.byte_ready_o;
     assign cfg_hash_data_o=control.config_checker.hasher.byte_i;
@@ -91,5 +111,6 @@ module r05_test_top (
         .required_i(unit_health_required_i), .available_i(1'b1), .valid_i(unit_health_valid_i), .bit_i(unit_health_bit_i),
         .qualified_o(unit_health_qualified_o), .failed_o(unit_health_failed_o), .samples_o(unit_health_samples_o)
     );
+    `include "r05_fault_sites.svh"
 endmodule
 `default_nettype wire

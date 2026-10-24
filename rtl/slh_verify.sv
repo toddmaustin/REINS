@@ -64,7 +64,11 @@ module slh_verify (
     localparam logic [7:0] RANDOM=8'h0f,INNER=8'h33,MASK=8'h55,PREFIX=8'h69,
         FORS_LEAF=8'h96,FORS_PATH=8'haa,FORS_PK=8'hcc,WOTS=8'hf0,TREE=8'h3c;
     context_t context_q, context_inv_q;
-    work_t w, wi, n; // Full complementary sequencer/scratch encoding, checked before every state transition.
+    (* keep="true", dont_touch="true" *) work_t w, wi;
+    work_t n, audit_w, audit_n;
+    context_t audit_context;
+    logic [31:0] audit_hash_length;
+    logic [15:0] audit_wots_work; // Full complementary sequencer/scratch encoding, checked before every state transition.
     logic failed_q, bad, hash_ready, hash_valid, hash_fault, wots_ready, wots_valid, wots_fault;
     logic [1:0] hash_error, wots_error;
     logic [255:0] digest, unused_wots_prefix;
@@ -97,11 +101,19 @@ module slh_verify (
         return 16'(11+chain_work);
     endfunction
     assign wots_work=count_wots(w.node);
+    assign audit_w=~wi;
+    // During the second capture phase use the held source ports directly;
+    // subsequent transitions consume only the independently captured inverse.
+    assign audit_context=wi.state==~CHECK ? context_t'({public_key_i,internal_i,context_length_i,message_length_i,signature_length_i,sealed_length_i,tag_i}) : ~context_inv_q;
+    assign audit_hash_length=audit_w.phase==INNER ? 32'd48+32'(audit_context.message_length)+(audit_context.internal_mode ? 0 : 32'd2+32'(audit_context.context_length)) :
+        audit_w.phase==MASK ? 32'd68 : audit_w.phase==PREFIX ? 32'd64 : audit_w.phase==FORS_LEAF ? 32'd38 : audit_w.phase==FORS_PK ? 32'd246 : 32'd54;
+    assign audit_wots_work=count_wots(audit_w.node);
     assign state_o=w.state; assign phase_o=w.phase;
     assign fors_tree_o=w.forest; assign height_o=w.height; assign layer_o=w.layer;
     assign starts_o=w.starts; assign completions_o=w.ends;
     assign tag_o=context_q.tag;
-    assign bad=w!=~wi || context_q!=~context_inv_q ||
+    assign bad=w!=~wi || (w.state!=CHECK && context_q!=~context_inv_q) ||
+        (w.state==CHECK && context_q!={public_key_i,internal_i,context_length_i,message_length_i,signature_length_i,sealed_length_i,tag_i}) ||
         !(w.state==IDLE || w.state==CHECK || w.state==READ || w.state==LAUNCH || w.state==WAIT_HASH || w.state==TAKE || w.state==LAUNCH_WOTS || w.state==WAIT_WOTS || w.state==TAKE_WOTS || w.state==RESULT) ||
         !(w.phase==RANDOM || w.phase==INNER || w.phase==MASK || w.phase==PREFIX || w.phase==FORS_LEAF || w.phase==FORS_PATH || w.phase==FORS_PK || w.phase==WOTS || w.phase==TREE) ||
         w.starts>w.expected || w.ends>w.starts || w.forest>13 || w.height>12 || w.layer>6 ||
@@ -135,9 +147,44 @@ module slh_verify (
     assign hash_mode=w.phase==PREFIX ? 2'd2 : (w.phase==INNER || w.phase==MASK) ? 2'd0 : 2'd1;
     assign payload_address_o=hash_offset-14'd48-(context_q.internal_mode ? 14'd0 : 14'd2);
     // Construct hash byte at position. audit chooses the independently assembled compressed address fields.
+    // Build position's audit byte exclusively from complemented context/workspace
+    // and a fresh address expression; no primary byte or address mux is consumed.
+    function automatic logic [7:0] audit_verify_byte(input int position);
+        logic [175:0] adr;
+        logic swap_nodes;
+        logic [7:0] selected_type;
+        logic [31:0] selected_kp,selected_height,selected_index;
+        selected_type=audit_w.phase==FORS_PK ? 8'd4 : audit_w.phase==TREE ? 8'd2 : 8'd3;
+        selected_kp=audit_w.phase==TREE ? 0 : {23'd0,audit_w.leaf};
+        selected_height=audit_w.phase==FORS_PK || audit_w.phase==FORS_LEAF ? 0 : {28'd0,audit_w.height}+1;
+        selected_index=audit_w.phase==FORS_PK ? 0 : audit_w.phase==TREE ? (32'(audit_w.leaf)>>(audit_w.height+1)) :
+            audit_w.phase==FORS_LEAF ? {16'd0,audit_w.global_index} : (32'(audit_w.global_index)>>1);
+        adr={8'(audit_w.layer),64'(audit_w.tree),8'(selected_type),selected_kp,selected_height,selected_index};
+        swap_nodes=audit_w.phase==TREE ? ((audit_w.leaf>>audit_w.height)&1)!=0 : ((audit_w.index>>audit_w.height)&1)!=0;
+        if (audit_w.phase==PREFIX) return position<16 ? audit_context.key[255-position*8 -: 8] : 8'd0;
+        if (audit_w.phase==INNER) begin
+            if (position<16) return audit_w.randomizer[127-position*8 -: 8];
+            if (position<48) return audit_context.key[255-(position-16)*8 -: 8];
+            if (!audit_context.internal_mode && position==48) return 0;
+            if (!audit_context.internal_mode && position==49) return audit_context.context_length;
+            return payload_byte_i;
+        end
+        if (audit_w.phase==MASK) begin
+            if (position<16) return audit_w.randomizer[127-position*8 -: 8];
+            if (position<32) return audit_context.key[255-(position-16)*8 -: 8];
+            if (position<64) return audit_w.inner[255-(position-32)*8 -: 8];
+            return 0; // MGF1 counter zero, 30 output bytes required for SHA2-128s.
+        end
+        if (position<22) return adr[175-position*8 -: 8];
+        if (audit_w.phase==FORS_PK) return audit_w.roots[1791-(position-22)*8 -: 8];
+        if (audit_w.phase==FORS_LEAF) return audit_w.node[127-(position-22)*8 -: 8];
+        if (position<38) return swap_nodes ? audit_w.sibling[127-(position-22)*8 -: 8] : audit_w.node[127-(position-22)*8 -: 8];
+        return swap_nodes ? audit_w.node[127-(position-38)*8 -: 8] : audit_w.sibling[127-(position-38)*8 -: 8];
+    endfunction
     function automatic logic [7:0] verify_byte(input int position, input logic audit);
         logic [175:0] adr;
         logic swap_nodes;
+        if (audit) return audit_verify_byte(position);
         adr=audit ? {8'(w.layer),64'(w.tree),8'(address_type),address_kp,address_height,address_index} : compressed_address;
         swap_nodes=w.phase==TREE ? ((w.leaf>>w.height)&1)!=0 : ((w.index>>w.height)&1)!=0;
         if (w.phase==PREFIX) return position<16 ? context_q.key[255-position*8 -: 8] : 8'd0;
@@ -271,19 +318,119 @@ module slh_verify (
         default: begin end
         endcase
     end
+    // Separate next-state derivation reads only the encoded workspace/context,
+    // with inverse counters decremented independently of primary increments.
+    always_comb begin
+        audit_n=audit_w;
+        if (start_o) audit_n.starts=~(wi.starts-16'(1));
+        if (complete_o) audit_n.ends=~(wi.ends-16'(1));
+        case (audit_w.state)
+        CHECK: begin
+            if (audit_context.signature_length!=7856 || audit_context.message_length>8192 ||
+                (audit_context.internal_mode && audit_context.context_length!=0) || audit_context.sealed_length<7856 || audit_context.sealed_length>8500 ||
+                (audit_context.sealed_length!=7856 && (audit_context.sealed_length<7860 || (audit_context.sealed_length-14'd7860)%32!=0))) begin audit_n.error=1; audit_n.state=RESULT; end
+            else audit_n.state=READ;
+        end
+        // R, each FORS secret/path, and each XMSS path are streamed one double-sampled byte at a time.
+        READ: begin
+            if (!read_valid_i) begin
+                audit_n.stall=~(wi.stall-11'(1));
+                if (audit_w.stall==1023) begin audit_n.error=2; audit_n.state=RESULT; end
+            end else begin
+                audit_n.stall=0;
+                if (!audit_w.repeat_read) begin audit_n.sample=read_data_i; audit_n.repeat_read=1; end
+                else if (read_data_i!=audit_w.sample) begin audit_n.error=3; audit_n.state=RESULT; end
+                else begin
+                    audit_n.repeat_read=0; audit_n.cursor=~(wi.cursor-14'(1)); audit_n.byte_index=~(wi.byte_index-4'(1));
+                    if (audit_w.phase==RANDOM) audit_n.randomizer={audit_w.randomizer[119:0],audit_w.sample};
+                    else if (audit_w.phase==FORS_LEAF) audit_n.node={audit_w.node[119:0],audit_w.sample};
+                    else audit_n.sibling={audit_w.sibling[119:0],audit_w.sample};
+                    if (audit_w.byte_index==15) begin
+                        if (audit_w.phase==RANDOM) audit_n.phase=INNER;
+                        audit_n.state=LAUNCH;
+                    end
+                end
+            end
+        end
+        LAUNCH: if (hash_ready) begin
+            audit_n.expected=~(wi.expected-16'((audit_w.phase==PREFIX ? 16'd1 : 16'((audit_hash_length+32'd72)>>6)))); audit_n.state=WAIT_HASH;
+        end
+        WAIT_HASH: if (hash_valid) begin audit_n.capture=digest; audit_n.state=TAKE; end
+        // The child retains its response while this independent capture is compared before use.
+        TAKE: begin
+            if (!hash_valid || hash_error!=0 || audit_w.capture!=digest) begin audit_n.error=3; audit_n.state=RESULT; end
+            else case (audit_w.phase)
+            INNER: begin audit_n.inner=audit_w.capture; audit_n.phase=MASK; audit_n.state=LAUNCH; end
+            // FIPS consumes only 30 mask bytes; discard the specified unused high tree/leaf bits.
+            MASK: begin
+                audit_n.md=audit_w.capture[255:88]; audit_n.tree=audit_w.capture[85:32]; audit_n.leaf=audit_w.capture[24:16];
+                audit_n.index=audit_w.capture[255:244]; audit_n.global_index={4'd0,audit_w.capture[255:244]}; audit_n.phase=PREFIX; audit_n.state=LAUNCH;
+            end
+            PREFIX: begin audit_n.prefix=audit_w.capture; audit_n.phase=FORS_LEAF; audit_n.state=READ; end
+            FORS_LEAF: begin audit_n.node=audit_w.capture[255:128]; audit_n.phase=FORS_PATH; audit_n.state=READ; end
+            // Finish a tree before adding its root to the protected fourteen-entry workspace.
+            FORS_PATH: begin
+                audit_n.node=audit_w.capture[255:128]; audit_n.global_index=audit_w.global_index>>1;
+                if (audit_w.height==11) begin
+                    audit_n.roots[1791-int'(audit_w.forest)*128 -: 128]=audit_w.capture[255:128]; audit_n.height=0;
+                    if (audit_w.forest==13) begin audit_n.phase=FORS_PK; audit_n.state=LAUNCH; end
+                    else begin
+                        audit_n.forest=~(wi.forest-4'(1)); audit_n.index=audit_w.md[167-(int'(audit_w.forest)+1)*12 -: 12];
+                        audit_n.global_index={audit_w.forest+4'd1,audit_w.md[167-(int'(audit_w.forest)+1)*12 -: 12]}; audit_n.phase=FORS_LEAF; audit_n.state=READ;
+                    end
+                end else begin audit_n.height=~(wi.height-4'(1)); audit_n.state=READ; end
+            end
+            FORS_PK: begin audit_n.node=audit_w.capture[255:128]; audit_n.phase=WOTS; audit_n.state=LAUNCH_WOTS; end
+            // A completed XMSS root becomes the next layer message; advance its address by nine bits.
+            TREE: begin
+                audit_n.node=audit_w.capture[255:128]; audit_n.height=~(wi.height-4'(1));
+                if (audit_w.height==8) begin
+                    if (audit_w.layer==6) begin audit_n.state=RESULT; end
+                    else begin audit_n.layer=~(wi.layer-4'(1)); audit_n.leaf=audit_w.tree[8:0]; audit_n.tree=audit_w.tree>>9; audit_n.height=0; audit_n.phase=WOTS; audit_n.state=LAUNCH_WOTS; end
+                end else audit_n.state=READ;
+            end
+            default: begin audit_n.error=3; audit_n.state=RESULT; end
+            endcase
+        end
+        LAUNCH_WOTS: if (wots_ready) begin audit_n.expected=~(wi.expected-16'(audit_wots_work)); audit_n.state=WAIT_WOTS; end
+        WAIT_WOTS: if (wots_valid) begin audit_n.capture={wots_value,128'd0}; audit_n.state=TAKE_WOTS; end
+        TAKE_WOTS: begin
+            if (!wots_valid || wots_error!=0 || wots_tag!=audit_context.tag || wots_value!=audit_w.capture[255:128] || wots_starts!=wots_ends) begin audit_n.error=3; audit_n.state=RESULT; end
+            else begin audit_n.node=audit_w.capture[255:128]; audit_n.cursor=~(wi.cursor-14'(560)); audit_n.phase=TREE; audit_n.state=READ; end
+        end
+        default: begin end
+        endcase
+    end
     // Trusted reset clears sticky failure. Cancellation/result consumption erase only owned request state.
+    // Complementary scratch/context has independent state admission and a
+    // later capture edge. It does not consume primary req_ready or next scratch.
     always_ff @(posedge clk_i) begin
-        if (!rst_ni) begin w<='0; w.state<=IDLE; w.phase<=RANDOM; wi<='1; wi.state<=~IDLE; wi.phase<=~RANDOM; context_q<='0; context_inv_q<='1; failed_q<=0; end
+        if (!rst_ni) begin wi<='1; wi.state<=~IDLE; wi.phase<=~RANDOM; context_inv_q<='1; end
+        else if (cancel_i || (wi.state==~RESULT && rsp_ready_i)) begin
+            wi<='1; wi.state<=~IDLE; wi.phase<=~RANDOM; context_inv_q<='1;
+        end else if (bad || hash_fault || wots_fault) begin
+            wi<='1; wi.state<=~RESULT; wi.phase<=~RANDOM; wi.error<=~2'd3;
+        end else if (req_valid_i && wi.state==~IDLE && !failed_q && !cancel_i) wi.state<=~CHECK;
+        else begin
+            wi<=~audit_n;
+            if (wi.state==~CHECK) context_inv_q<=~{public_key_i,internal_i,context_length_i,message_length_i,signature_length_i,sealed_length_i,tag_i};
+        end
+    end
+    always_ff @(posedge clk_i) begin
+        if (!rst_ni) begin w<='0; w.state<=IDLE; w.phase<=RANDOM; context_q<='0; failed_q<=0; end
         else if (cancel_i || (w.state==RESULT && rsp_ready_i)) begin
-            w<='0; w.state<=IDLE; w.phase<=RANDOM; wi<='1; wi.state<=~IDLE; wi.phase<=~RANDOM; context_q<='0; context_inv_q<='1;
+            w<='0; w.state<=IDLE; w.phase<=RANDOM; context_q<='0;
             failed_q<=failed_q || bad || hash_fault || wots_fault;
         end else if (bad || hash_fault || wots_fault) begin
-            w<='0; w.state<=RESULT; w.phase<=RANDOM; w.error<=3; wi<='1; wi.state<=~RESULT; wi.phase<=~RANDOM; wi.error<=~2'd3; failed_q<=1;
+            w<='0; w.state<=RESULT; w.phase<=RANDOM; w.error<=3; failed_q<=1;
         end else if (req_valid_i && req_ready_o) begin
-            w.state<=CHECK; wi.state<=~CHECK;
+            w.state<=CHECK;
             context_q<={public_key_i,internal_i,context_length_i,message_length_i,signature_length_i,sealed_length_i,tag_i};
-            context_inv_q<=~{public_key_i,internal_i,context_length_i,message_length_i,signature_length_i,sealed_length_i,tag_i};
-        end else begin w<=n; wi<=~n; if (n.error==2 || n.error==3) failed_q<=1; end
+
+        end else begin
+            w<=n;
+            if (n.error==2 || n.error==3 || audit_n.error==2 || audit_n.error==3) failed_q<=1;
+        end
     end
 endmodule
 `default_nettype wire

@@ -97,6 +97,8 @@ R10C_INTEGRATION_DIR := $(abspath $(BUILD_DIR)/r10c-integration)
 R10C_INTEGRATION_BINARY := $(BUILD_DIR)/r10c-integration/reins-r10c-integration-tests
 R10C_DIR := $(abspath $(BUILD_DIR)/r10c-rtl)
 R10C_BINARY := $(BUILD_DIR)/r10c-rtl/reins-r10c-tests
+FAULT_GENERATED := $(BUILD_DIR)/fault-sites
+FAULT_HEADERS := sim/rtl/fault_ports.svh sim/include/reins/fault_driver.h
 R11_BINARY := $(BUILD_DIR)/r11-spi/reins-r11-spi-tests
 BASELINE_INPUTS := docs/implementation_baseline.json $(wildcard docs/REINS*) $(wildcard docs/validation/*) $(wildcard sim/fixtures/*) third_party/crypto-backend.json
 
@@ -209,9 +211,16 @@ $(RTL_BINARY): $(RTL_SOURCES) sim/tests/sha256_rtl_tests.cc Makefile $(DOCTEST_H
 	  -CFLAGS '-std=c++20 -Wall -Wextra $(OPT_FLAGS) $(OPENSSL_CFLAGS) -isystem $(abspath $(DOCTEST_DIR)) $(CXXFLAGS)' \
 	  -LDFLAGS '$(PROJECT_LDFLAGS) $(LDFLAGS) $(OPENSSL_LIBS) $(LDLIBS)'
 
-$(R05_BINARY): $(R05_SOURCES) sim/tests/r05_rtl_tests.cc Makefile $(LIB_OBJECTS) $(DOCTEST_HEADER) $(BUILD_DIR)/build-config.json | check-tools check-rtl-tools verify-deps
+# Generate simulation-only hierarchy access; production source lists never include it.
+# The fault wrappers intentionally force always_comb next-state/schema targets; suppress
+# MULTIDRIVEN there only. Production lint retains every warning.
+$(FAULT_GENERATED)/ready.stamp: tools/generate_fault_sites.py tools/fault_sites.json
+	$(PYTHON) -E -s -B tools/generate_fault_sites.py --output $(FAULT_GENERATED)
+	@touch $@
+
+$(R05_BINARY): $(FAULT_GENERATED)/ready.stamp $(FAULT_HEADERS) $(R05_SOURCES) sim/tests/r05_rtl_tests.cc Makefile $(LIB_OBJECTS) $(DOCTEST_HEADER) $(BUILD_DIR)/build-config.json | check-tools check-rtl-tools verify-deps
 	@mkdir -p $(R05_DIR)
-	+$(VERILATOR) --no-skip-identical --cc --exe --build -j 2 $(RTL_CHECK_FLAGS) $(RTL_TRACE_FLAGS) -Wall --top-module r05_test_top \
+	+$(VERILATOR) --no-skip-identical --cc --exe --build -j 2 $(RTL_CHECK_FLAGS) $(RTL_TRACE_FLAGS) -Wall -Wno-MULTIDRIVEN -Isim/rtl -I$(FAULT_GENERATED) --top-module r05_test_top \
 	  --Mdir $(R05_DIR) -o reins-r05-tests $(R05_SOURCES) $(abspath sim/tests/r05_rtl_tests.cc) \
 	  -CFLAGS '-std=c++20 -Wall -Wextra $(OPT_FLAGS) $(OPENSSL_CFLAGS) -I$(abspath sim/include) -isystem $(abspath $(DOCTEST_DIR)) $(CXXFLAGS)' \
 	  -LDFLAGS '$(abspath $(LIB_OBJECTS)) $(PROJECT_LDFLAGS) $(LDFLAGS) $(OPENSSL_LIBS) $(LDLIBS)'
@@ -307,10 +316,10 @@ $(R10B_BINARY): rtl/sha256_compress.sv $(R10B_PRODUCTION) rtl/reins_receive_sram
 	  -CFLAGS '-std=c++20 -Wall -Wextra $(OPT_FLAGS) $(OPENSSL_CFLAGS) -I$(abspath sim/include) -isystem $(abspath $(DOCTEST_DIR)) -DREINS_FIXTURE_DIR=\"$(abspath $(BUILD_DIR)/fixtures)\" $(CXXFLAGS)' \
 	  -LDFLAGS '$(abspath $(LIB_OBJECTS)) $(PROJECT_LDFLAGS) $(LDFLAGS) $(OPENSSL_LIBS) $(LDLIBS)'
 
-$(R10C_BINARY): rtl/sha256_compress.sv rtl/sha256_message.sv $(R06_CORE) $(R09_PRODUCTION) $(R10C_PRODUCTION) rtl/reins_receive_sram.sv sim/rtl/r10c_test_top.sv sim/tests/r10c_rtl_tests.cc sim/tests/r11_fault_tests.cc sim/include/reins/r10c_test_support.h sim/include/reins/verifier_test_oracle.h sim/include/reins/slh_test_oracle.h sim/include/reins/r06_test_support.h sim/include/reins/fixture_io.h Makefile $(LIB_OBJECTS) $(DOCTEST_HEADER) $(BUILD_DIR)/build-config.json | check-tools check-rtl-tools verify-deps
+$(R10C_BINARY): $(FAULT_GENERATED)/ready.stamp $(FAULT_HEADERS) rtl/sha256_compress.sv rtl/sha256_message.sv $(R06_CORE) $(R09_PRODUCTION) $(R10C_PRODUCTION) rtl/reins_receive_sram.sv sim/rtl/r10c_test_top.sv sim/tests/r10c_rtl_tests.cc sim/tests/r11_fault_tests.cc sim/tests/r03_fault_tests.cc sim/include/reins/r10c_test_support.h sim/include/reins/verifier_test_oracle.h sim/include/reins/slh_test_oracle.h sim/include/reins/r06_test_support.h sim/include/reins/fixture_io.h Makefile $(LIB_OBJECTS) $(DOCTEST_HEADER) $(BUILD_DIR)/build-config.json | check-tools check-rtl-tools verify-deps
 	@mkdir -p $(R10C_DIR)
-	+$(VERILATOR) --no-skip-identical --cc --exe --build -j 2 $(RTL_CHECK_FLAGS) --output-split 5000 --output-split-cfuncs 300 $(RTL_TRACE_FLAGS) -Wall --top-module r10c_test_top \
-	  --Mdir $(R10C_DIR) -o reins-r10c-tests rtl/sha256_compress.sv rtl/sha256_message.sv $(R06_CORE) $(R09_PRODUCTION) $(R10C_PRODUCTION) rtl/reins_receive_sram.sv sim/rtl/r10c_test_top.sv $(abspath sim/tests/r10c_rtl_tests.cc) $(abspath sim/tests/r11_fault_tests.cc) \
+	+$(VERILATOR) --no-skip-identical --cc --exe --build -j 2 $(RTL_CHECK_FLAGS) --output-split 5000 --output-split-cfuncs 300 $(RTL_TRACE_FLAGS) -Wall -Wno-MULTIDRIVEN -Isim/rtl -I$(FAULT_GENERATED) --top-module r10c_test_top \
+	  --Mdir $(R10C_DIR) -o reins-r10c-tests rtl/sha256_compress.sv rtl/sha256_message.sv $(R06_CORE) $(R09_PRODUCTION) $(R10C_PRODUCTION) rtl/reins_receive_sram.sv sim/rtl/r10c_test_top.sv $(abspath sim/tests/r10c_rtl_tests.cc) $(abspath sim/tests/r11_fault_tests.cc) $(abspath sim/tests/r03_fault_tests.cc) \
 	  -CFLAGS '-std=c++20 -Wall -Wextra $(OPT_FLAGS) $(OPENSSL_CFLAGS) -I$(abspath sim/include) -isystem $(abspath $(DOCTEST_DIR)) $(CXXFLAGS)' \
 	  -LDFLAGS '$(abspath $(LIB_OBJECTS)) $(PROJECT_LDFLAGS) $(LDFLAGS) $(OPENSSL_LIBS) $(LDLIBS)'
 
@@ -416,3 +425,10 @@ FORCE:
 -include $(OBJECTS:.o=.d)
 
 include tools/r11.mk
+
+# R03 public fault replay never requires the original test private keys.
+.PHONY: r03-tests fault-replay
+r03-tests:
+	+$(PYTHON) -E -s -B tools/run_protected_tests.py --build-dir $(BUILD_DIR) --jobs $(JOBS)
+fault-replay:
+	+$(PYTHON) -E -s -B tools/fault_replay.py --manifest '$(REPLAY)' --build-dir $(BUILD_DIR)

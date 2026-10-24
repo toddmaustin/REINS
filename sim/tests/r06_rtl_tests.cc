@@ -73,8 +73,11 @@ public:
         dut.now_i=now; dut.tick_i=tick; settle();
         const auto target=absolute+unsigned(tick); reference->advance_to(target);
         backend.before(dut,target,deliver); if (perturb) perturb(); settle();
+        const bool audit_commit_before=dut.audit_commit_o;
         ++clocks; ++evidence.clocks; context.timeInc(1); dut.clk_i=1; evaluate(); context.timeInc(1);
         backend.after(dut); absolute=target; now+=unsigned(tick); dut.now_i=now; dut.tick_i=0; settle();
+        if (dut.commit_event_o) std::cout<<"[R06 COMMIT] audit="<<audit_commit_before<<" certificate="<<unsigned(dut.lease_audit_code_o)
+            <<" ledger_bad="<<unsigned(dut.lease_audit_bad_o)<<" fault="<<unsigned(dut.fault_o)<<std::endl;
         if (dut.vote_event_o || dut.commit_event_o || dut.result_valid_o || dut.cancel_valid_o)
             evidence.events<<"{\"event\":\"rtl\",\"bench\":"<<id<<",\"tick\":"<<now<<",\"state\":"<<unsigned(dut.state_o)
                 <<",\"votes\":"<<unsigned(dut.votes_o)<<",\"vote\":"<<unsigned(dut.vote_event_o)<<",\"commit\":"<<unsigned(dut.commit_event_o)
@@ -118,7 +121,7 @@ public:
         REQUIRE(reference->entropy({snapshot.generation,dut.round_o,absolute,nonce,true}));
         dut.nonce_round_i=dut.round_o; dut.nonce_issue_i=dut.issue_o; dut.nonce_generation_i=dut.run_generation_o;
         pack(dut.nonce_i,bytes(nonce)); dut.nonce_valid_i=1; settle(); REQUIRE(dut.nonce_ready_o);
-        step(); dut.nonce_valid_i=0; settle(); check();
+        step(); dut.nonce_valid_i=0; step(); settle(); check();
     }
     // Admit slot's sealed reply with timing; corrupt mutates its signature and
     // replacement optionally supplies deliberately mismatched actual signed bytes.

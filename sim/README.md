@@ -8,8 +8,8 @@ semantic oracle for current Verilator controller/transport tests and later integ
 R04 also adds an independent **real RTL SHA-256** test executable on Verilator.
 It does not replace the reference model's software crypto backend. The
 [RTL guide](../rtl/README.md) explains the hardware interfaces, C++ oracle,
-handshake scoreboard, tests and measured performance. R03 protected primitives
-and general internal fault injection are deferred.
+handshake scoreboard, tests and measured performance. R03 adds protected storage/capture/update paths and a general simulation-only
+fault catalog; see [R03_PROTECTED_PRIMITIVES.md](../docs/R03_PROTECTED_PRIMITIVES.md).
 R05 adds a second Verilator executable for actual configuration/reset/time/entropy
 RTL. Its [platform profile](../docs/R05_PLATFORM_PROFILE.md) documents every
 technology boundary and the predictable digital source settings.
@@ -233,7 +233,7 @@ store the committed lease. Complemented mirrors are checked digitally. A separat
 lease checker compares issue age against the saturating remaining counter.
 Run/token/job identities persist through logic resets, and old completions must
 match the full immutable request/context before voting. These checks are not a
-substitute for deferred R03 physical capture/replica/fan-out protections.
+substitute for physical capture/replica/fan-out qualification.
 
 The R06 adapter captures actual RTL job pins and the actual untrusted reply,
 then performs two complete host verifications. The RTL separately owns live
@@ -1164,10 +1164,47 @@ local grants/configuration/Merkle hashing in each pass. R10a adds real SLH
 addresses, framing, H_msg/MGF1 and WOTS+ with independent intermediate checks.
 R10b completes FORS/hypertree and single-pass verification. R10c integrates two
 complete independent passes into the production SPI/lease/enforcement top.
-R03 general fault campaigns and physical qualification remain separate work. Passing SHA tests does not establish safe
+R03 adds bounded general fault campaigns; physical qualification remains separate work. Passing SHA tests does not establish safe
 sharing between verification passes. The software mutation/stale/stall cases
 establish only their declared software behaviors.
 
 Follow [AGENTS.md](../AGENTS.md): use `.cc`/`.h`, give each new or modified
 function a short purpose/parameter comment, use the Make test interface and retain
 outputs. Add new generated evidence outside the pinned validation sources.
+
+## R03 protected-state campaign architecture
+
+`sim/include/reins/fault_driver.h` is the shared C++ fault driver. It arms a
+stable catalog ID, observes the actual RTL application/readback, records its
+initial effect, and observes release. `tools/generate_fault_sites.py` generates
+the simulation-only hierarchy access for R05 and R10c from
+`tools/fault_sites.json`. The production top has no injection controls.
+
+`sim/tests/r05_rtl_tests.cc` now includes platform storage, fresh entropy,
+conditioner, permissive-enable and injector-accounting cases.
+`sim/tests/r03_fault_tests.cc` adds independent controller/verification update
+faults, coherent lease replacement, reconstructed-root capture, bounded
+admission stalls and public manifest replay. The repeated campaigns remain in
+`sim/tests/r11_fault_tests.cc`; a local permissive comparison is now detected
+inside its lane and stays denied after force removal.
+
+The R10c `Bench` has two constructors. The normal constructor uses independent
+test authorities to produce new signatures. The public constructor takes a
+parsed `Configuration` and nonce and creates no signing keys. `start_input()`
+checks the saved OTP/request against locally constructed hardware context, loads
+the public reply into the sole SRAM, seals it and starts actual RTL verification.
+It saves the inputs before execution. Result observations are retained across
+clocks so a replay duration cannot lose a one-cycle completion.
+
+```sh
+make r03-tests JOBS=2
+make fault-replay REPLAY=test-results/<run>/public-replays/<site-and-bench>/manifest.json
+```
+
+Look at `protected-report.json` for executed sites, confirmed activation counts,
+missed/no-effect attempts and unexecuted catalog sites. Each actual RTL application
+has its before/observed value in the JSONL stream. The replay manifest binds the
+catalog and every public input by SHA-256. Only initial ARM round 1 job sequences
+are supported by this adapter; platform and post-commit lease faults use directed
+campaigns. See the [R03 guide](../docs/R03_PROTECTED_PRIMITIVES.md) for exact
+operation/duration semantics and remaining qualification work.

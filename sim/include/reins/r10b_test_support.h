@@ -135,6 +135,9 @@ public:
     // Await the result; complete requires a full checked pass, while false permits bounded shape/integrity failure.
     bool finish(bool complete=true) {
         for (unsigned i=0;i<600000 && !dut.rsp_valid_o && !dut.fault_o;i++) clocks();
+        if (!dut.rsp_valid_o) std::cout<<"[R10B NO RESULT] fault="<<unsigned(dut.fault_o)
+            <<" state="<<unsigned(dut.state_o)<<" phase="<<unsigned(dut.phase_o)
+            <<" starts="<<dut.starts_o<<" completions="<<dut.completions_o<<" clocks="<<evidence.clocks-started_<<std::endl;
         REQUIRE((dut.rsp_valid_o || (!complete && dut.fault_o)));
         if (complete) {
             CHECK(dut.error_o==0); CHECK_FALSE(dut.fault_o); CHECK(starts_==ends_); CHECK(starts_==oracle.operations);

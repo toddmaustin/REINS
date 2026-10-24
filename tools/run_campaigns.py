@@ -35,6 +35,7 @@ def main():
         targets += ["build", "r11-build"]
         steps += [Step("tool-versions",python+[str(ROOT / "tools/tool_versions.py")],console_output=True)]
         steps += suite_steps("full", directory, "")
+        steps += [Step("r03-protected",python+[str(ROOT / "tools/run_protected_tests.py"),"--build-dir",str(directory),"--jobs",str(args.jobs),"--nested"],timeout=1800,console_output=True)]
     if profile in ["directed", "fuzz", "nightly", "release", "replay", "minimize"]:
         targets += ["r11-build"]
     if profile == "directed":
