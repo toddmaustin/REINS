@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // Simulation source profile 1: binary RCT and reference-symbol APT plus missing samples.
 // Cutoffs are explicit digital test settings, not assessed SP 800-90B parameters.
 `default_nettype none

@@ -1,3 +1,7 @@
+# Copyright (c) 2026 Todd Austin.
+# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+# License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 """Check meaningful tamper/profile failures in the independent R02 corpus checker."""
 import copy
 from contextlib import contextmanager

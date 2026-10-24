@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // R05/R06/R07/R08 composition. Only internal endpoint feedback acknowledges stop.
 // Verifier and technology ports are trusted boundaries; SPI remains the live,
 // restricted management path while protected compute and outbound effects stop.

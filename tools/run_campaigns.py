@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Todd Austin.
+# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+# License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 """Coordinate bounded R11 campaigns through the normal retained Make test collector."""
 import argparse
 import os

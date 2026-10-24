@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // R05 simulation top. Factory fixtures, passive taps and reduced-width/unit probes
 // are excluded from production reins_platform_control and do not authorize it.
 `default_nettype none

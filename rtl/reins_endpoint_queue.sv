@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // Four-entry always-on outbound queue and one-outstanding bundled-data mailbox.
 // The protected producer holds data until its synchronized request is acknowledged.
 // Purge does not need a protected clock or OS acknowledgement. No storage follows

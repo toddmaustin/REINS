@@ -6,6 +6,10 @@ independent authorities** approve a current lease. If two authorities stop appro
 renewals, the lease expires and local hardware stops execution. There is no remote
 "kill now" message: stopping depends on a bounded local timeout.
 
+Copyright (c) 2026 Todd Austin. Available under the
+[PolyForm Noncommercial License 1.0.0](LICENSE); see
+[copyright and license](#copyright-and-license) for scope and required notices.
+
 This repository now contains the **R02 event-driven C++ device reference model**:
 provisioning, reset, entropy events, ARM/RENEW rounds, two-of-three voting, execution
 leases, receive jobs, stopping, test authorities and an untrusted relay. It uses
@@ -703,8 +707,35 @@ test-results/              Retained logs/reports; generated
 ```
 
 Use `.cc` and `.h` for first-party C++ files. Further conventions are in
-[AGENTS.md](AGENTS.md). The repository uses the
-[PolyForm Noncommercial License 1.0.0](LICENSE).
+[AGENTS.md](AGENTS.md).
+
+## Copyright and license
+
+Copyright (c) 2026 Todd Austin.
+
+Except where otherwise indicated, first-party REINS materials are licensed under
+the [PolyForm Noncommercial License 1.0.0](LICENSE).
+SPDX identifier: `PolyForm-Noncommercial-1.0.0`.
+
+Use, modification, and redistribution are permitted only for purposes allowed by
+that license. Its permitted purposes include use by educational institutions,
+public research organizations, and other organizations listed in the license,
+regardless of their funding. Commercial uses outside its permitted purposes
+require separate permission from Todd Austin.
+
+REINS is source-available. PolyForm Noncommercial is not an OSI-approved
+open-source license.
+
+Redistributions must preserve the required notices. Include [LICENSE](LICENSE)
+and [NOTICE](NOTICE) with source and binary releases. First-party source files
+carry copyright and SPDX headers; the repository notice also covers first-party
+documentation and files that cannot contain comments. Pinned specification and
+fixture files retain their original bytes and provenance.
+
+Third-party components and externally sourced materials retain their respective
+terms and applicable public-domain status. See
+[third_party/README.md](third_party/README.md) for dependency information and
+redistribution considerations.
 
 ## Protected state and fault replay
 

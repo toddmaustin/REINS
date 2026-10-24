@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // Actual SPI pins, one protected receive SRAM and the R06 controller. Each host
 // crypto pass reads every byte afresh from the sealed DUT memory, never a relay copy.
 #define DOCTEST_CONFIG_IMPLEMENT

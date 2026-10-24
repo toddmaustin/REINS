@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // Actual R05 SHA/source/time/configuration integration with R06 operational RTL.
 // Signature verification alone is host software through the simulation-only top.
 #define DOCTEST_CONFIG_IMPLEMENT

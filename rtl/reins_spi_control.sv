@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // Qualified-platform R06 + R07 component; used for isolated pin-level controller tests.
 // No SPI opcode can supply a completion, program OTP, or acknowledge a physical stop.
 `default_nettype none

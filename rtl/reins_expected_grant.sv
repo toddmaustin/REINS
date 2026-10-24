@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // Construct the complete grant from protected local fields. No reply body exists.
 // The caller independently checks its local request snapshot and OTP provenance.
 `default_nettype none

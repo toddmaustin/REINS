@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // Public reads are atomic and non-consuming even across publication, cancellation and quorum commit.
 #include <doctest/doctest.h>
 #include "Vr07_test_top.h"

@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // Mode-0, MSB-first slave oversampled by the independent monitor clock.
 // These are logical pad signals: a technology wrapper drives Z when miso_oe_o=0.
 `default_nettype none

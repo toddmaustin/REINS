@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // Iterative FIPS 180-4 SHA-256 compression, one round per clock.
 // First-party REINS implementation; distributed under the repository LICENSE.
 // A request captures all eight chaining words and all sixteen message words.

@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // Fixed N=3/Q=2 public OTP validation and C_cfg hashing, v0.3 section 5.
 // OTP retention/programming physics belong to the external technology macro.
 `default_nettype none

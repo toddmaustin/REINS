@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // Full-width symbolic arithmetic; unconstrained r/P/W/L/time values, no truncation to a test width.
 module r11_arithmetic (
     input logic [63:0] r,p,w,l,now,issue,expiry,remaining,

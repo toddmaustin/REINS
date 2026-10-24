@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // Exact v0.3 scheduled arithmetic. This combinational block is also probed
 // independently at full 64-bit boundaries in simulation; it never saturates I/B/E.
 `default_nettype none

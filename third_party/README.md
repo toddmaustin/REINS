@@ -3,6 +3,27 @@
 Third-party implementation source is downloaded into the ignored `.deps/` cache;
 it is not committed to this repository.
 
+## Copyright and redistribution
+
+The root [NOTICE](../NOTICE) identifies Todd Austin's copyright in first-party
+REINS materials. It does not relicense dependencies, externally sourced vectors,
+or reference materials, and does not change their applicable public-domain status.
+Preserve their original attribution, license files, and redistribution conditions.
+
+When packaging REINS source or binary releases, include the root
+[LICENSE](../LICENSE) and [NOTICE](../NOTICE). When distributing bundled dependencies or runtimes,
+include their required notices and satisfy their own license obligations as well.
+For example, the downloaded doctest license is in
+`.deps/doctest-2.4.12/LICENSE.txt`; an archive containing only `build/` would omit
+both that license and the project's root notices. Check the license applicable
+to any distributed Verilator runtime or generated simulator components.
+
+Using a build tool such as GNU Make does not by itself license first-party REINS
+source under that tool's license. Upstream and generated files retain their
+existing headers; add Todd Austin's headers only to first-party files.
+
+## Dependency selections
+
 | Dependency | Selection | Purpose / license |
 |---|---|---|
 | OpenSSL | 3.5 or newer, default provider; tested reference 3.5.7 at upstream commit `8cf17aaeb4599f8af87fefd810b5b5fee90fe69e` | Independent host SHA-256 / FIPS 205 SLH-DSA backend; Apache-2.0 |

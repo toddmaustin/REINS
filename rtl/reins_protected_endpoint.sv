@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // Representative CPU/accelerator/DMA endpoint. Two local actuation paths each
 // own a distinct serial clock cell AND a distinct outbound cut after all queues.
 // The shared producer reset and queue-admission control are not final enables:

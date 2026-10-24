@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // One 9,216-byte payload array; address/owner tags and SECDED bits are overhead.
 // No reset scrubs payload. The full token in every word rejects stale old rows.
 // This portable array is a simulation technology wrapper, not a qualified macro.

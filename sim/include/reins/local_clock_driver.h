@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 #pragma once
 // Event-driven independent guard clocks for complete-device pin tests. Time is
 // in nanoseconds; no guard edge is rounded to a controller-clock boundary.

@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // Bounded byte-stream SHA-256 framing and padding around sha256_compress.
 // Capture length/tag first, then exactly length bytes (MSB-first on the block).
 // Padding and chaining are RTL operations; the host supplies no padded blocks.

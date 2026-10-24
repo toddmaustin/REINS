@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // SIMULATION ONLY: actual R05 SHA/time/source startup plus R06 and retained OTP.
 `default_nettype none
 module r06_integration_top (

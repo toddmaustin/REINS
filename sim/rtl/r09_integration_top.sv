@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // SIMULATION ONLY: actual R05 through R09, independent Merkle datapaths and sealed SRAM; only SLH-DSA remains software.
 `default_nettype none
 module r09_integration_top (

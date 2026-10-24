@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // Bounded real-SHA backend for FIPS 205. Mode 0 hashes from the standard IV;
 // mode 1 continues after exactly one public-seed block; mode 2 compresses the
 // raw 64-byte PK.seed||zero[48] block without adding padding. No software digest input.

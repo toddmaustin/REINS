@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // FIPS 205 SHA2-128s H_msg, plus a separate bounded MGF1 component entry.
 // H_msg is the REINS production gate: pure mode, empty context, 46-byte batch
 // message. MGF1 entry is an algorithm component, never signature acceptance.

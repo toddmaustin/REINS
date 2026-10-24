@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // A complete independent pass: fresh local grant/configuration/Merkle reconstruction,
 // then real SLH. No root, decoded control, scratch or success state is shared with
 // another pass. The observer below independently checks physical work and order.

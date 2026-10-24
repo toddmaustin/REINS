@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // Two dynamic rails; neither a shared static run-enable nor either qualifier
 // alone can create both streams. Disabled rails hold their last level: revoking
 // authorization does not manufacture one last transition by resetting a wire.

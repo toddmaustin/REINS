@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // FIPS 205 base_2b/checksum for n=16, lg(w)=4, len1=32, len2=3.
 `default_nettype none
 module slh_wots_digits (

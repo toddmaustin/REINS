@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // Complete SHA2-128s algorithm component. Signature bytes come from the sole sealed
 // receive store. The separate public payload port is context||message (external)
 // or message (internal). REINS exposes only slh_verify_reins, never this mode bit.

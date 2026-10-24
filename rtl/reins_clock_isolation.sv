@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // TECHNOLOGY WRAPPER: independent clock-blocking cell, with fail-off assertion
 // and falling-edge-only release. Reset/isolation is asserted before clock clamp.
 // A physical implementation must qualify the async clamp, pulse widths, reset

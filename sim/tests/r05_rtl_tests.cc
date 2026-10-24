@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // R05 clocked hardware tests: independent OTP parser, conditioner framing/health
 // oracles and a real two-authority reference-model lease at the future R06 boundary.
 #define DOCTEST_CONFIG_IMPLEMENT

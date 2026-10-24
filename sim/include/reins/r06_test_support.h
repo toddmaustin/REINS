@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 #pragma once
 // Shared C++ test-only support. No host verification result enters a production
 // chip interface: these templates drive the dedicated Verilator simulation tops.

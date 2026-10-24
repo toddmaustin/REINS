@@ -1,0 +1,10 @@
+Required Notice: Copyright (c) 2026 Todd Austin.
+
+Except where otherwise indicated, first-party REINS source code, tests,
+build and verification tools, and documentation are made available under
+the PolyForm Noncommercial License 1.0.0 in LICENSE.
+
+Third-party components and externally sourced materials retain their original
+copyright notices, licensing terms, and applicable public-domain status. This
+notice does not replace or add restrictions to those terms. See
+third_party/README.md for dependency information.

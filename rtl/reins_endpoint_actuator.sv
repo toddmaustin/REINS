@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // One independently decoded physical actuation path. Denial first clamps I/O
 // and asserts reset; clock removal follows after a bounded local-clock delay.
 // Closing cannot be canceled by a late good code; reopening needs a new epoch.

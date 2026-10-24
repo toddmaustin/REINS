@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // SIMULATION ONLY: qualified platform inputs, actual R06/R07, software verifier boundary.
 `default_nettype none
 module r07_test_top (

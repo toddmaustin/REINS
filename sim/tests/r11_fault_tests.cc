@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // Repeated-attempt and persistent common-path campaigns over the actual two-pass bank.
 #include <doctest/doctest.h>
 #include "reins/r10c_test_support.h"

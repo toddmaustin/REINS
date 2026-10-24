@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // Digital progress monitors for two already-synchronized technology references.
 // The always-on monitor clock and absolute-frequency health input require platform qualification.
 `default_nettype none

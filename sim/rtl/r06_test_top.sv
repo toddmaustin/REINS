@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // SIMULATION ONLY: software-backed verifier and qualified-platform stimulus ports.
 // small_i selects a separate reduced-limit instance for reachable overflow tests.
 // Neither this selector nor host verification is part of the production composition.

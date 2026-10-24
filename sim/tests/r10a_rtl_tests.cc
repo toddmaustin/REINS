@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 #define DOCTEST_CONFIG_IMPLEMENT
 #include <doctest/doctest.h>
 #include "reins/r10a_test_support.h"

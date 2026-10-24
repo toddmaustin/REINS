@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // Two physically distinct R09 SHA stages sharing only the sealed read port.
 // Scheduling here selects a lane; R06 still owns job/vote sequencing and future
 // R10c owns complete hardware signature acceptance. No root equality grants a vote.
