@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // Actual R05/R06/R07/R08 with two independent R09 Merkle engines. Host crypto
 // consumes the RTL message/key; it never substitutes its software-computed root.
 #define DOCTEST_CONFIG_IMPLEMENT

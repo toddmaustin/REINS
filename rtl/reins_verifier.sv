@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // The production verifier bank owns exactly two independently sequenced complete
 // passes. It shares only sealed SRAM through a checked mux and protected input
 // provenance; neither pass consumes the other's root, scratch, digits or digest.

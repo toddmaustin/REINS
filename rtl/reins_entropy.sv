@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // Fresh per-round acquisition and SHA-256 conditioning for simulation profile 1.
 // No DRBG/pool: both 384-bit buffers are cleared at each draw and cancellation.
 // Source counts/cutoffs are digital research settings, not physical entropy claims.

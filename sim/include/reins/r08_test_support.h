@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 #pragma once
 // Independent real-time, pin/clock driven endpoint bench. The oracle sees final
 // handshakes and actual protected clock edges, never private watchdog counters.

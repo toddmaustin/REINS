@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // Independent committed-age arithmetic versus the saturating remaining counter.
 // Ordinary expiry is a denial, not an integrity alarm; disagreement is an alarm.
 `default_nettype none

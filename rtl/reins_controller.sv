@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // R06 operational controller. Verification ports are TRUSTED INTERNAL hardware
 // boundaries, not host/SPI inputs. Only the separate simulation top exposes them
 // to host cryptography. Sparse/mirrored checks here do not replace deferred R03

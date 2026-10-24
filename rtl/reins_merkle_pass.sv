@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // One independent R09 verification stage. Recompute C_cfg, construct the local
 // leaf, and reconstruct the root using this instance's own real SHA datapath.
 // A successful response is Merkle evidence ONLY; it never emits a vote/accept code.

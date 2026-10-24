@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // R05 configuration/startup/time/entropy integration for digital simulation profile 1.
 // lease_* are TRUSTED INTERNAL inputs from the future R06 quorum/lease controller.
 // This component cannot authorize execution by itself and is not a chip top.

@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // Absolute trusted-time budgets and cancellation races through real SPI pins.
 #include <doctest/doctest.h>
 #include "Vr07_test_top.h"

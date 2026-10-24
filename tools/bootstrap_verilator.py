@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Todd Austin.
+# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+# License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 """Prepare only the active Verilator 5.008 baseline, with a hash-checked source cache."""
 import argparse
 import hashlib

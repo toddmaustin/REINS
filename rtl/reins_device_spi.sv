@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // Actual R05 + R06 + R07 composition; technology wrappers and real verifier remain internal boundaries.
 // No SPI opcode can supply a completion, program OTP, or acknowledge a physical stop.
 `default_nettype none

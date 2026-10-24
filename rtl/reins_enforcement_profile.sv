@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // R08 implements one documented digital platform, not arbitrary physical clocks.
 // R05 accepts the specification's broader schema; this additional platform gate
 // prevents an otherwise valid image from claiming tighter delays or a faster

@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // Complete production composition: R05 through R08, real SPI/sealed SRAM and
 // independent software signatures. No host/manual stop acknowledgement exists.
 #define DOCTEST_CONFIG_IMPLEMENT

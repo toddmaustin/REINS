@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // Local up-counting path A. A static level is never sufficient: every trusted
 // arm epoch needs two fresh, correctly spaced transitions. Loss locks the path
 // off for that epoch; late or fast edges cannot resurrect an old authorization.

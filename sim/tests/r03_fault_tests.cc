@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // General protected-state campaigns and replay using saved public job bytes.
 #include <doctest/doctest.h>
 #include "reins/r10c_test_support.h"

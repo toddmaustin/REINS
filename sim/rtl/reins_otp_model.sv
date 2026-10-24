@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // SIMULATION ONLY: technology OTP model with retention across every logic/power reset.
 // Initialization is a factory test fixture, not a production programming/debug port.
 `default_nettype none

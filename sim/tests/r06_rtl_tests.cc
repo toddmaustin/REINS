@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // Fast controller mode: real R06 RTL and two independent real software crypto
 // evaluations per job. R05's qualified platform inputs are abstracted here.
 #define DOCTEST_CONFIG_IMPLEMENT

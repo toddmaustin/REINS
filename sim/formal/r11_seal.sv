@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // Exercise actual ownership/seal/store logic. Read-disabled, aligned first-byte writes prune payload/ECC state.
 module r11_seal (
     input logic clk,por,reset,acquire,release_owner,seal,write_enable,

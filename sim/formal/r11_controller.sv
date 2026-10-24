@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // Actual parameterized controller at a qualified-platform/abstract-verifier boundary.
 // Inputs are symbolic; configuration/hash are assumed qualified constants, not OTP verification.
 module r11_controller(input logic clk,por,reset,cold,fault,abort_job,begin_run,nonce_valid,submit,complete,tick,

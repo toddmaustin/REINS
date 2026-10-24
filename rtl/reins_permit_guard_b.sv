@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // Dissimilar local path B uses a down-counter and a faster, independent clock.
 // Its own synchronizers, qualification, watchdog and codeword never consume A.
 `default_nettype none

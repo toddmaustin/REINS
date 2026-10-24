@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // Actual clocked RTL tests, with OpenSSL as an independent compression/hash oracle.
 // Nothing in this harness supplies a digest or a verdict to the hardware.
 #define DOCTEST_CONFIG_IMPLEMENT

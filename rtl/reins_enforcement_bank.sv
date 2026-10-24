@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // Three modeled protected endpoints: CPU, accelerator and DMA/bus master. All
 // queues precede independent serial isolation cells. Only actual closed-cell and
 // empty-queue feedback can acknowledge stop; an untrusted host has no ACK port.

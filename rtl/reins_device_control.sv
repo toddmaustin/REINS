@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // Production R05/R06 composition, still an internal device component, not a chip top.
 // Host-backed completion pins exist only in sim/rtl/r06_test_top.sv. A production
 // integration must bind these internal ports to the real protected verifier/R07 RAM.

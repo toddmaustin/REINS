@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // Production protocol gate. No internal-interface selector, variable message, or
 // context bytes are exposed. A caller supplies its locally reconstructed batch
 // message and the immutable sealed job descriptor; this is one pass, not a vote.

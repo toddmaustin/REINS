@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // Four-state Icarus check of actual local guards/actuators, independent of Verilator's two-state execution.
 `timescale 1ns/1ps
 module r11_reset_tb;

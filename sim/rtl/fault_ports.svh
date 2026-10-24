@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // SIMULATION ONLY. Shared protocol for the catalog-generated readback injector.
 input logic [15:0] fault_i, fault_probe_i,
 input logic [2:0] fault_mode_i,

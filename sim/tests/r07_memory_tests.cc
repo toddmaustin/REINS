@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // Isolated production SRAM wrapper: exhaustive codeword bit faults and all write/seal controls.
 #define DOCTEST_CONFIG_IMPLEMENT
 #include <doctest/doctest.h>

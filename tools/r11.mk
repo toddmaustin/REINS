@@ -1,3 +1,7 @@
+# Copyright (c) 2026 Todd Austin.
+# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+# License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 # R11 keeps the same Make entry point and timestamped result collector as other stages.
 R11_BINARY := $(BUILD_DIR)/r11-spi/reins-r11-spi-tests
 R11_DRIVER = $(PYTHON) -E -s -B tools/run_campaigns.py --build-dir $(BUILD_DIR) --jobs $(JOBS) --seeds $(CAMPAIGN_SEEDS) --iterations $(CAMPAIGN_ITERATIONS)

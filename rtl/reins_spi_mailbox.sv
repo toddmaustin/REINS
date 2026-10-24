@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // Exact v0.3 SPI mailbox and receive owner. This component does not verify
 // signatures: only the R06 controller can turn trusted two-pass evidence into a vote.
 `default_nettype none

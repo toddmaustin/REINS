@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // SHA2-128s WOTS+ chain and public-key reconstruction. One fresh public-seed
 // compression per request, then one real compression per F step. The 560-byte
 // endpoint workspace is not another receive memory. No signature acceptance output.

@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // Actual R05 configuration/SHA/source/time, R06 lease/quorum and R07 SPI/memory.
 // Only signature computation is software, over actual fresh sealed-memory reads.
 #define DOCTEST_CONFIG_IMPLEMENT

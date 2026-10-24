@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // TECHNOLOGY WRAPPER: one independently controlled isolation cell, placed after
 // all outbound storage. Two preserved instances are in series, with no queue or
 // common decoded final enable between/after them. A post-cell wire short and

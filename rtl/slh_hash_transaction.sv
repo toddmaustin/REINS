@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Todd Austin.
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 // Protected transaction adapter: audits bytes, exact real compression counts,
 // completion identity and a separate digest hand-off around the real SHA backend.
 `default_nettype none

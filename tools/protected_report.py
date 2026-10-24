@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Todd Austin.
+# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+# License: https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 """Audit actual R03 trigger/application/effect/release evidence and retain public replay manifests."""
 import argparse
 import hashlib
