@@ -18,8 +18,10 @@ single-pass FORS/seven-layer verification, strict production gating and official
 case/operation/stage cross-checks. R10c integrates two independent complete real-SHA
 passes, protected acceptance and full production-top SPI/lease/guard tests. R07 includes
 an independent byte-level C++ oracle, actual memory-backed host verification and
-real R05/R06/R07 pin integration. Remaining RTL milestones
-are open; software/Python validation is not evidence that their RTL exists.
+real R05/R06/R07 pin integration. R11 supplies campaign/replay/report/CI and local
+release workflows, with separate normal-build and qualification evidence.
+Deferred R03 and platform/service gaps remain explicit; software/Python validation
+is not evidence of physical RTL qualification.
 
 Section 1 is established by [IMPLEMENTATION_SCOPE.md](IMPLEMENTATION_SCOPE.md),
 the [pinned baseline manifest](implementation_baseline.json), and the read-only
@@ -440,6 +442,15 @@ operation, against response-window and per-job budgets.
 
 ### PR 11 — Campaign closure and local release workflow
 
+**Implemented digital workflow:** see [R11_LOCAL_RELEASE.md](R11_LOCAL_RELEASE.md)
+and [the executable release manifest](RELEASE_REQUIREMENTS.json). The Make targets
+run directed regressions, exact byte replay/minimization, finite seeded campaigns,
+nine repeated/persistent attempts, normal non-instrumented SPI timing and separate
+formal/component synthesis/four-state/CDC records. Reports check actual execution,
+source identity, required test selection and sparse-state witnesses. A local
+release remains conditional on its explicit gaps, including deferred R03,
+platform signoff and the missing aggregate admission ledger in test authorities.
+
 **Deliver:** expanded deterministic regressions, minimized fuzz reproducers,
 repeated/persistent fault campaigns, requirement and coverage reports, CI jobs,
 and the complete local developer workflow. Investigate uncovered safety-critical
@@ -546,9 +557,10 @@ make clean
 | fault | Declared bounded campaigns, separated by controller, sequencer, datapath and enforcement coverage |
 | nightly | Longer fuzz/fault and selected production-timing runs with exact executed counts |
 
-The fuzz-smoke, fault and nightly interfaces are future Make targets, not current
-executables. Retain raw outputs, JSON/JUnit summaries and reproducer artifacts for
-all future test modes as well; never overwrite or age out earlier runs automatically.
+The fuzz-smoke, fault and nightly interfaces now exist. `make release-check` adds
+normal non-instrumented timing and separate formal/synthesis/reset/CDC records.
+Retain raw outputs, JSON/JUnit summaries and reproducer artifacts for every mode;
+never overwrite or age out earlier local runs automatically.
 
 Each PR description must give the problem/result, requirement IDs, prerequisites,
 exact local commands, observed outcomes and runtime, simulation mode, replay
@@ -586,9 +598,8 @@ behavior; and measure environmental/fault coverage and the actual stop bound.
 Sharing SHA hardware or broadening N/Q is a later change requiring renewed
 performance, fault, and regression evidence.
 
-**Next development action: PR 11 campaign closure**, with an explicit decision
-on resuming deferred R03 protected primitives/general fault campaigns. R10c now
-integrates complete independent passes with initially separate SHA datapaths and
-measures full-RTL SPI ARM/RENEW and local guard operation. Expand common-domain
-and repeated-fault coverage, minimized replay tooling and requirement closure;
-keep physical fault, entropy, clock and isolation qualification explicit.
+**Next development decision:** choose the scope of deferred R03 protections and
+the target platform/service qualification. R11's local digital release reports
+preserve the known gaps rather than certifying them away. Production admission
+durability/capacity, full netlist/CDC/reset/timing work and physical entropy,
+clock/isolation/fault qualification require their own evidence and review.

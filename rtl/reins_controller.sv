@@ -117,10 +117,10 @@ module reins_controller #(
     // Return slot's internal sparse certificate code; these are not protocol or SPI values.
     function automatic logic [7:0] certificate_code(input logic [1:0] slot);
         case (slot)
-        0: return 8'h3c;
-        1: return 8'hc3;
-        2: return 8'h5a;
-        default: return 8'd0;
+        0: certificate_code=8'h3c;
+        1: certificate_code=8'hc3;
+        2: certificate_code=8'h5a;
+        default: certificate_code=8'd0;
         endcase
     endfunction
     // Independently authenticate stored votes from separate sparse certificates and unique job tokens.
@@ -145,7 +145,7 @@ module reins_controller #(
         body[959 -: 256]=config_q[2047 -: 256];
         body[447 -: 64]=context_q.round_id;
         body[383 -: 256]=context_q.nonce;
-        return body;
+        make_request=body;
     endfunction
 
     assign running=state_q==WAIT_ARM || state_q==RUNNING;
@@ -205,8 +205,10 @@ module reins_controller #(
         scheduled.run_id=run_begin_i ? platform_generation_i : run_q;
         scheduled.config_hash=run_begin_i ? config_digest_i : digest_q;
         scheduled.kind=state_q==RUNNING && !run_begin_i ? 8'd3 : 8'd1;
-        proposed_job='{token:token_q,run_id:run_q,round_id:context_q.round_id,epoch:epoch_q+64'd1,
-            slot:submit_slot_i,request_body:make_request(submit_slot_i),config_hash:digest_q};
+        // Field assignments also elaborate in the independent Yosys formal frontend.
+        proposed_job.token=token_q; proposed_job.run_id=run_q; proposed_job.round_id=context_q.round_id;
+        proposed_job.epoch=epoch_q+64'd1; proposed_job.slot=submit_slot_i;
+        proposed_job.request_body=make_request(submit_slot_i); proposed_job.config_hash=digest_q;
     end
     assign restart_ready_o=(state_q==CLOSED_INIT || state_q==STOPPED) && !stop_needed_q && !fault_o && !reset_active;
     assign context_live=running && pending_q && published_q && !reset_active && !fault_o && !entropy_failure_i && grant_enable_i &&
@@ -400,6 +402,22 @@ module reins_controller #(
         else $fatal(1,"invalid R06 reduced test widths");
     assert property (@(posedge clk_i) disable iff (!por_ni) permit_o |-> state_q==RUNNING && lease_q && !fault_o);
     assert property (@(posedge clk_i) disable iff (!por_ni) request_valid_o |-> pending_q && published_q && !entropy_failure_i);
+`endif
+`ifdef FORMAL
+    // Qualified-platform/abstract-verifier proofs exercise this actual priority tree, not a replacement FSM.
+    logic formal_past=1'b0;
+    always @(posedge clk_i) begin
+        formal_past<=1'b1;
+        if (!formal_past) assume(!por_ni);
+        if (formal_past && $past(por_ni)) begin
+            if ($past(cold_clear_i || immediate_fault || logic_reset_i || (edge_expired && state_q==RUNNING))) begin
+                assert(!commit_event_o); assert(!active_q); assert(!lease_q);
+            end
+            if ($past(abort_match && running)) begin assert(!commit_event_o); assert(!active_q); end
+            if ($past(active_q && !context_live)) assert(!commit_event_o);
+        end
+        if (formal_past && por_ni && reset_active) assert(!permit_o);
+    end
 `endif
 endmodule
 `default_nettype wire

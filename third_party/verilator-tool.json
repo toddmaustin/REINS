@@ -1,0 +1,9 @@
+{
+  "tool": "Verilator",
+  "version": "5.008",
+  "role": "active_local_and_CI_validation_baseline",
+  "url": "https://codeload.github.com/verilator/verilator/tar.gz/refs/tags/v5.008",
+  "sha256": "1d19f4cd186eec3dfb363571e3fe2e6d3377386ead6febc6ad45402f0634d2a6",
+  "archive_root": "verilator-5.008",
+  "license": "LGPL-3.0-only OR Artistic-2.0"
+}

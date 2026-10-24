@@ -8,7 +8,13 @@ it is not committed to this repository.
 | OpenSSL | 3.5 or newer, default provider; tested reference 3.5.7 at upstream commit `8cf17aaeb4599f8af87fefd810b5b5fee90fe69e` | Independent host SHA-256 / FIPS 205 SLH-DSA backend; Apache-2.0 |
 | doctest | v2.4.12, archive SHA-256 `73381c7aa4dee704bd935609668cf41880ea7f19fa0504a200e13b74999c2d70` | C++ test framework; MIT |
 | GNU Make | Tested with 4.4.1 | Public build/test/clean interface; GPL-3.0-or-later |
-| Verilator | 5+ supported; tested 5.008 (upstream v5.008 source) and 5.032 (Debian 5.032-1+b2) | Actual SHA-256, R05, R06 and R07 RTL simulation, assertions, line coverage and optional FST; Artistic-2.0 or LGPL-3.0 |
+| Verilator | 5.008, the single active local and CI validation baseline | Actual RTL simulation, assertions, line coverage and optional FST; Artistic-2.0 or LGPL-3.0 |
+
+The optional `make setup-verilator` target builds upstream v5.008 using the URL
+and archive SHA-256 in [verilator-tool.json](verilator-tool.json). CI uses this
+target. An existing local 5.008 installation can be used directly. Setup retains
+its log, binary hash and whether it built the pinned source or reused an existing
+version-checked tool. There is no second-version CI job or automatic fallback.
 
 `tools/fetch_doctest.py` downloads the official GitHub archive with TLS and checksum
 verification and extracts only the header and license. Their individual SHA-256

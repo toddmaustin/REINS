@@ -133,12 +133,14 @@ def main():
     assert "`ifdef" not in source and "force " not in source
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--group", choices=["unit", "integration", "both"], default="both")
-    group = parser.parse_args().group
+    parser.add_argument("--integration-directory", default="r10c-integration")
+    args = parser.parse_args()
+    group = args.group
     root = Path(os.environ["REINS_TEST_OUTPUT_DIR"]).parent
     if group in ["unit", "both"]:
         check(root / "r10c-rtl", "rtl-r10c-two-pass")
     if group in ["integration", "both"]:
-        check(root / "r10c-integration", "rtl-r10c-full-device")
+        check(root / args.integration_directory, "rtl-r10c-full-device")
 
 
 if __name__ == "__main__":

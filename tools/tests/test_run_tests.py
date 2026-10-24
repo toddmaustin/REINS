@@ -115,9 +115,12 @@ class TestResultCollection(unittest.TestCase):
         self.assertIn("before interrupt", (directory / "interrupt/output.log").read_text())
 
     def test_clean_targets_remove_only_their_documented_artifacts(self):
+        """Run explicit clean targets in a scratch Make tree including its R11 rules; no parameters."""
         # Run destructive targets in an isolated input tree, never this checkout.
         scratch = Path(self.work.name)
         shutil.copyfile(ROOT / "Makefile", scratch / "Makefile")
+        (scratch / "tools").mkdir()
+        shutil.copyfile(ROOT / "tools/r11.mk", scratch / "tools/r11.mk")
         source = scratch / "keep.cc"
         source.write_text("// preserve source\n")
         for name in ["build", "test-results", ".deps"]:

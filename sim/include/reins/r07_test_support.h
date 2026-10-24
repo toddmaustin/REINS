@@ -107,7 +107,9 @@ public:
     ~PinBench() {
         if (job && job->owned) { ++evidence.canceled; job->owned=false; }
         Verilated::threadContextp(&context); dut.final();
+#if VM_COVERAGE
         context.coveragep()->write((evidence.directory/"coverage"/("bench-"+std::to_string(id)+".dat")).c_str());
+#endif
 #if VM_TRACE_FST
         if (trace) trace->close();
 #endif

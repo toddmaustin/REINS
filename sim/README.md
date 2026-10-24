@@ -379,6 +379,53 @@ scenario but need not produce the same signature bytes. See the
 [R10c guide](../docs/R10C_FULL_RTL.md) for exact work formulas, fault domains,
 production ports, measured timing and remaining qualification assumptions.
 
+### R11 campaigns, replay and release review
+
+R11 adds repeatable release review around the existing model and RTL. The SPI
+campaign uses the same mode-0 pin driver and independent byte/state model as R07;
+it does not substitute model results for an RTL verdict. The two-pass fault cases
+retain legitimate prior authority credit and check that repeated rejected attempts
+cannot accumulate authorization.
+
+| Source | Purpose and operation |
+|---|---|
+| [`r11_spi_tests.cc`](tests/r11_spi_tests.cc) | Small boundary corpus, bounded deterministic byte fuzz and explicit trace replay; saves actions before execution |
+| [`r11_fault_tests.cc`](tests/r11_fault_tests.cc) | Three attempts each for persistent shared read corruption, repeated permissive comparison and sticky coherent identity glitches; records actual permit/votes/expiry |
+| [`reference_tests.cc`](tests/reference_tests.cc) | Expected violated-assumption example showing why predictable future nonces permit stockpiled valid grants |
+| [`fixtures/r11`](fixtures/r11) | Short hole, partial-BEGIN and stale-token traces |
+| [`sim/formal`](formal) | Actual-RTL arithmetic, seal and controller wrappers; `FORMAL` monitors add no hardware interface |
+| [`r11_reset_tb.sv`](rtl/r11_reset_tb.sv) | Separate Icarus four-state local guard/actuator reset, X/Z and static-rail checks |
+| [`run_campaigns.py`](../tools/run_campaigns.py) | Finite budgets and Make builds/test groups through the normal timestamped result collector |
+| [`minimize_replay.py`](../tools/minimize_replay.py) | Reproduces the same failed assertion twice, deletes action chunks, verifies one-minimality and retains every candidate/log |
+| [`campaign_report.py`](../tools/campaign_report.py) | Actual execution/event/coverage results, source identity, budgets and requirement/state reports |
+| [`qualification_checks.py`](../tools/qualification_checks.py) | Separate formal, generic component synthesis, four-state reset and structural CDC inventory with explicit limits |
+| [`tool_versions.py`](../tools/tool_versions.py) | Actual host versions and generated non-instrumented command/flag and executable hashes |
+| [`RELEASE_REQUIREMENTS.json`](../docs/RELEASE_REQUIREMENTS.json) | Required groups/case counts, requirement witnesses, sparse states and remaining gaps |
+
+```sh
+make r11-tests
+make fuzz-smoke CAMPAIGN_SEEDS=2 CAMPAIGN_ITERATIONS=128
+make replay REPLAY=sim/fixtures/r11/hole.trace
+make fault
+make production-tests
+make release-check JOBS=2
+```
+
+The full suite includes the R11 SPI cases and repeated faults; quick tests keep
+the small SPI corpus and omit extended campaigns. `release-check` additionally
+runs independently seeded campaigns, builds `reins_device` itself and executes
+SPI ARM/RENEW with `INSTRUMENT=0 SANITIZE=0 RTL_TRACE=0`. The audit reads actual
+generated settings; C++ scoreboards and functional RTL protection remain enabled.
+
+Start with `campaign-report/campaign.md`. JSON reports keep actual counts,
+timings, fault durations/outcomes, critical-state witnesses and requirement gaps.
+`coverage.json` retains every uncovered source point; a hit or entered state alone
+earns no safety acceptance credit. CDC inventory requires manual review, and the
+four-state check covers local guards/actuators rather than physical power behavior.
+See [R11_LOCAL_RELEASE.md](../docs/R11_LOCAL_RELEASE.md) for grammar, minimization,
+budgets, proof assumptions, CI and remaining gaps. Current test authorities have
+no aggregate four-candidate rolling admission ledger.
+
 ### R10b complete-verifier state
 
 `slh_verify.context_q/context_inv_q` hold the immutable key, interface, lengths and
@@ -892,8 +939,8 @@ make tests
 make sanitize-tests
 ```
 
-There is no simulator-local Makefile. Verilator 5+ is required for normal builds
-and tests; 5.032 is the tested baseline. `make software-build` builds only the
+There is no simulator-local Makefile. Normal builds and tests use Verilator
+5.008, the single active local and CI baseline. `make software-build` builds only the
 independent C++ simulator without Verilator. Address/undefined-behavior sanitizers
 instrument this project's C++ and the generated simulator, not installed OpenSSL.
 For the SHA harness, `REINS_SHA_SEED=12345 make tests` replays a chosen fuzz seed;

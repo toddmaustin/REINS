@@ -225,3 +225,29 @@ group status and output; the CLI artifact directory keeps every replay report an
 negative-case diagnostic. Full-suite review records are retained under the run's
 `baseline/review-package/` rather than discarded. Old results are deleted only by
 an explicit `make clean-results` or `make clean`, including failed or timed-out runs.
+
+## R11 execution-backed release review
+
+`make release-check` runs the full directed corpus, declared seeded byte budgets,
+repeated/persistent two-pass fault attempts and a separate normal non-instrumented
+production-top SPI ARM/RENEW. The collector records the executable-source digest,
+actual tools/flags, executed tests, clocks, wall times and every result directory.
+`fuzz-smoke`, `fault`, `nightly`, `replay` and `minimize` use that same Make/collector
+interface. Exact byte/partial-bit traces are written before execution; minimization
+must preserve the same failed assertion and cannot count a timeout or parser error
+as its target.
+
+The [release manifest](RELEASE_REQUIREMENTS.json) connects required groups/case
+counts and executed witnesses to 20 requirements. Passive monitors record actual
+entry into the controller and independent bank/lane sparse states. Reports retain
+uncovered source points and unexplained/unentered critical states; source coverage
+is not acceptance evidence. Missing directed cases, zero/short campaigns, unsafe
+fault outcomes or stale-source artifacts fail the selected acceptance checks.
+
+Formal, generic component synthesis, Icarus four-state/reset and structural CDC
+inventory remain separate records. The CDC status is `manual_review_required`;
+neither that inventory nor Verilator proves metastability behavior. Bounded and
+inductive property scopes, schedule abstraction, a reachable commit witness,
+qualification gaps and all local commands are documented in
+[R11_LOCAL_RELEASE.md](R11_LOCAL_RELEASE.md). Deferred R03 protections, whole-device
+physical/netlist signoff and authority durability/admission/capacity stay explicit.
