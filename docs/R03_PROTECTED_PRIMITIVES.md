@@ -125,10 +125,11 @@ unsupported site or replacement equal to the original value earns no executed
 safety-injection credit. Deliberate negative accounting tests check these cases.
 Required effectful sites missing from the report fail the campaign.
 
-The forged nonce-valid output case intentionally violates the source interface
-assertion. Only that case temporarily disables HDL assertions while testing the
-consumer; C++ enforcement assertions stay active, and HDL assertions are restored
-immediately after release. Other campaign cases retain HDL assertions.
+The forged nonce-valid output case and legacy site 19 (Merkle message output)
+intentionally violate source-interface assertions. Those cases temporarily
+disable HDL assertions while testing the downstream consumer; C++ enforcement
+checks stay active, and HDL assertions are restored immediately after release.
+Other campaign cases retain HDL assertions.
 
 ## Public replay without private keys
 
@@ -147,6 +148,11 @@ and mixed OTP/request contexts. Input paths must stay under the manifest directo
 The replay constructor provisions the supplied public OTP and nonce and uploads
 the saved signed bytes into the real sealed SRAM. It never generates or loads
 the original authorities' private keys.
+
+The full instrumented unit bank has a 2,400-second host timeout (7,200 under
+sanitizers) because it executes many complete signatures on Verilator 5.008.
+This changes no hardware deadline: trusted ticks, the response window and the
+5,000,000-tick receive-job budget continue to run throughout verification.
 
 This adapter supports one initial ARM context, round 1, and one to three sequential
 public jobs. Post-commit lease-storage faults and platform-only faults are tested

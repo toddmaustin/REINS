@@ -39,6 +39,7 @@ TEST_CASE("R10c either permissive root comparator alone still rejects") {
 TEST_CASE("R10c shared read data substitution across both passes cannot authorize") {
     Bench bench; bench.start(0); bench.strict=false; bench.compare_model=false; bench.inject(22);
     CHECK_FALSE(bench.finish()); CHECK(bench.codes==std::vector<unsigned>{0,0});
+    CHECK(bench.faults.executed());
     CHECK(bench.dut.votes_o==0); CHECK_FALSE(bench.dut.permit_o);
 }
 
@@ -49,8 +50,13 @@ TEST_CASE("R10c sequencer read mux capture stage count and context fault domains
         // The catalog waits for the site's owned semantic trigger. Finish has a
         // finite budget; an unreached trigger cannot count as an executed fault.
         bench.strict=false; std::cout<<"[R10C FAULT] site="<<fault<<" bank="<<unsigned(bench.dut.verifier_state_o)<<" lanes="<<bench.dut.lane_state_o<<'\n';
+        // Site 19 deliberately corrupts the asserted Merkle output contract.
+        // Test the downstream consumer's detection with C++ safety checks active,
+        // then restore HDL assertions immediately after releasing that wire.
+        if (fault==19) bench.context.assertOn(false);
         bench.inject(fault); bench.clocks_for(); CHECK_FALSE(bench.finish(false)); CHECK_FALSE(bench.dut.permit_o); CHECK(bench.dut.votes_o==0);
         CHECK(bench.faults.executed()); bench.inject(0); bench.clocks_for(3); CHECK(bench.dut.fault_clean_o);
+        if (fault==19) bench.context.assertOn(true);
     }
 }
 
@@ -59,10 +65,12 @@ TEST_CASE("R10c redundant final identity vote and commit checks detect primary c
     for (unsigned fault:{12U,13U,18U,21U}) {
         CAPTURE(fault); Bench bench; bench.start(); bench.strict=false; bench.inject(fault);
         CHECK_FALSE(bench.finish(false)); CHECK_FALSE(bench.dut.permit_o); CHECK(bench.dut.fault_o);
+        CHECK(bench.faults.executed());
         bench.inject(0); bench.clocks_for(3); CHECK(bench.dut.votes_o==0);
     }
     Bench bench; bench.start(0); CHECK(bench.finish()); bench.release(); bench.start(1); bench.strict=false; bench.inject(14);
     CHECK_FALSE(bench.finish(false)); CHECK_FALSE(bench.dut.permit_o); CHECK(bench.dut.fault_o);
+    CHECK(bench.faults.executed()); bench.inject(0); bench.clocks_for(3); CHECK(bench.dut.fault_clean_o);
 }
 
 // Abort or reset before and between passes invalidates old sparse codes and scrubs ownership without creating an integrity fault.
@@ -91,6 +99,7 @@ TEST_CASE("R10c sealed write attempts during either pass are inhibited") {
 TEST_CASE("R10c stalled SHA cannot stop trusted deadline progress") {
     Corpus short_records({100'000,40'000,30'000}); Bench bench(short_records); bench.start(); bench.strict=false; bench.inject(15);
     while (bench.now<30'010) bench.clocks_for();
+    CHECK(bench.faults.executed());
     CHECK(bench.now>=30'000); CHECK_FALSE(bench.dut.permit_o); CHECK(bench.dut.votes_o==0); CHECK_FALSE(bench.dut.verifier_fault_o);
     bench.inject(0); bench.clocks_for(40); CHECK_FALSE(bench.dut.completion_valid_o); CHECK(bench.codes.empty());
 }

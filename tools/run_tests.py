@@ -223,6 +223,9 @@ def suite_steps(suite, build_dir, test_filter, make_command="make", configuratio
     # Instrumenting generated RTL is substantially slower than native simulation;
     # hardware tick deadlines stay identical in both configurations.
     r07_timeout = 7200 if configuration == "sanitize" else 1200
+    # The expanded fault-instrumented bank executes many complete signatures on
+    # Verilator 5.008. This host wall-time limit is separate from RTL tick budgets.
+    r10c_timeout = 7200 if configuration == "sanitize" else 2400
     if suite == "software":
         groups = {"sim-directed", "baseline", "tool-regressions", "reference-fixtures", "sim-report", "reference-report"}
         return [step for step in suite_steps("full", build_dir, test_filter, make_command, configuration) if step.name in groups]
@@ -236,7 +239,7 @@ def suite_steps(suite, build_dir, test_filter, make_command="make", configuratio
         command = [str(build_dir / "r10c-rtl/reins-r10c-tests"), "--no-colors", "--duration"]
         if test_filter:
             command += ["--test-case=" + test_filter]
-        result = [Step("r10c-rtl", command, timeout=r07_timeout, count_kind="doctest")]
+        result = [Step("r10c-rtl", command, timeout=r10c_timeout, count_kind="doctest")]
         if suite == "r10c":
             result.append(Step("r10c-integration", [str(build_dir / "r10c-integration/reins-r10c-integration-tests"), "--no-colors", "--duration"], timeout=7200, count_kind="doctest"))
         result.append(Step("r10c-evidence", python + [str(ROOT / "tools/check_two_pass_report.py"), "--group", "both" if suite == "r10c" else "unit"], console_output=True))
@@ -349,7 +352,7 @@ def suite_steps(suite, build_dir, test_filter, make_command="make", configuratio
         if suite == "quick":
             r10c += ["--test-case-exclude=*extended*"]
             integrated += ["--test-case-exclude=*extended*"]
-        steps.insert(16, Step("r10c-rtl", r10c, timeout=r07_timeout, count_kind="doctest"))
+        steps.insert(16, Step("r10c-rtl", r10c, timeout=r10c_timeout, count_kind="doctest"))
         steps.insert(17, Step("r10c-integration", integrated, timeout=7200, count_kind="doctest"))
         steps.insert(18, Step("r10c-evidence", python + [str(ROOT / "tools/check_two_pass_report.py")], console_output=True))
         r11 = [str(build_dir / "r11-spi/reins-r11-spi-tests"), "--no-colors", "--duration"]
