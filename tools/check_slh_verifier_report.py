@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 # License: https://polyformproject.org/licenses/noncommercial/1.0.0/
 
-"""Validate retained R10b public provenance, real operation traces and completed passes."""
+"""Validate retained SLH verifier public provenance, real operation traces and completed passes."""
 import hashlib
 import json
 import os
@@ -10,9 +10,9 @@ from pathlib import Path
 
 
 def check(directory):
-    """Validate actual R10b artifacts in directory, including filtered and fault runs."""
+    """Validate actual SLH verifier artifacts in directory, including filtered and fault runs."""
     performance = json.loads((directory / "performance.json").read_text())
-    assert performance["mode"] == "rtl-r10b-single-pass" and performance["exit_code"] == 0
+    assert performance["mode"] == "rtl-slh-verify-unit" and performance["exit_code"] == 0
     provenance = json.loads((directory / "oracle-provenance.json").read_text())
     assert provenance["generator_version"] == 1 and len(provenance["cases"]) == 30
     assert sum(case["expected"] for case in provenance["cases"]) == 6
@@ -52,12 +52,12 @@ def check(directory):
                     assert event["cycles"] > 64 * event["starts"]
                     completed += 1
     assert completed == performance["real_pass_evaluations"]
-    print(f"PASS: R10b oracle hashes, physical traces and {completed} complete real passes")
+    print(f"PASS: SLH verifier oracle hashes, physical traces and {completed} complete real passes")
 
 
 def main():
     """Locate the actual collector output from its environment; no parameters."""
-    check(Path(os.environ["REINS_TEST_OUTPUT_DIR"]).parent / "r10b-rtl")
+    check(Path(os.environ["REINS_TEST_OUTPUT_DIR"]).parent / "slh-verify-unit")
 
 
 if __name__ == "__main__":

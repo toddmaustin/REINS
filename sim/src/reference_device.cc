@@ -372,7 +372,7 @@ bool Device::receive_chunk(std::uint64_t token, std::size_t offset,
 bool Device::receive_finish(std::uint64_t token, Latency latency) {
     auto& d=*impl_;
     if (!d.receive || d.receive->token!=token || d.receive->verifier_token || d.receive->offset!=d.receive->input.reply.size()) return false;
-    if (d.trace) diagnostic::write_input(*d.trace,d.receive->input,"R02 sealed receive job","two passes plus current-context/deadline/distinct-vote gates");
+    if (d.trace) diagnostic::write_input(*d.trace,d.receive->input,"Reference: sealed receive job","two passes plus current-context/deadline/distinct-vote gates");
     try { d.receive->verifier_token=d.verifier.submit(d.receive->input,latency); }
     catch (const std::overflow_error& error) { alarm(error.what()); return false; }
     d.outcome=ReceiveOutcome::verifying;

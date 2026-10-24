@@ -14,7 +14,7 @@ from reference_fixtures import load as load_reference
 
 
 def main():
-    """Parse output location and derive baseline/R02 binary fixtures without editing sources."""
+    """Parse output location and derive baseline/Reference binary fixtures without editing sources."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()

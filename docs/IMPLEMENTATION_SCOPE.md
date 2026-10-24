@@ -1,13 +1,10 @@
 # Fixed implementation scope and source of truth
 
-This establishes section 1 of the [implementation plan](IMPLEMENTATION_PLAN.md).
 The supported subset is fixed at **three authorities and a two-authority quorum**.
-The manifest and source checks enforce the development profile declaration and
-the supplied fixture's OTP profile header. Full configuration validity and runtime
-profile rejection in RTL remain later implementation work.
-The R02 C++ model now performs the digital configuration checks and rejects
-non-3/2 provisioning itself; its physical commissioning/startup inputs are modeled
-events, not qualified OTP, reset, clock or entropy hardware.
+The C++ model and RTL validate that profile and reject other provisioned N/Q
+combinations. The source manifest separately enforces the declared profile and
+hashes of the normative/review inputs. Physical OTP/reset/clock/entropy inputs
+still require qualified technology implementations.
 
 ## Supported digital implementation
 
@@ -28,12 +25,13 @@ events, not qualified OTP, reset, clock or entropy hardware.
 
 The machine-readable declaration is
 [implementation_baseline.json](implementation_baseline.json). It records intended
-scope and source hashes; it is not yet an RTL package or a runtime configuration
-parser. The baseline checker rejects missing, unknown, altered, or incorrectly
+scope and source hashes; it is a source declaration, separate from the RTL
+configuration parser. The baseline checker rejects missing, unknown, altered, or incorrectly
 typed profile declarations, omitted/reclassified baseline sources, and a competing
 normative source. Its fixture header check requires the fixed 3/2 profile, magic,
 schema/wire/authority identifiers, 272-byte image length, and reserved zero bytes
-10-11. It does not yet validate every OTP field or authorize execution.
+10-11. It checks the source/profile declaration; full OTP field checks and execution
+authorization belong to the model and RTL.
 
 The general N/Q arithmetic in the review validator does not expand this
 implementation beyond 3/2. Internal-interface and nonempty-context NIST algorithm
@@ -52,7 +50,7 @@ local enforcement path. There is no immediate remote KILL message. The profile
 also has no device signing secret, session field, enrollment exchange, writable
 runtime key set, or alternate signature format.
 
-The first deliverable is a digital research implementation. Physical entropy,
+The implementation is a digital research device. Physical entropy,
 oscillator floors, sensors, cold-reset recognition, OTP/SRAM macros, independent
 fault containment, on-die guards and final isolation require separate platform
 qualification. A deterministic entropy model, software-backed verifier, or passing
@@ -85,9 +83,9 @@ hashes remain in the NIST JSON's `provenance` field.
 
 The existing signed fixture pair covers RENEW round 3 for slots 0 and 1 at Merkle
 depth 2. Its signatures cannot be reused after modifying a bound message. Initial
-ARM, slot 2, other quorum pairs and successive rounds require additional fixtures
-with new test keys when the original private keys are unavailable. Preserve the
-supplied corpus and its provenance; add new test artifacts separately.
+ARM, slot 2, other quorum pairs and successive rounds are covered by the additional
+[public reference corpus](../sim/fixtures/README.md), signed with independent test
+keys. Preserve the supplied corpus and its provenance; add new artifacts separately.
 
 ## Discrepancies and intentional baseline changes
 

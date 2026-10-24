@@ -24,7 +24,7 @@ module reins_verifier (
     output logic [13:0] read_address_o, read_address_inverse_o,
     input logic read_valid_i,
     input logic [7:0] read_data_i,
-    // Held sparse result and complete provenance; final live gating precedes the R06 edge checks.
+    // Held sparse result and complete provenance; final live gating precedes the CONTROLLER edge checks.
     output logic completion_valid_o,
     input logic completion_ready_i,
     output logic [63:0] completion_run_o, completion_round_o, completion_token_o, completion_epoch_o,

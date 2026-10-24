@@ -24,7 +24,7 @@ def main():
     directory = Path(os.environ["REINS_TEST_OUTPUT_DIR"])
     instructions = prepare(args.manifest, directory / "replay")
     environment = dict(os.environ, REINS_FAULT_REPLAY_INPUT=str(instructions))
-    raise SystemExit(subprocess.call([str(args.binary), "--no-colors", "--duration", "--test-case=R03 public fault manifest replay", "--no-skip"], env=environment))
+    raise SystemExit(subprocess.call([str(args.binary), "--no-colors", "--duration", "--test-case=*public fault manifest replay", "--no-skip"], env=environment))
 
 
 if __name__ == "__main__":

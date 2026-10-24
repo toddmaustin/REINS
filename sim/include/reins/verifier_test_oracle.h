@@ -4,7 +4,7 @@
 
 #pragma once
 #include "reins/slh_test_oracle.h"
-namespace reins::sim::r10c_test {
+namespace reins::sim::verifier_test {
 using namespace slh_test;
 struct Oracle {
     std::array<std::deque<Block>,3> blocks;
@@ -28,10 +28,10 @@ inline Oracle reconstruct_job(const VerificationInput& input) {
     }
     result.batch_root=node; CHECK(node==bytes(expected_batch_root(input)));
     Bytes message{'R','E','I','N','S','-','B','A','T','C','H','-','v','2'}; append(message,node);
-    Input si{"r10c",Bytes(cfg.keys.at(input.tag.slot).begin(),cfg.keys.at(input.tag.slot).end()),Bytes(input.reply.begin(),input.reply.begin()+7856),message,{},false};
+    Input si{"verifier",Bytes(cfg.keys.at(input.tag.slot).begin(),cfg.keys.at(input.tag.slot).end()),Bytes(input.reply.begin(),input.reply.begin()+7856),message,{},false};
     auto slh=reconstruct(si); result.blocks[1]=std::move(slh.blocks[0]); result.blocks[2]=std::move(slh.blocks[1]);
     result.stages=std::move(slh.stages); result.root=std::move(slh.root);
     for (const auto& queue:result.blocks) { result.work+=queue.size(); }
     return result;
 }
-} // namespace reins::sim::r10c_test
+} // namespace reins::sim::verifier_test

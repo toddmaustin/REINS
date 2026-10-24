@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 // License: https://polyformproject.org/licenses/noncommercial/1.0.0/
 
-// One independent R09 verification stage. Recompute C_cfg, construct the local
+// One independent MERKLE verification stage. Recompute C_cfg, construct the local
 // leaf, and reconstruct the root using this instance's own real SHA datapath.
 // A successful response is Merkle evidence ONLY; it never emits a vote/accept code.
 `default_nettype none
@@ -15,15 +15,15 @@ module reins_merkle_pass #(
     input logic req_valid_i,
     output logic req_ready_o,
     input logic [2175:0] configuration_i, // Fresh independently read checked OTP on each pass start.
-    input logic [255:0] configuration_digest_i, // Protected R05 C_cfg, compared with freshly computed SHA-256.
-    input logic [1023:0] request_i,       // LOCAL immutable R06 request snapshot, not received reply bytes.
+    input logic [255:0] configuration_digest_i, // Protected PLATFORM C_cfg, compared with freshly computed SHA-256.
+    input logic [1023:0] request_i,       // LOCAL immutable CONTROLLER request snapshot, not received reply bytes.
     input logic [63:0] run_i, round_i, token_i, epoch_i, // Independent protected context identity.
     input logic [1:0] slot_i,
     input logic [13:0] reply_length_i,    // Actual sealed extent: exactly 7860+32*d, d=0..20.
     output logic read_valid_o,
-    output logic [13:0] read_address_o, read_address_inverse_o, // R07 sealed SRAM address/control protection.
+    output logic [13:0] read_address_o, read_address_inverse_o, // SPI sealed SRAM address/control protection.
     input logic read_valid_i,
-    input logic [7:0] read_data_i,        // Valid only after R07 ECC/address/owner checks; reread before use.
+    input logic [7:0] read_data_i,        // Valid only after SPI ECC/address/owner checks; reread before use.
     output logic rsp_valid_o,
     input logic rsp_ready_i,
     output logic [1:0] rsp_error_o,       // 0=root constructed, 1=format/context, 2=C_cfg binding, 3=integrity/stall.
@@ -169,7 +169,7 @@ module reins_merkle_pass #(
         .identity_i(otp_q[2047 -: 256]), .request_kind_i(request_byte(5)), .slot_i(slot_q),
         .round_i(round_q), .nonce_i(request_q[383 -: 256]), .grant_o(constructed_grant), .valid_o(constructed_valid)
     );
-    // Structural context checks precede hashing. Full OTP provisioning/lifecycle remains R05's responsibility.
+    // Structural context checks precede hashing. Full OTP provisioning/lifecycle remains PLATFORM's responsibility.
     assign framing_ok=constructed_valid && run_q!=0 && token_q!=0 && epoch_q!=0 &&
         request_q[1023 -: 40]==40'h5245494e02 && request_byte(6)=={6'd0,slot_q} && request_byte(7)==0 &&
         request_q[959 -: 256]==otp_q[2047 -: 256] && request_q[703 -: 256]==0 &&
@@ -313,8 +313,8 @@ module reins_merkle_pass #(
     end
 `ifndef SYNTHESIS
     initial begin
-        assert (PASS_ID==1 || PASS_ID==2) else $fatal(1,"R09 pass identity must be 1 or 2");
-        assert (MAX_READ_STALL>0) else $fatal(1,"R09 read stall bound must be positive");
+        assert (PASS_ID==1 || PASS_ID==2) else $fatal(1,"Merkle: pass identity must be 1 or 2");
+        assert (MAX_READ_STALL>0) else $fatal(1,"Merkle: read stall bound must be positive");
     end
     // A live identity change is cancellation, including while a response is held.
     assert property (@(posedge clk_i) disable iff (!rst_ni || cancel_i || !context_valid_i || !live_same || fault_o)

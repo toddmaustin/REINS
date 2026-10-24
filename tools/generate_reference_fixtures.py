@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 # License: https://polyformproject.org/licenses/noncommercial/1.0.0/
 
-"""Explicitly regenerate public R02 inputs, retaining generation output and provenance."""
+"""Explicitly regenerate public Reference inputs, retaining generation output and provenance."""
 import argparse
 from datetime import datetime, timezone
 import json
@@ -40,7 +40,7 @@ def main():
                 "artifacts": artifacts, "sha256": {name: sha((ROOT / name).read_bytes()) for name in artifacts}}
     MANIFEST.write_text(json.dumps(manifest, indent=2) + "\n")
     (run / "manifest.json").write_text(MANIFEST.read_text())
-    print(f"Generated {len(data['records'])} public R02 records; private keys discarded; output retained at {run}")
+    print(f"Generated {len(data['records'])} public Reference records; private keys discarded; output retained at {run}")
 
 
 if __name__ == "__main__":

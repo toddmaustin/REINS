@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 # License: https://polyformproject.org/licenses/noncommercial/1.0.0/
 
-"""Audit actual R03 trigger/application/effect/release evidence and retain public replay manifests."""
+"""Audit actual Protected state trigger/application/effect/release evidence and retain public replay manifests."""
 import argparse
 import hashlib
 import json
@@ -25,7 +25,7 @@ def report(directory):
     catalog = json.loads(catalog_path.read_text())
     inventory = {site["id"]: site for site in catalog["sites"]}
     applied, released, armed, jobs = [], {}, [], {}
-    for group, filename in (("r03-platform", "conditioner-events.jsonl"), ("r03-verifier", "events.jsonl"), ("r11-repeated-fault", "events.jsonl")):
+    for group, filename in (("platform-protection", "conditioner-events.jsonl"), ("verifier-protection", "events.jsonl"), ("persistent-fault", "events.jsonl")):
         for event in events(directory / group / filename):
             event = dict(event, group=group)
             key = (group, event.get("bench"), event.get("site"))
@@ -44,7 +44,7 @@ def report(directory):
     summary_path=directory / "summary.json"
     if summary_path.is_file():
         statuses={step["name"]:step["status"] for step in json.loads(summary_path.read_text())["steps"]}
-        for group in ("r03-platform","r03-verifier","r11-repeated-fault"):
+        for group in ("platform-protection","verifier-protection","persistent-fault"):
             if statuses.get(group)!="passed":
                 errors.append(f"campaign group did not pass: {group}")
     else:
@@ -62,7 +62,7 @@ def report(directory):
         errors.append("negative accounting cases did not execute")
     manifests = []
     for event in executed:
-        if event["group"] != "r03-verifier" or not jobs.get((event["group"],event["bench"])):
+        if event["group"] != "verifier-protection" or not jobs.get((event["group"],event["bench"])):
             continue
         saved_jobs = jobs[event["group"],event["bench"]]
         # Replays inject before the last public job. Post-commit lease sites need
@@ -98,7 +98,7 @@ def report(directory):
         unexecuted_sites=sorted(set(inventory)-covered),public_replays=manifests,
         limitation="Logical sites and selected faults only; not exhaustive multi-site or physical-fault qualification.")
     (directory / "protected-report.json").write_text(json.dumps(result,indent=2)+"\n")
-    print(f"R03: {len(executed)} effectful applications; {len(covered)} sites; {len(no_effect)} no-effect; {len(missed)} missed/unsupported; {len(manifests)} public replays")
+    print(f"Protected state: {len(executed)} effectful applications; {len(covered)} sites; {len(no_effect)} no-effect; {len(missed)} missed/unsupported; {len(manifests)} public replays")
     for error in errors:
         print("ERROR: "+error)
     return not errors

@@ -17,12 +17,12 @@ namespace {
 const std::filesystem::path fixtures=REINS_FIXTURE_DIR;
 const std::filesystem::path source=REINS_SOURCE_DIR;
 
-// Load the public signed reply identified by name from the derived R02 corpus.
+// Load the public signed reply identified by name from the derived Reference corpus.
 Bytes reply(std::string_view name) { return fixture::read(fixtures/("r02-"+std::string(name)+"-reply.bin")); }
 // Print the device's actual state beside expected behavior and return its snapshot.
 Snapshot observe(const Device& device, std::string_view expected) {
     const auto s=device.snapshot();
-    std::cout << "\n[R02 STATE] expected: " << expected << "\n  actual: tick=" << s.tick
+    std::cout << "\n[Reference STATE] expected: " << expected << "\n  actual: tick=" << s.tick
         << " run_tick=" << s.run_tick << " state=" << state_name(s.state) << " permit=" << s.permit
         << " round=" << s.round << " votes=" << s.votes << " hold=" << s.entropy_hold
         << " expiry=" << (s.lease_expiry ? std::to_string(*s.lease_expiry) : "none")
@@ -83,7 +83,7 @@ std::size_t count(const Device& device, std::string_view kind) {
 }
 
 // Demonstrate the explicitly violated unpredictability assumption; fresh acquisition alone cannot defeat known future challenges.
-TEST_CASE("R11 predictable future nonce permits stockpiled correctly signed grants under a violated assumption") {
+TEST_CASE("Reference: predictable future nonce permits stockpiled correctly signed grants under a violated assumption") {
     LiveRig rig;
     std::array<Bytes,2> stockpiled;
     for (unsigned slot=0;slot<2;slot++) {
@@ -98,11 +98,11 @@ TEST_CASE("R11 predictable future nonce permits stockpiled correctly signed gran
         CHECK(rig.approve(slot).empty()); REQUIRE(rig.device.upload(slot,stockpiled[slot],{1,1,false}));
         rig.device.advance_to(rig.device.snapshot().tick+2);
     }
-    std::cout<<"[R11 ASSUMPTION] Predictable future nonce matched an earlier signature. This expected authorization demonstrates why physical unpredictability is required.\n";
+    std::cout<<"[Campaign ASSUMPTION] Predictable future nonce matched an earlier signature. This expected authorization demonstrates why physical unpredictability is required.\n";
     CHECK(rig.device.snapshot().lease_expiry==rig.config.timing.period+rig.config.timing.lease);
 }
 
-TEST_CASE("R02: public corpus verifies ARM every slot, RENEW and proof depths") {
+TEST_CASE("Reference: public corpus verifies ARM every slot, RENEW and proof depths") {
     const auto config=Configuration::parse(fixture::read(fixtures/"r02-otp.bin"));
     std::ifstream index(fixtures/"r02-index.txt"); REQUIRE(bool(index));
     std::string name; unsigned slot,depth,executed=0;
@@ -110,7 +110,7 @@ TEST_CASE("R02: public corpus verifies ARM every slot, RENEW and proof depths") 
         const auto body=fixture::read(fixtures/("r02-"+name+"-request.bin"));
         std::uint64_t round=0; for (unsigned i=72;i<80;++i) round=(round<<8)|body.at(i);
         VerificationInput input{{1,round,static_cast<std::uint8_t>(slot)},config.otp,body,reply(name)};
-        diagnostic::write_input(std::cout,input,"public R02 corpus: "+name,"verified; independent Python/root cross-check also runs");
+        diagnostic::write_input(std::cout,input,"public Reference corpus: "+name,"verified; independent Python/root cross-check also runs");
         CHECK(verify_reply(input)==Verdict::verified);
         const auto root=expected_batch_root(input);
         CHECK(Bytes(root.begin(),root.end())==fixture::read(fixtures/("r02-"+name+"-root.bin")));
@@ -127,7 +127,7 @@ TEST_CASE("R02: public corpus verifies ARM every slot, RENEW and proof depths") 
     }
 }
 
-TEST_CASE("R02: provisioning validates and permanently fixes the 3/2 configuration") {
+TEST_CASE("Reference: provisioning validates and permanently fixes the 3/2 configuration") {
     const auto image=fixture::read(fixtures/"r02-otp.bin");
     Device device;
     CHECK_FALSE(device.close(true,true)); CHECK_FALSE(device.program(image,false,true));
@@ -149,7 +149,7 @@ TEST_CASE("R02: provisioning validates and permanently fixes the 3/2 configurati
     CHECK_FALSE(device.program(image,true,true));
 }
 
-TEST_CASE("R02: every distinct pair authorizes an issue-anchored ARM lease") {
+TEST_CASE("Reference: every distinct pair authorizes an issue-anchored ARM lease") {
     for (const auto pair : {std::array<unsigned,2>{0,1},{0,2},{1,2}}) {
         Rig rig;
         std::cout << "\n[QUORUM PAIR] " << pair[0] << ',' << pair[1] << std::endl;
@@ -163,7 +163,7 @@ TEST_CASE("R02: every distinct pair authorizes an issue-anchored ARM lease") {
     }
 }
 
-TEST_CASE("R02: one signer, duplicates and mixed contexts cannot assemble a quorum") {
+TEST_CASE("Reference: one signer, duplicates and mixed contexts cannot assemble a quorum") {
     for (unsigned slot=0;slot<3;++slot) {
         Rig rig;
         for (unsigned repeat=0;repeat<3;++repeat) rig.deliver(slot,"arm-s"+std::to_string(slot)+"-d0");
@@ -187,7 +187,7 @@ TEST_CASE("R02: one signer, duplicates and mixed contexts cannot assemble a quor
     CHECK_FALSE(observe(rig.device,"fresh cold-run nonce also rejects saved signatures").permit);
 }
 
-TEST_CASE("R02: public semantic replays cover each pair, successive renewals and withholding expiry") {
+TEST_CASE("Reference: public semantic replays cover each pair, successive renewals and withholding expiry") {
     for (const auto name : {"arm-pair-01","arm-pair-02","arm-pair-12","renew-withholding","same-tick-fault"}) {
         const auto script=source/"sim/fixtures"/(std::string(name)+".trace");
         auto first=replay(script,fixtures,&std::cout);
@@ -204,7 +204,7 @@ TEST_CASE("R02: public semantic replays cover each pair, successive renewals and
     }
 }
 
-TEST_CASE("R02: publication waits for fresh entropy without shifting issue or expiry") {
+TEST_CASE("Reference: publication waits for fresh entropy without shifting issue or expiry") {
     Rig rig(false);
     CHECK_FALSE(rig.device.request(0)); CHECK(rig.device.snapshot().entropy_hold);
     rig.device.advance_to(50); REQUIRE(entropy(rig.device));
@@ -224,7 +224,7 @@ TEST_CASE("R02: publication waits for fresh entropy without shifting issue or ex
     CHECK_FALSE(entropy(unhealthy.device)); CHECK_FALSE(unhealthy.device.request(0));
 }
 
-TEST_CASE("R02: W less than P closes publication without advancing the fixed round schedule") {
+TEST_CASE("Reference: W less than P closes publication without advancing the fixed round schedule") {
     const auto config=Configuration::parse(fixture::read(fixtures/"r02-otp.bin"));
     Device device;
     boot(device,make_configuration(config.keys,{95,10,5}),false);
@@ -237,7 +237,7 @@ TEST_CASE("R02: W less than P closes publication without advancing the fixed rou
     device.advance_to(15); CHECK_FALSE(device.request(0)); CHECK_FALSE(device.snapshot().permit);
 }
 
-TEST_CASE("R02: B equality rejects second pass while one-tick-earlier completion commits") {
+TEST_CASE("Reference: B equality rejects second pass while one-tick-earlier completion commits") {
     for (unsigned extra : {0u,1u}) {
         Rig rig; rig.deliver(0,"arm-s0-d0");
         rig.device.advance_to(30'000'000-3);
@@ -247,7 +247,7 @@ TEST_CASE("R02: B equality rejects second pass while one-tick-earlier completion
     }
 }
 
-TEST_CASE("R02: receive ownership enforces sequential complete chunks and immutable sealing") {
+TEST_CASE("Reference: receive ownership enforces sequential complete chunks and immutable sealing") {
     Rig rig;
     const auto bytes=reply("arm-s0-d0");
     CHECK_FALSE(rig.device.receive_begin(0,7856));
@@ -268,7 +268,7 @@ TEST_CASE("R02: receive ownership enforces sequential complete chunks and immuta
     const auto next=rig.device.receive_begin(1,bytes.size()); REQUIRE(next.has_value()); CHECK(*next!=*token);
 }
 
-TEST_CASE("R02: absolute receive budget includes both passes and cannot be extended by progress") {
+TEST_CASE("Reference: absolute receive budget includes both passes and cannot be extended by progress") {
     Rig rig;
     const auto bytes=reply("arm-s0-d0");
     const auto token=rig.device.receive_begin(0,bytes.size()); REQUIRE(token.has_value());
@@ -284,7 +284,7 @@ TEST_CASE("R02: absolute receive budget includes both passes and cannot be exten
     CHECK(verifying.device.snapshot().votes==0);
 }
 
-TEST_CASE("R02: stale cancelled completion cannot vote or release a newer receive job") {
+TEST_CASE("Reference: stale cancelled completion cannot vote or release a newer receive job") {
     Rig rig;
     REQUIRE(rig.device.upload(0,reply("arm-s0-d0"),{10,10,false}));
     const auto old=rig.device.snapshot().receive_token;
@@ -300,7 +300,7 @@ TEST_CASE("R02: stale cancelled completion cannot vote or release a newer receiv
     rig.deliver(0,"arm-s0-d0"); CHECK(rig.device.snapshot().permit);
 }
 
-TEST_CASE("R02: entropy hold preserves only the old lease and requires cold fresh qualification") {
+TEST_CASE("Reference: entropy hold preserves only the old lease and requires cold fresh qualification") {
     Rig rig; rig.deliver(0,"arm-s0-d0"); rig.deliver(1,"arm-s1-d0");
     rig.device.entropy_failure("test source unavailable");
     CHECK(rig.device.snapshot().permit); CHECK_FALSE(rig.device.request(0));
@@ -324,7 +324,7 @@ TEST_CASE("R02: entropy hold preserves only the old lease and requires cold fres
     CHECK_FALSE(entropy(across_runs.device)); CHECK(across_runs.device.snapshot().entropy_hold);
 }
 
-TEST_CASE("R02: resets, general faults and untrusted stop acknowledgements cannot preserve permission") {
+TEST_CASE("Reference: resets, general faults and untrusted stop acknowledgements cannot preserve permission") {
     Rig rig; rig.deliver(0,"arm-s0-d0"); rig.deliver(1,"arm-s1-d0");
     rig.device.reset(Reset::warm); CHECK_FALSE(rig.device.snapshot().permit);
     REQUIRE(rig.device.startup(true)); REQUIRE(entropy(rig.device,2));
@@ -339,7 +339,7 @@ TEST_CASE("R02: resets, general faults and untrusted stop acknowledgements canno
     REQUIRE(cold_token.has_value()); CHECK(*cold_token==1);
 }
 
-TEST_CASE("R02: absolute deadline arithmetic overflow fails off before publication") {
+TEST_CASE("Reference: absolute deadline arithmetic overflow fails off before publication") {
     auto config=Configuration::parse(fixture::read(fixtures/"r02-otp.bin"));
     auto image=make_configuration(config.keys,{std::numeric_limits<Tick>::max(),10,10});
     Device device;
@@ -359,7 +359,7 @@ TEST_CASE("R02: absolute deadline arithmetic overflow fails off before publicati
     CHECK(calls==1); CHECK_FALSE(future.snapshot().permit);
 }
 
-TEST_CASE("R02: equal-tick external cancellation dominates a would-be ARM commit") {
+TEST_CASE("Reference: equal-tick external cancellation dominates a would-be ARM commit") {
     for (unsigned action=0;action<4;++action) {
         Rig rig; rig.deliver(0,"arm-s0-d0");
         REQUIRE(rig.device.upload(1,reply("arm-s1-d0"),{1,1,false}));
@@ -375,7 +375,7 @@ TEST_CASE("R02: equal-tick external cancellation dominates a would-be ARM commit
     }
 }
 
-TEST_CASE("R02: long public timelines replay semantic events deterministically") {
+TEST_CASE("Reference: long public timelines replay semantic events deterministically") {
     std::string expected;
     for (unsigned trial=0;trial<2;++trial) {
         Rig rig;
@@ -393,7 +393,7 @@ TEST_CASE("R02: long public timelines replay semantic events deterministically")
     }
 }
 
-TEST_CASE("R02 host authorities: independent policy, real batching, delay and untrusted relay") {
+TEST_CASE("Reference: host authorities: independent policy, real batching, delay and untrusted relay") {
     LiveRig rig;
     const auto foreign=Configuration::parse(fixture::read(fixtures/"r02-otp.bin"));
     CHECK_THROWS_AS(rig.authorities[0].register_device(foreign),std::invalid_argument);
@@ -428,7 +428,7 @@ TEST_CASE("R02 host authorities: independent policy, real batching, delay and un
     REQUIRE(rig.device.startup(true)); REQUIRE(entropy(rig.device,2)); CHECK(rig.approve(1).empty());
 }
 
-TEST_CASE("R02 host authorities: two withholding policies force expiry while the third signs fresh renewals") {
+TEST_CASE("Reference: host authorities: two withholding policies force expiry while the third signs fresh renewals") {
     LiveRig rig;
     rig.deliver(0); rig.deliver(1); CHECK(rig.device.snapshot().permit);
     rig.authorities[0].set_policy({true,true,true,0,0}); rig.authorities[1].set_policy({true,true,true,0,0});
@@ -442,7 +442,7 @@ TEST_CASE("R02 host authorities: two withholding policies force expiry while the
     CHECK(rig.device.snapshot().state==State::stopping); CHECK(count(rig.device,"lease_committed")==1);
 }
 
-TEST_CASE("R02 host authorities: current-expiry equality dominates renewal even before B") {
+TEST_CASE("Reference: host authorities: current-expiry equality dominates renewal even before B") {
     LiveRig rig({95,10,10}); rig.deliver(0); rig.deliver(1);
     rig.device.advance_to(90); REQUIRE(entropy(rig.device)); rig.deliver(0);
     auto signed_reply=rig.approve(1); REQUIRE(signed_reply.size()==1);

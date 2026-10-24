@@ -43,7 +43,7 @@ hashes are pinned too. The header/license live in `.deps/doctest-2.4.12/`; the
 verified archive is in `.deps/downloads/`. Cached files are checked before use.
 `make clean` leaves this cache for offline rebuilds; `make clean-deps` removes it.
 Python uses the system TLS trust store or `SSL_CERT_FILE` when a trusted custom
-CA bundle is needed. See the [download troubleshooting instructions](../README.md#if-the-doctest-download-reports-certificate_verify_failed).
+CA bundle is needed. See the [download troubleshooting instructions](../README.md#tls-certificates).
 
 The machine-readable policy is [crypto-backend.json](crypto-backend.json).
 `minimum_version` is 3.5.0. The `version`, `tag` and `commit` fields pin the tested
@@ -65,7 +65,7 @@ against independently expected NIST cases and the supplied Python review fixture
 System OpenSSL is not vendored or instrumented by this project's sanitizer build;
 reports identify its actual runtime version.
 The original Python verifier is an additional independent implementation; full
-tests check all 25 newly generated R02 signatures with it, in addition to the
+tests check all 25 newly generated Reference signatures with it, in addition to the
 existing original corpus. No original private keys are required.
 
 Integration reference: official OpenSSL 3.5.7
@@ -74,7 +74,7 @@ Only the explicit `algorithm_test` interface enables NIST internal/nonempty-cont
 cases. REINS reply verification and root signing always use pure encoding and an
 empty context.
 
-R04 uses first-party SHA-256 RTL under the repository license. The
+SHA-256 uses first-party SHA-256 RTL under the repository license. The
 [core selection review](sha256-core-review.md) records the pinned reusable
 candidate, BSD-2-Clause license, interface behavior and decision to implement the
 explicit chaining-state interface directly. The candidate is not a build dependency.

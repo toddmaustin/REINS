@@ -6,9 +6,9 @@
 // Independent FIPS 205 byte/block oracle; OpenSSL performs only SHA computation.
 #define OPENSSL_SUPPRESS_DEPRECATED
 #include <openssl/sha.h>
-#include "reins/r06_test_support.h"
+#include "reins/controller_test_support.h"
 namespace reins::sim::slh_test {
-using namespace r06_test;
+using namespace controller_test;
 // Append suffix to data without altering byte order.
 inline void append(Bytes& data,const Bytes& suffix) { data.insert(data.end(),suffix.begin(),suffix.end()); }
 // Encode value into count big-endian bytes.

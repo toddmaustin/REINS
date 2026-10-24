@@ -67,14 +67,14 @@ def derive(output):
         assert len(trace["stages"]) == (29 if len(signature) == 7856 else 0), name
         files = {}
         for suffix, data in (("key", key), ("signature", signature), ("message", message), ("context", context), ("stages", b"".join(trace["stages"]))):
-            path = output / f"r10b-{name}-{suffix}.bin"
+            path = output / f"slh_verify-{name}-{suffix}.bin"
             path.write_bytes(data)
             files[path.name] = hashlib.sha256(data).hexdigest()
         index.append(f"{name} {int(expected)} {int(internal)}")
         provenance.append({"case": name, "expected": expected, "python_verified": actual, "internal": internal, "files": files})
-    (output / "r10b-index.txt").write_text("\n".join(index)+"\n")
+    (output / "slh_verify-index.txt").write_text("\n".join(index)+"\n")
     sources = [Path(__file__).resolve(), source / "slh_verify.py", source / "SLH_DSA_ACVP_vectors.json", source / "REINS_signed_batch_fixtures.json"]
-    (output / "r10b-provenance.json").write_text(json.dumps({"generator_version": 1,
+    (output / "slh_verify-provenance.json").write_text(json.dumps({"generator_version": 1,
         "sources": {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest() for p in sources}, "cases": provenance}, indent=2)+"\n")
 
 

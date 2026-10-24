@@ -6,7 +6,7 @@
 // completion identity and a separate digest hand-off around the real SHA backend.
 `default_nettype none
 // MAX_BYTES bounds a body; OFFSET_BITS must represent every admitted offset.
-// R10a keeps defaults; R10b uses 8500/14 for official algorithm messages.
+// SLH components keeps defaults; SLH verifier uses 8500/14 for official algorithm messages.
 module slh_hash_transaction #(parameter int MAX_BYTES=582, OFFSET_BITS=10) (
     input logic clk_i, rst_ni, cancel_i,       // Trusted synchronous reset; cancellation wins over completion.
     input logic req_valid_i,                 // Capture one stable hash descriptor on valid/ready.

@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 # License: https://polyformproject.org/licenses/noncommercial/1.0.0/
 
-"""Derive R10a intermediates by observing the unchanged pinned Python verifier."""
+"""Derive SLH components intermediates by observing the unchanged pinned Python verifier."""
 import argparse
 import hashlib
 import importlib.util
@@ -90,22 +90,22 @@ def derive(output):
         assert len(trace["message_hashes"]) == 2
         for suffix, data in [("key", key), ("signature", signature), ("message", message),
                 ("inner", trace["message_hashes"][0]), ("mask", trace["message_hashes"][1][:30])]:
-            path = output / f"r10a-{name}-{suffix}.bin"
+            path = output / f"slh_components-{name}-{suffix}.bin"
             path.write_bytes(data)
             files[path.name] = hashlib.sha256(data).hexdigest()
         for row in trace["layers"]:
             layer = row["layer"]
             for suffix in ["message", "pk", "endpoints"]:
-                path = output / f"r10a-{name}-{layer}-{suffix}.bin"
+                path = output / f"slh_components-{name}-{layer}-{suffix}.bin"
                 path.write_bytes(row[suffix])
                 files[path.name] = hashlib.sha256(row[suffix]).hexdigest()
             index.append(f"{name} {layer} {row['tree']} {row['keypair']}")
         provenance.append({"case": name, "python_verified": True, "internal": internal,
             "context": context.hex(), "files": files})
-    (output / "r10a-index.txt").write_text("\n".join(index) + "\n")
+    (output / "slh_components-index.txt").write_text("\n".join(index) + "\n")
     sources = [Path(__file__).resolve(), source / "slh_verify.py", source / "SLH_DSA_ACVP_vectors.json",
         source / "REINS_signed_batch_fixtures.json"]
-    (output / "r10a-provenance.json").write_text(json.dumps({"generator_version": 1,
+    (output / "slh_components-provenance.json").write_text(json.dumps({"generator_version": 1,
         "sources": {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest() for path in sources},
         "cases": provenance}, indent=2) + "\n")
 

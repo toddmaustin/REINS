@@ -7,7 +7,7 @@
 #include <iostream>
 #include <stdexcept>
 
-// Generate a public, independently keyed R02 corpus; private keys never leave memory.
+// Generate a public, independently keyed Reference corpus; private keys never leave memory.
 int main() {
     using namespace reins::sim;
     using namespace reins::sim::reference;

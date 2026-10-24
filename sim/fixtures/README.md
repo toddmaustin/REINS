@@ -1,4 +1,8 @@
-# Public R02 replay corpus
+# Public reference fixtures and replay scripts
+
+A fixture is a saved public input and its expected result. The `r02` filenames
+and generator identifiers below are retained provenance labels, rather than test
+suite names.
 
 `r02.json` holds 25 public request/reply/root records under three independent new
 test keys. It includes the public OTP, generator/backend identifiers, expected
@@ -28,3 +32,11 @@ Run `make tests` for retained outputs. To explicitly replace this corpus, run
 `make regenerate-reference-fixtures`: new random keys/signatures will change the
 bytes/hashes, private material is discarded, and generator output is preserved
 under `test-results/`. Verification/replay of a committed corpus needs no keys.
+
+## SPI regression traces
+
+[`spi-regressions/`](spi-regressions) holds exact byte/partial-bit traces for
+partial transfers, holes and stale traffic. These run through the real pin-level
+SPI unit top with `make spi-regression-tests`; `make fuzz-smoke` saves additional
+bounded traces. `make replay REPLAY=...` can replay a saved trace without its
+original random generator. Their bytes are unchanged from the historical corpus.
