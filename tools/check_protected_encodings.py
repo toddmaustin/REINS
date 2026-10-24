@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def inspect(root=ROOT):
     """Extract protected declarations under root and return pairwise distance evidence."""
     groups = []
-    for path in sorted((root / "rtl").glob("*.sv")):
+    for path in sorted((root / "rtl/device").glob("*.sv")):
         source = re.sub(r"//[^\n]*|/\*.*?\*/", "", path.read_text(), flags=re.S)
         declarations = re.findall(r"typedef\s+enum\s+logic\s*\[7:0\]\s*\{([^}]+)\}|localparam\s+logic\s*\[7:0\]\s+([^;]+);", source)
         for enum, local in declarations:

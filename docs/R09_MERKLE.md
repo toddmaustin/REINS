@@ -29,11 +29,11 @@ flowchart LR
 
 | File | Responsibility |
 |---|---|
-| [`reins_expected_grant.sv`](../rtl/reins_expected_grant.sv) | Complete grant construction from typed local identity, request kind, slot, round and nonce |
-| [`reins_merkle_pass.sv`](../rtl/reins_merkle_pass.sv) | Fresh capture, configuration binding, canonical parsing, leaf/node hashing, protected intermediate hand-offs and response |
-| [`reins_merkle_pair.sv`](../rtl/reins_merkle_pair.sv) | Two distinct pass instances and SHA cores; mutually exclusive sealed-memory reader; protected lane selection |
-| [`r09_test_top.sv`](../sim/rtl/r09_test_top.sv) | Exact production pair/SRAM, passive physical SHA observations and explicit simulation-only fault probes |
-| [`r09_integration_top.sv`](../sim/rtl/r09_integration_top.sv) | Actual R05–R08 device, retained OTP and the R09 pair on its sealed-memory read port |
+| [`reins_expected_grant.sv`](../rtl/device/reins_expected_grant.sv) | Complete grant construction from typed local identity, request kind, slot, round and nonce |
+| [`reins_merkle_pass.sv`](../rtl/device/reins_merkle_pass.sv) | Fresh capture, configuration binding, canonical parsing, leaf/node hashing, protected intermediate hand-offs and response |
+| [`reins_merkle_pair.sv`](../rtl/device/reins_merkle_pair.sv) | Two distinct pass instances and SHA cores; mutually exclusive sealed-memory reader; protected lane selection |
+| [`r09_test_top.sv`](../rtl/test/r09_test_top.sv) | Exact production pair/SRAM, passive physical SHA observations and explicit simulation-only fault probes |
+| [`r09_integration_top.sv`](../rtl/test/r09_integration_top.sv) | Actual R05–R08 device, retained OTP and the R09 pair on its sealed-memory read port |
 | [`r09_test_support.h`](../sim/include/reins/r09_test_support.h) | Independent OpenSSL byte/block oracle, memory driver, provenance/count checks and retained evidence |
 | [`r09_rtl_tests.cc`](../sim/tests/r09_rtl_tests.cc) | Nine directed/fault/fuzz cases, supplied/R02 corpus and all proof depths |
 | [`r09_integration_tests.cc`](../sim/tests/r09_integration_tests.cc) | Signed ARM/RENEW through SPI, real Merkle hardware, host signatures, local enforcement and cancellation |

@@ -299,7 +299,7 @@
         "RX-01"
       ],
       "disposition": "bounded_digital_coverage",
-      "detail": "R03 digital protections, catalog and confirmed applications are implemented. Sites/values/durations outside the declared campaigns, shared upstream/common physical faults and post-layout preservation remain unqualified."
+      "detail": "R03 digital protections, catalog and confirmed applications are implemented. Sites/values/durations outside the declared campaigns, shared upstream/common physical faults and post-layout preservation remain unqualified. Public fault manifests replay initial ARM jobs only; masked persistent faults hold the whole selected site rather than leaving unmasked bits live."
     },
     {
       "id": "G-SIGNOFF",
@@ -342,6 +342,23 @@
       ],
       "disposition": "unimplemented",
       "detail": "The reference Authority has policy, registration, delay and batch checks but no aggregate four-candidate rolling admission ledger. No model or production admission-cap claim is made."
+    },
+    {
+      "id": "G-COMMISSION",
+      "requirements": [
+        "PROV-01"
+      ],
+      "disposition": "service_required",
+      "detail": "Digital interlocks and a behavioral OTP model exist; the trusted physical appliance, genuine identity/key validation, fresh off-device signed registration records and production custody/closure workflow are not implemented."
+    },
+    {
+      "id": "G-RESOURCE-REPORT",
+      "requirements": [
+        "SIG-01",
+        "BOUND-01"
+      ],
+      "disposition": "unimplemented",
+      "detail": "Cycle, wall-time and throughput reports exist; the plan also requests peak host-memory measurements for a single pass, two-pass vote and SPI ARM, which are not collected."
     }
   ],
   "required_case_counts": {

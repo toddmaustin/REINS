@@ -18,13 +18,13 @@ signature boundary.
 
 | File | Responsibility |
 |---|---|
-| [`slh_address.sv`](../rtl/slh_address.sv) | Full ADRS, compressed ADRSc, selected-profile bounds and canonical unused fields |
-| [`slh_wots_digits.sv`](../rtl/slh_wots_digits.sv) | All 32 message nibbles, checksum and three checksum nibbles |
-| [`slh_sha256_stream.sv`](../rtl/slh_sha256_stream.sv) | Bounded real SHA, raw public-seed compression and continuation after that prefix |
-| [`slh_hash_transaction.sv`](../rtl/slh_hash_transaction.sv) | Independent byte audit, physical operation counts, tags and checked digest hand-off |
-| [`slh_message_hash.sv`](../rtl/slh_message_hash.sv) | Production pure/empty-context framing, H_msg, bounded standalone MGF1, digest/tree/leaf extraction |
-| [`slh_wots.sv`](../rtl/slh_wots.sv) | Bounded single chain or all 35 verification chains plus WOTS public-key compression |
-| [`r10a_test_top.sv`](../sim/rtl/r10a_test_top.sv) | Exact production components, passive physical SHA taps, standalone backend and simulation-only fault probes |
+| [`slh_address.sv`](../rtl/device/slh_address.sv) | Full ADRS, compressed ADRSc, selected-profile bounds and canonical unused fields |
+| [`slh_wots_digits.sv`](../rtl/device/slh_wots_digits.sv) | All 32 message nibbles, checksum and three checksum nibbles |
+| [`slh_sha256_stream.sv`](../rtl/device/slh_sha256_stream.sv) | Bounded real SHA, raw public-seed compression and continuation after that prefix |
+| [`slh_hash_transaction.sv`](../rtl/device/slh_hash_transaction.sv) | Independent byte audit, physical operation counts, tags and checked digest hand-off |
+| [`slh_message_hash.sv`](../rtl/device/slh_message_hash.sv) | Production pure/empty-context framing, H_msg, bounded standalone MGF1, digest/tree/leaf extraction |
+| [`slh_wots.sv`](../rtl/device/slh_wots.sv) | Bounded single chain or all 35 verification chains plus WOTS public-key compression |
+| [`r10a_test_top.sv`](../rtl/test/r10a_test_top.sv) | Exact production components, passive physical SHA taps, standalone backend and simulation-only fault probes |
 | [`r10a_test_support.h`](../sim/include/reins/r10a_test_support.h) | Independent C++/OpenSSL byte/block/state oracle, memory driver and retained observations |
 | [`r10a_rtl_tests.cc`](../sim/tests/r10a_rtl_tests.cc) | Twelve directed, boundary, intermediate, fault and seeded fuzz cases |
 | [`prepare_slh_vectors.py`](../tools/prepare_slh_vectors.py) | Build-only expected intermediates observed from the unchanged pinned Python verifier |

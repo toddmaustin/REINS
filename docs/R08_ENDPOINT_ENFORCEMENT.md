@@ -9,7 +9,7 @@ qualification. Deterministic Verilator clocks supply no physical evidence.
 
 ## Composition and independent paths
 
-[`reins_device_enforced`](../rtl/reins_device_enforced.sv) is the complete current
+[`reins_device_enforced`](../rtl/device/reins_device_enforced.sv) is the complete current
 composition. It wraps the actual R05/R06/R07 device and derives its stop
 acknowledgement internally. It has **no host stop-acknowledgement input**.
 `reins_device_spi` remains a reusable lower-level component with a trusted
@@ -108,7 +108,7 @@ synchronizer allowance; actual MTBF and CDC implementation require separate work
 An over-fast source fails off rather than creating unbounded authorization.
 
 R05 accepts the broader normative public OTP schema. R08's additional
-[`reins_enforcement_profile`](../rtl/reins_enforcement_profile.sv) rejects a checked
+[`reins_enforcement_profile`](../rtl/device/reins_enforcement_profile.sv) rejects a checked
 configuration that this particular platform cannot honor: platform ID must be
 1, nominal frequency 1,000,000, minimum 800,000, tick quantum 1, guard promise
 950–1,000 microseconds, and actuation promise 150–2,000 microseconds. The existing

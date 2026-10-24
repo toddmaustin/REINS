@@ -97,8 +97,8 @@ class ProtectedFaultTests(unittest.TestCase):
         result = inspect(ROOT.parent)
         self.assertGreaterEqual(result["minimum_distance"], 4)
         root = self.directory / "repo"
-        (root / "rtl").mkdir(parents=True)
-        (root / "rtl/bad.sv").write_text("localparam logic [7:0] IDLE=8'h0f, BAD=8'h0e;")
+        (root / "rtl/device").mkdir(parents=True)
+        (root / "rtl/device/bad.sv").write_text("localparam logic [7:0] IDLE=8'h0f, BAD=8'h0e;")
         with self.assertRaises(ValueError):
             inspect(root)
 

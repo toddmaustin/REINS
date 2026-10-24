@@ -35,7 +35,7 @@ def source_digest(cwd=ROOT):
     inventory = {}
     for name in sorted(set(paths)):
         path = Path(cwd) / name
-        first_party = name.startswith(("rtl/", "sim/", "tools/")) and path.suffix in [".sv", ".svh", ".cc", ".h", ".py", ".mk", ".json", ".trace", ".bin"]
+        first_party = name.startswith(("rtl/", "sim/", "tools/")) and path.suffix in [".sv", ".svh", ".f", ".cc", ".h", ".py", ".mk", ".json", ".trace", ".bin"]
         if path.is_file() and (first_party or name.startswith(".github/") or name in ["Makefile", "docs/RELEASE_REQUIREMENTS.json", "third_party/verilator-tool.json"]):
             inventory[name] = hashlib.sha256(path.read_bytes()).hexdigest()
     return hashlib.sha256(json.dumps(inventory, sort_keys=True).encode()).hexdigest()
@@ -295,7 +295,7 @@ def suite_steps(suite, build_dir, test_filter, make_command="make", configuratio
     regression = python + ["-m", "unittest", "discover", "-s", "tools/tests", "-v"]
     if suite == "quick":
         regression = python + ["-m", "unittest", "discover", "-s", "tools/tests", "-p", "test_check_baseline.py", "-v"]
-    steps = [Step("baseline", baseline), Step("tool-regressions", regression, count_kind="unittest")]
+    steps = [Step("rtl-layout", python + [str(ROOT / "tools/check_rtl_layout.py")]), Step("baseline", baseline), Step("tool-regressions", regression, count_kind="unittest")]
     if suite != "baseline":
         crosscheck = python + [str(ROOT / "tools/check_reference_fixtures.py")]
         if suite != "quick":

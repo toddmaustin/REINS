@@ -5,7 +5,7 @@ fault catalog are now implemented. See [R03_PROTECTED_PRIMITIVES.md](R03_PROTECT
 Earlier milestone descriptions below record their original bring-up boundaries;
 physical qualification and coverage outside the declared campaigns remain open.
 
-`rtl/reins_device.sv` is the production authorization top. A signed reply travels
+`rtl/device/reins_device.sv` is the production authorization top. A signed reply travels
 from SPI pins into the sole protected 9,216-byte receive SRAM, through two complete
 Merkle/SLH-DSA passes, and into the lease/quorum controller. Local endpoint guards
 then enforce the dynamic permit. No host result, hash, accept code, read driver or
@@ -60,14 +60,14 @@ concurrently; do not let two builds generate the same Verilator output directory
 
 | File | Purpose |
 |---|---|
-| [`reins_device.sv`](../rtl/reins_device.sv) | Production top; internal verifier wiring, immediate health/deadline gating, and R05–R08 composition |
-| [`reins_verifier.sv`](../rtl/reins_verifier.sv) | Two-lane sequencer, protected identity/code capture, exclusive physical read mux and final live completion gate |
-| [`reins_verifier_pass.sv`](../rtl/reins_verifier_pass.sv) | One complete fresh grant/config/Merkle/SLH pass, independent operation/stage/read observations and root comparison |
-| [`reins_controller.sv`](../rtl/reins_controller.sv) | Existing fixed-issue lease controller, now with protected pass-one evidence, separate per-slot vote certificates/tokens and secondary vote/commit checks |
-| [`slh_verify_reins.sv`](../rtl/slh_verify_reins.sv) | Strict production SLH gate; optional held-source audit enabled by the full verifier parent |
-| [`slh_verify.sv`](../rtl/slh_verify.sv) | Complete R10b signature parser; passive chain and physical SHA events added for the independent parent observer |
-| [`r10c_test_top.sv`](../sim/rtl/r10c_test_top.sv) | Component composition and explicit simulation-only fault probes |
-| [`r10c_integration_top.sv`](../sim/rtl/r10c_integration_top.sv) | Exact production top, public OTP model, passive SHA taps, external effect sinks and declared simulation-only stall probes |
+| [`reins_device.sv`](../rtl/device/reins_device.sv) | Production top; internal verifier wiring, immediate health/deadline gating, and R05–R08 composition |
+| [`reins_verifier.sv`](../rtl/device/reins_verifier.sv) | Two-lane sequencer, protected identity/code capture, exclusive physical read mux and final live completion gate |
+| [`reins_verifier_pass.sv`](../rtl/device/reins_verifier_pass.sv) | One complete fresh grant/config/Merkle/SLH pass, independent operation/stage/read observations and root comparison |
+| [`reins_controller.sv`](../rtl/device/reins_controller.sv) | Existing fixed-issue lease controller, now with protected pass-one evidence, separate per-slot vote certificates/tokens and secondary vote/commit checks |
+| [`slh_verify_reins.sv`](../rtl/device/slh_verify_reins.sv) | Strict production SLH gate; optional held-source audit enabled by the full verifier parent |
+| [`slh_verify.sv`](../rtl/device/slh_verify.sv) | Complete R10b signature parser; passive chain and physical SHA events added for the independent parent observer |
+| [`r10c_test_top.sv`](../rtl/test/r10c_test_top.sv) | Component composition and explicit simulation-only fault probes |
+| [`r10c_integration_top.sv`](../rtl/test/r10c_integration_top.sv) | Exact production top, public OTP model, passive SHA taps, external effect sinks and declared simulation-only stall probes |
 | [`r10c_test_support.h`](../sim/include/reins/r10c_test_support.h) | Sealed-memory driver, two independent oracle reconstructions, address/block/state/stage checks and semantic replay |
 | [`r10c_integration_support.h`](../sim/include/reins/r10c_integration_support.h) | Real SPI/clock driver, test authority signing, all-core observations, semantic replay and end-to-end latency measurements |
 | [`slh_test_oracle.h`](../sim/include/reins/slh_test_oracle.h) | R10b's independent C++/OpenSSL block/state/stage oracle, factored for reuse |
@@ -79,7 +79,7 @@ The older `reins_device_control`, `reins_device_spi` and
 `reins_device_enforced` compositions retain their documented internal verifier
 boundary for fast controller regression. They are components of the new top,
 not alternative production authorization configurations. Simulation fault
-selectors and hierarchy probes exist only under `sim/rtl`.
+selectors and hierarchy probes exist only under `rtl/test`.
 
 ## Two complete passes
 

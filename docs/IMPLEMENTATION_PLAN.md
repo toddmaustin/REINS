@@ -24,12 +24,21 @@ R03 protected state and bounded general fault campaigns are now implemented.
 Platform/service and physical-fault gaps remain explicit; software/Python validation
 is not evidence of physical RTL qualification.
 
+The [October 24 implementation review](IMPLEMENTATION_REVIEW.md) records remaining
+work against the normative PDF and current source. In particular, the reference
+authority's aggregate rolling admission ledger, peak host-memory reporting,
+broader fault/replay evidence and a completed release on the intended release tree
+remain open. Off-device commissioning/services and physical qualification are
+separate deliverables. Milestone status below describes the implemented digital
+mechanisms and their stated evidence scope.
+
 Section 1 is established by [IMPLEMENTATION_SCOPE.md](IMPLEMENTATION_SCOPE.md),
 the [pinned baseline manifest](implementation_baseline.json), and the read-only
 checks in the [README](../README.md). This completes the scope/source-of-truth
 preparation. R04/05 also supply component RTL build, assertions, line coverage and
-bounded tracing. PR 01's broader requirement matrix and remaining foundation
-items should be tracked alongside their dependent hardware milestones.
+bounded tracing. PR 01's requirement matrix is now in
+[RELEASE_REQUIREMENTS.json](RELEASE_REQUIREMENTS.json); remaining performance
+instrumentation is identified in the implementation review.
 
 Section 2 now has [executable software infrastructure](SIMULATION_STRATEGY.md):
 C++ host signing/verification, immutable asynchronous verification jobs, event
@@ -78,7 +87,7 @@ The inspected review-package baseline is commit
 The baseline validator has been exercised on temporary copies: all 28 selected
 NIST cases matched their expected outcomes, including four valid cases, and the
 two supplied signed replies verified. Those replies cover RENEW round 3 for slots
-0 and 1. Additional ARM, slot-2, and successive-round fixtures are required.
+0 and 1. R02 subsequently added public ARM, slot-2 and successive-round fixtures.
 
 ## 2. Simulation strategy
 
@@ -166,7 +175,10 @@ outputs and generated review records until an explicit clean target removes them
 
 ### PR 02 — Independent C++ reference simulator and test authorities
 
-**Status: implemented in software.** See the [R02 model/evidence record](R02_REFERENCE_MODEL.md),
+**Status: core R02 deliverables implemented in software.** The broader §15.2
+aggregate admission ledger is still unimplemented, as recorded in
+`G-ADMIT-MODEL` and the [implementation review](IMPLEMENTATION_REVIEW.md).
+See the [R02 model/evidence record](R02_REFERENCE_MODEL.md),
 [source guide](../sim/README.md), [public corpus](../sim/fixtures/r02.json),
 [provenance manifest](../sim/fixtures/r02-manifest.json) and
 [completion tests](../sim/tests/reference_tests.cc). `make tests` runs both the
@@ -282,8 +294,9 @@ perform two real software verification passes and compare meaningful behavior
 against the C++ model; integration tests include real R05 SHA/time/source startup.
 Pending/job/context state has digital complemented checks and the FSM is sparse;
 R03 now adds independent digital capture/update paths and general internal
-fault campaigns; physical fan-out/placement qualification remains separate. R07 receive memory/SPI and real verifier hardware
-remain separate milestones.
+fault campaigns; physical fan-out/placement qualification remains separate.
+R07 subsequently supplies receive memory/SPI, and R10c integrates real verifier
+hardware at the complete device boundary.
 
 **Deliver:** the operational FSM, exact 128-byte slot requests, one protected pending
 context, distinct-vote bitmap, fixed-issue lease commit, redundant age/remaining
@@ -308,8 +321,8 @@ old results. Compare against the C++ model and add stateful fuzzing now.
 [R07 guide](R07_SPI_RECEIVE.md) for interfaces, explicit result/snapshot decisions,
 payload/protection storage, simulation profile, tests and limits. Pin-level tests
 use two real independent software signature verifications over fresh sealed-memory
-reads; no SPI command can supply a verdict. Full verifier hardware, SRAM-macro
-qualification and physical preservation of R03 protections remain separate work.
+reads; no SPI command can supply a verdict. R10c supplies full verifier hardware.
+SRAM-macro qualification and physical preservation of R03 protections remain open.
 
 **Deliver:** mode-0 SPI drivers and slave RTL; exact envelopes, result codes,
 atomic public reads, coherent request snapshots, and one 9,216-byte receive memory
@@ -356,8 +369,8 @@ Tests cover supplied/R02 records, signed depths 0–20, last-leaf padded batches
 canonical parsing, independent block/read observations, both-lane construction/
 hand-off faults, cancellation and seeded fuzz. Canonical altered proofs produce
 a candidate root and fail the original signature; padded membership remains valid.
-Full hardware SLH verification and the protected two-pass acceptance join remain
-R10a–R10c; this stage never awards a vote by itself.
+R10a–R10c subsequently supply full hardware SLH verification and the protected
+two-pass acceptance join; R09 alone never awards a vote.
 
 **Deliver:** independent local expected-grant construction per verification pass,
 configuration binding, leaf/node domain separation, canonical proof parsing, and
@@ -381,7 +394,7 @@ unchanged Python verification of supplied/official signatures, compare every
 physical block/state and endpoint with OpenSSL, cover all legal chain intervals,
 and exercise malformed slices, framing/count/transfer faults and stateful fuzz.
 These candidate intermediates do not establish complete signature acceptance;
-FORS/hypertree are implemented in R10b; the protected two-pass join remains R10c.
+FORS/hypertree are implemented in R10b, and the protected two-pass join in R10c.
 
 **Deliver:** FIPS 205 address construction, pure-mode framing including the empty
 context prefix, message hashing/MGF1, WOTS+ digits/checksum/chains, and per-stage
@@ -401,7 +414,7 @@ verify through the strict production gate and real sealed SRAM. Every physical
 SHA block/state and 29 stages match independent oracles; R/FORS/all-layer
 mutations, unsupported descriptors, twelve fault sites, cancellation, scratch
 lifetime and seeded read-backpressure fuzz are exercised. No single-pass result
-awards a vote or lease; the independent protected join remains R10c.
+awards a vote or lease; R10c supplies the independent protected join.
 
 **Deliver:** FORS, all seven hypertree layers, exact 7,856-byte signature parsing,
 scratch management, reconstructed-root output, and protected sequencer state.
@@ -523,8 +536,10 @@ Introduce directories when their owning PR needs them; do not populate empty
 placeholder trees just to match this layout.
 
 ```text
-rtl/{common,config,entropy,time,protocol,memory,crypto,control,enforcement,platform}/
-sim/{model,drivers,monitors,tests,fuzz,fault,fixtures}/
+rtl/device/             # Device implementation/IP; reins_device.sv and files.f
+rtl/test/               # Simulation tops, OTP model and fault-port declarations
+rtl/test/formal/        # Scoped symbolic harnesses
+sim/{src,include,tests,fixtures}/  # C++ models, drivers, oracles and public inputs
 tools/                  # Fixture generation, replay, performance and reports
 docs/                   # Existing specification plus architecture and evidence
 third_party/            # Dependency pins and license notices, as needed
@@ -571,9 +586,11 @@ instructions, and remaining limits. Distinguish passed, failed, expected-failure
 skipped and unrun checks. CI uses the same commands as local testing; it does not
 replace local acceptance. Pin and document tested host/tool versions in PR 01.
 
-## 6. Requirement ownership and remaining platform work
+## 6. Requirement ownership and remaining implementation work
 
-PR 01 expands this ownership map into executable test links and evidence status.
+The [release manifest](RELEASE_REQUIREMENTS.json) supplies executable test links
+and evidence gaps. The [implementation review](IMPLEMENTATION_REVIEW.md) adds
+prioritized remaining digital, off-device and platform tasks.
 
 | Requirements | Main implementation milestones | Evidence still requiring platform work |
 |---|---|---|
@@ -588,7 +605,7 @@ PR 01 expands this ownership map into executable test links and evidence status.
 | STOP-01, FAULT-01 | 03, 08, 11 | On-die endpoints, guard clocks, isolation and physical timing |
 | AUTH-01, ADMIT-01 | 02 test authority behavior | Independent operators, durable holds/admission, atomicity across replicas, key custody and capacity |
 
-The authority simulator should exercise holds and the aggregate four-candidate
+The authority simulator models holds but still needs the aggregate four-candidate
 rolling admission rule. A production authority service, HSM integration, durable
 distributed admission, and management deployment are later deliverables outside
 the first RTL/Verilator implementation. Their absence must remain explicit in

@@ -46,6 +46,10 @@ simulation fault catalog**, including confirmed applications, retained outcomes
 and public replay without private keys. See the [R03 guide](docs/R03_PROTECTED_PRIMITIVES.md).
 
 See the [RTL guide](rtl/README.md) for interfaces and hashing tests.
+Device sources are in [`rtl/device/`](rtl/device), and simulation/formal RTL is
+in [`rtl/test/`](rtl/test/README.md). The
+[specification review and remaining work](docs/IMPLEMENTATION_REVIEW.md) separates
+implemented digital behavior from unfinished model, service and platform work.
 The [R05 platform profile](docs/R05_PLATFORM_PROFILE.md) explains which digital
 checks are implemented and which timing/entropy inputs need physical evidence.
 The [R06 controller guide](docs/R06_CONTROLLER.md) explains state ownership,
@@ -345,7 +349,7 @@ REINS_R10C_SEED=12345 make r10c-unit-tests
 make SANITIZE=1 r10c-unit-tests TEST_FILTER='*complete independent*,*abort reset*'
 ```
 
-The production top is `rtl/reins_device.sv`. C++ signs authority replies and drives
+The production top is `rtl/device/reins_device.sv`. C++ signs authority replies and drives
 SPI; every verification hash, both accept codes, quorum/lease update and endpoint
 guard runs in RTL. Each pass freshly reconstructs the expected grant and batch
 root. `r10c-rtl/` and `r10c-integration/` retain the exact public inputs, actual SHA
@@ -413,14 +417,14 @@ the script language, architecture and state/lease field definitions.
 
 The R05 RTL stores configuration, startup state, local time and entropy history
 in the registers described in [sim/README.md](sim/README.md#r05-platform-control-and-state).
-[`reins_controller`](rtl/reins_controller.sv) now owns the actual RTL WAIT_ARM/
+[`reins_controller`](rtl/device/reins_controller.sv) now owns the actual RTL WAIT_ARM/
 RUNNING state, pending context/vote bitmap, committed issue/expiry and remaining
-down-counter. [`reins_device_control`](rtl/reins_device_control.sv) wires that
+down-counter. [`reins_device_control`](rtl/device/reins_device_control.sv) wires that
 lease internally to R05's health/time gate. R05 alone still cannot authorize
 execution. Predictable test-source bits exercise the digital path without
 establishing physical randomness.
 
-R07's [`reins_spi_mailbox`](rtl/reins_spi_mailbox.sv) owns receive phase, token,
+R07's [`reins_spi_mailbox`](rtl/device/reins_spi_mailbox.sv) owns receive phase, token,
 accepted offset, total length, immutable BEGIN context and absolute job age.
 The execution lease remains in R06. The SRAM wrapper owns the write seal and
 protected codewords. Its **9,216-byte payload capacity** uses 33,408 bytes of
@@ -428,7 +432,7 @@ codeword storage with full row/owner tags and ECC; those bits are additional
 protection overhead, with one payload array. See the
 [simulator state guide](sim/README.md#r07-spi-and-receive-state).
 
-R08's [`reins_device_enforced`](rtl/reins_device_enforced.sv) derives trusted stop
+R08's [`reins_device_enforced`](rtl/device/reins_device_enforced.sv) derives trusted stop
 completion from actual modeled isolation-cell readbacks and empty queues; the
 host cannot acknowledge stop. Local guard/actuator state lives in six independent
 clock domains, while outbound queues and the stop monitor use the always-on

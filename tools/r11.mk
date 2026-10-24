@@ -9,15 +9,15 @@ R11_DRIVER = $(PYTHON) -E -s -B tools/run_campaigns.py --build-dir $(BUILD_DIR) 
 setup-verilator:
 	+$(R11_DRIVER) --profile tool-setup
 production-top-build: $(BUILD_DIR)/production-top/Vreins_device__ALL.a
-$(BUILD_DIR)/production-top/Vreins_device__ALL.a: rtl/sha256_compress.sv rtl/sha256_message.sv $(R05_PRODUCTION) $(R06_PRODUCTION) $(R07_PRODUCTION) $(R08_PRODUCTION) $(R09_PRODUCTION) $(R10C_PRODUCTION) tools/r11.mk Makefile $(BUILD_DIR)/build-config.json | check-rtl-tools
+$(BUILD_DIR)/production-top/Vreins_device__ALL.a: $(DEVICE_MANIFEST) $(DEVICE_SOURCES) tools/r11.mk Makefile $(BUILD_DIR)/build-config.json | check-rtl-tools
 	@test '$(INSTRUMENT)$(SANITIZE)$(RTL_TRACE)' = '000' || { echo 'production-top-build requires INSTRUMENT=0 SANITIZE=0 RTL_TRACE=0'; exit 1; }
 	+$(VERILATOR) --no-skip-identical --cc --build -j 2 -Wall --top-module reins_device --Mdir $(abspath $(BUILD_DIR)/production-top) \
-	  rtl/sha256_compress.sv rtl/sha256_message.sv $(R05_PRODUCTION) $(R06_PRODUCTION) $(R07_PRODUCTION) $(R08_PRODUCTION) $(R09_PRODUCTION) $(R10C_PRODUCTION)
+	  -f $(DEVICE_MANIFEST)
 r11-build: $(R11_BINARY)
-$(R11_BINARY): $(R06_CORE) $(R07_CORE) rtl/reins_spi_control.sv sim/rtl/r07_test_top.sv sim/tests/r11_spi_tests.cc sim/include/reins/r07_test_support.h sim/include/reins/r06_test_support.h tools/r11.mk $(DOCTEST_HEADER) $(LIB_OBJECTS) $(BUILD_DIR)/build-config.json | check-tools check-rtl-tools verify-deps
+$(R11_BINARY): $(R06_CORE) $(R07_CORE) rtl/device/reins_spi_control.sv rtl/test/r07_test_top.sv sim/tests/r11_spi_tests.cc sim/include/reins/r07_test_support.h sim/include/reins/r06_test_support.h tools/r11.mk $(DOCTEST_HEADER) $(LIB_OBJECTS) $(BUILD_DIR)/build-config.json | check-tools check-rtl-tools verify-deps
 	@mkdir -p $(@D)
 	+$(VERILATOR) --no-skip-identical --cc --exe --build -j 2 $(RTL_CHECK_FLAGS) $(RTL_TRACE_FLAGS) -Wall --top-module r07_test_top \
-	  --Mdir $(abspath $(BUILD_DIR)/r11-spi) -o reins-r11-spi-tests $(R06_CORE) $(R07_CORE) rtl/reins_spi_control.sv sim/rtl/r07_test_top.sv $(abspath sim/tests/r11_spi_tests.cc) \
+	  --Mdir $(abspath $(BUILD_DIR)/r11-spi) -o reins-r11-spi-tests $(R06_CORE) $(R07_CORE) rtl/device/reins_spi_control.sv rtl/test/r07_test_top.sv $(abspath sim/tests/r11_spi_tests.cc) \
 	  -CFLAGS '-std=c++20 -Wall -Wextra $(OPT_FLAGS) $(OPENSSL_CFLAGS) -I$(abspath sim/include) -isystem $(abspath $(DOCTEST_DIR)) $(CXXFLAGS)' \
 	  -LDFLAGS '$(abspath $(LIB_OBJECTS)) $(PROJECT_LDFLAGS) $(LDFLAGS) $(OPENSSL_LIBS) $(LDLIBS)'
 r11-tests:

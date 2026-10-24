@@ -45,7 +45,7 @@ def main():
     if args.check == "cdc":
         # This is an inventory, not a CDC engine or metastability model.
         sources = []
-        for path in sorted((ROOT / "rtl").glob("*.sv")):
+        for path in sorted((ROOT / "rtl/device").glob("*.sv")):
             lines = [dict(line=index, text=line.strip()) for index,line in enumerate(path.read_text().splitlines(),1)
                      if "ASYNC_REG" in line or "posedge" in line or "negedge" in line]
             if lines:
@@ -59,7 +59,7 @@ def main():
         if not shutil.which(compiler[0]) or not shutil.which(runtime[0]):
             status = "unavailable"
         else:
-            files = ["rtl/reins_permit_guard_a.sv", "rtl/reins_permit_guard_b.sv", "rtl/reins_endpoint_actuator.sv", "sim/rtl/r11_reset_tb.sv"]
+            files = ["rtl/device/reins_permit_guard_a.sv", "rtl/device/reins_permit_guard_b.sv", "rtl/device/reins_endpoint_actuator.sv", "rtl/test/r11_reset_tb.sv"]
             records.append(command(compiler + ["-g2012", "-DSYNTHESIS", "-s", "r11_reset_tb", "-o", str(directory / "reset.vvp")] + files, directory, "compile"))
             if records[-1]["exit_code"] == 0:
                 records.append(command(runtime + [str(directory / "reset.vvp")], directory, "simulate"))
@@ -73,12 +73,12 @@ def main():
             records.append(command(yosys + ["-V"], directory, "version"))
             if args.check == "formal":
                 cases = [
-                    ("arithmetic", "r11_arithmetic", ["rtl/reins_round_schedule.sv", "rtl/reins_lease_check.sv", "sim/formal/r11_arithmetic.sv"], 1),
-                    ("protected-time", "r03_time", ["rtl/reins_trusted_time.sv", "sim/formal/r03_time.sv"], 12),
-                    ("seal", "r11_seal", ["rtl/reins_receive_sram.sv", "sim/formal/r11_seal.sv"], 6),
-                    ("controller", "r11_controller", ["rtl/reins_round_schedule.sv", "rtl/reins_lease_check.sv", "rtl/reins_controller.sv", "sim/formal/r11_controller.sv"], 16),
-                    ("guard-a", "reins_permit_guard_a", ["rtl/reins_permit_guard_a.sv"], 8),
-                    ("guard-b", "reins_permit_guard_b", ["rtl/reins_permit_guard_b.sv"], 8)]
+                    ("arithmetic", "r11_arithmetic", ["rtl/device/reins_round_schedule.sv", "rtl/device/reins_lease_check.sv", "rtl/test/formal/r11_arithmetic.sv"], 1),
+                    ("protected-time", "r03_time", ["rtl/device/reins_trusted_time.sv", "rtl/test/formal/r03_time.sv"], 12),
+                    ("seal", "r11_seal", ["rtl/device/reins_receive_sram.sv", "rtl/test/formal/r11_seal.sv"], 6),
+                    ("controller", "r11_controller", ["rtl/device/reins_round_schedule.sv", "rtl/device/reins_lease_check.sv", "rtl/device/reins_controller.sv", "rtl/test/formal/r11_controller.sv"], 16),
+                    ("guard-a", "reins_permit_guard_a", ["rtl/device/reins_permit_guard_a.sv"], 8),
+                    ("guard-b", "reins_permit_guard_b", ["rtl/device/reins_permit_guard_b.sv"], 8)]
                 for name,top,files,depth in cases:
                     script = f"read_verilog -sv -formal -D SYNTHESIS -D FORMAL {' '.join(files)}; "
                     # The arithmetic component has its own full-width proof. Unconstrained schedule
@@ -103,7 +103,7 @@ def main():
                         records.append(result)
                 gaps += ["Bounded proofs, not full-device induction or crypto/fault completeness. Seal proof uses aligned first-byte writes with read disabled to prune payload/ECC data. Controller uses a qualified constant platform, abstract echo verifier, reduced identity/time limits and an unconstrained schedule component (arithmetic proved separately). Local guards use ideal sampled clocks."]
             else:
-                files = ["rtl/reins_round_schedule.sv", "rtl/reins_lease_check.sv", "rtl/reins_permit_guard_a.sv", "rtl/reins_permit_guard_b.sv", "rtl/reins_endpoint_actuator.sv"]
+                files = ["rtl/device/reins_round_schedule.sv", "rtl/device/reins_lease_check.sv", "rtl/device/reins_permit_guard_a.sv", "rtl/device/reins_permit_guard_b.sv", "rtl/device/reins_endpoint_actuator.sv"]
                 for path in files:
                     top = Path(path).stem
                     script = f"read_verilog -sv -D SYNTHESIS {path}; synth -top {top} -noabc; check -assert; stat; write_json {directory / (top+'.json')}"

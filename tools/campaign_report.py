@@ -37,7 +37,7 @@ def coverage_report(directory):
                 continue
             fields = dict(part.split("\x02",1) for part in match[1].split("\x01") if "\x02" in part)
             filename = fields.get("f", "")
-            if not filename.startswith("rtl/"):
+            if not filename.startswith("rtl/device/"):
                 continue
             key = (filename, fields.get("l"), fields.get("n"), fields.get("o"))
             points[key] = points.get(key,0)+int(match[2])

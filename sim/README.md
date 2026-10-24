@@ -1,5 +1,12 @@
 # Simulator source guide
 
+SystemVerilog test tops, the OTP model, fault declarations and formal harnesses
+live in [`rtl/test/`](../rtl/test/README.md); hardware implementation files live
+in [`rtl/device/`](../rtl/device). This directory holds the C++ model, drivers,
+oracles, tests and fixtures. See the
+[specification review](../docs/IMPLEMENTATION_REVIEW.md) for outstanding work,
+including the authority admission ledger and broader fault replay.
+
 The REINS simulator provides executable software evidence for the fixed **N=3,
 Q=2** implementation. Its current **reference mode** performs real cryptographic
 verification on the host computer and models provisioning, reset, entropy events,
@@ -95,18 +102,18 @@ These are the C++ source/header files in `sim/`:
 | [`sim/include/reins/r10c_integration_support.h`](include/reins/r10c_integration_support.h) | Exact production-top SPI and guard harness | Authority signing, every real clock, semantic comparison and receive/crypto/ARM measurements |
 | [`sim/tests/r10c_rtl_tests.cc`](tests/r10c_rtl_tests.cc) | Eleven independent two-pass cases | Every quorum pair, duplicates/mutations, shared/lane/join/commit faults, reset/abort/stall and seeded fuzz |
 | [`sim/tests/r10c_integration_tests.cc`](tests/r10c_integration_tests.cc) | Five full RTL scenarios | ARM/RENEW for all three pairs, two withholding authorities and stalled second-pass expiry with actual guards |
-| [`sim/rtl/r10c_test_top.sv`](rtl/r10c_test_top.sv) | Component boundary and declared fault probes | Exact R06 controller, both complete lanes and sole R07 SRAM; passive physical observations |
-| [`sim/rtl/r10c_integration_top.sv`](rtl/r10c_integration_top.sv) | Exact production top with public OTP model and external sinks | Actual pin-to-permit path, independent guard clocks, effect accounting and simulation-only stall probes |
+| [`rtl/test/r10c_test_top.sv`](../rtl/test/r10c_test_top.sv) | Component boundary and declared fault probes | Exact R06 controller, both complete lanes and sole R07 SRAM; passive physical observations |
+| [`rtl/test/r10c_integration_top.sv`](../rtl/test/r10c_integration_top.sv) | Exact production top with public OTP model and external sinks | Actual pin-to-permit path, independent guard clocks, effect accounting and simulation-only stall probes |
 | [`sim/include/reins/r10b_test_support.h`](include/reins/r10b_test_support.h) | Independent complete-signature oracle and memory driver | Every real SHA block/state, 29 stages, sequential reads, exact replay inputs and per-pass timing |
 | [`sim/tests/r10b_rtl_tests.cc`](tests/r10b_rtl_tests.cc) | Nine complete-verifier cases | All 28 official outcomes, supplied REINS signatures, R/FORS/all-layer mutations, strict gates, faults, cancellation, scratch and seeded backpressure fuzz |
-| [`sim/rtl/r10b_test_top.sv`](rtl/r10b_test_top.sv) | Algorithm/production instances with one shared actual R07 SRAM | Passive physical SHA and scratch observations, twelve explicit digital fault sites |
+| [`rtl/test/r10b_test_top.sv`](../rtl/test/r10b_test_top.sv) | Algorithm/production instances with one shared actual R07 SRAM | Passive physical SHA and scratch observations, twelve explicit digital fault sites |
 | [`sim/include/reins/r10a_test_support.h`](include/reins/r10a_test_support.h) | Independent FIPS byte/block/state oracle and bounded signature-memory driver | Canonical software addresses/digits/chains, actual SHA/state/endpoint scoreboard, public inputs/results, coverage and FST |
 | [`sim/tests/r10a_rtl_tests.cc`](tests/r10a_rtl_tests.cc) | Twelve real SLH component cases | SHA prefix/padding, H_msg/MGF1, all legal chain intervals, 42 supplied/official WOTS layers, malformed slices, fourteen faults and seeded fuzz |
-| [`sim/rtl/r10a_test_top.sv`](rtl/r10a_test_top.sv) | Exact production SLH components and a standalone SHA backend | Passive physical block/state observations and simulation-only semantic-stage fault sites |
+| [`rtl/test/r10a_test_top.sv`](../rtl/test/r10a_test_top.sv) | Exact production SLH components and a standalone SHA backend | Passive physical block/state observations and simulation-only semantic-stage fault sites |
 | [`sim/tests/r09_rtl_tests.cc`](tests/r09_rtl_tests.cc) | Nine real-SHA grant/Merkle directed/fault/fuzz cases | Supplied/R02 corpus, all depths, last-leaf batches, malformed proofs/context, thirty construction/transfer faults and 160-action seeded replay |
 | [`sim/tests/r09_integration_tests.cc`](tests/r09_integration_tests.cc) | Actual R05–R09 composition with host SLH verification of actual RTL message/key | Signed ARM/RENEW, wrong proof rejection, cancellation during reconstruction and local endpoint enforcement |
-| [`sim/rtl/r09_test_top.sv`](rtl/r09_test_top.sv) | Exact production Merkle pair and sealed SRAM | Passive physical SHA requests/completions, address observations and simulation-only constructor/hand-off faults |
-| [`sim/rtl/r09_integration_top.sv`](rtl/r09_integration_top.sv) | Complete device plus fresh OTP/context-fed Merkle pair | Shared actual sealed memory, protected R06 provenance, R05 integrity alarms and no manual stop acknowledgement |
+| [`rtl/test/r09_test_top.sv`](../rtl/test/r09_test_top.sv) | Exact production Merkle pair and sealed SRAM | Passive physical SHA requests/completions, address observations and simulation-only constructor/hand-off faults |
+| [`rtl/test/r09_integration_top.sv`](../rtl/test/r09_integration_top.sv) | Complete device plus fresh OTP/context-fed Merkle pair | Shared actual sealed memory, protected R06 provenance, R05 integrity alarms and no manual stop acknowledgement |
 | [`sim/src/verifier_service.cc`](src/verifier_service.cc) | Immutable job capture, single live ownership, scheduled passes, cancellation and event delivery | `submit`, `advance_to`, `cancel`, `busy`, `now`, `verification_calls` |
 | [`sim/src/main.cc`](src/main.cc) | Command-line parsing, sequential fixture replay, optional diagnostics, JSON reporting and exit status | `main`; local tick parser and JSON string helper |
 | [`sim/include/reins/fixture_io.h`](include/reins/fixture_io.h) | Bounded binary fixture loading and per-slot request/tag preparation | `fixture::read`, `fixture::load` |
@@ -141,29 +148,29 @@ These are the C++ source/header files in `sim/`:
 | [`sim/include/reins/local_clock_driver.h`](include/reins/local_clock_driver.h) | Six independent clocks for complete-device tests | Actual off-monitor-boundary local edges with independent phases |
 | [`sim/tests/r08_rtl_tests.cc`](tests/r08_rtl_tests.cc) | Local directed/fault tests and 96-episode stateful fuzz | Clock corners, source freeze, static/fast rails, permissive guard/control faults, queue containment and rearm ordering |
 | [`sim/tests/r08_integration_tests.cc`](tests/r08_integration_tests.cc) | Actual complete R05/R06/R07/R08 composition | Signed quorum, lease expiry, physical stop, live SPI management, fresh ARM, sensor withdrawal and unsupported OTP promises |
-| [`sim/rtl/r08_test_top.sv`](rtl/r08_test_top.sv) | Exact production enforcement bank plus simulation-only fault sites/sinks | Persistent checker faults, common control ties and independently counted final receiver effects |
-| [`sim/rtl/r08_integration_top.sv`](rtl/r08_integration_top.sv) | Enforced device with retained OTP and external receiver accounting | No manual stop acknowledgement; actual internal closure and sealed-memory host verification |
+| [`rtl/test/r08_test_top.sv`](../rtl/test/r08_test_top.sv) | Exact production enforcement bank plus simulation-only fault sites/sinks | Persistent checker faults, common control ties and independently counted final receiver effects |
+| [`rtl/test/r08_integration_top.sv`](../rtl/test/r08_integration_top.sv) | Enforced device with retained OTP and external receiver accounting | No manual stop acknowledgement; actual internal closure and sealed-memory host verification |
 
-[`sim/rtl/sha256_test_top.sv`](rtl/sha256_test_top.sv) is the simulation-only top
-for [`rtl/sha256_compress.sv`](../rtl/sha256_compress.sv) and
-[`rtl/sha256_message.sv`](../rtl/sha256_message.sv). It exposes direct compression,
+[`rtl/test/sha256_test_top.sv`](../rtl/test/sha256_test_top.sv) is the simulation-only top
+for [`rtl/device/sha256_compress.sv`](../rtl/device/sha256_compress.sv) and
+[`rtl/device/sha256_message.sv`](../rtl/device/sha256_message.sv). It exposes direct compression,
 message hashing and passive internal block-interface observations. The production
 modules have no test fault ports or software result bypass.
 
-[`sim/rtl/r05_test_top.sv`](rtl/r05_test_top.sv) connects production
-[`reins_platform_control.sv`](../rtl/reins_platform_control.sv) to
-[`sim/rtl/reins_otp_model.sv`](rtl/reins_otp_model.sv). The latter represents
+[`rtl/test/r05_test_top.sv`](../rtl/test/r05_test_top.sv) connects production
+[`reins_platform_control.sv`](../rtl/device/reins_platform_control.sv) to
+[`rtl/test/reins_otp_model.sv`](../rtl/test/reins_otp_model.sv). The latter represents
 nonvolatile public storage and irreversible lifecycle, with first-clock-only
 factory fixtures and partial-closure stimuli. It has no reset input. The R05 top
 also exposes passive actual-SHA observations and separate reduced-width time/raw
 health probes for exact boundary tests. Those probes cannot feed a production
 nonce or permission result.
 
-[`sim/rtl/r06_test_top.sv`](rtl/r06_test_top.sv) exposes the controller's trusted
+[`rtl/test/r06_test_top.sv`](../rtl/test/r06_test_top.sv) exposes the controller's trusted
 qualified-platform and verifier boundary **only for simulation**. It also has a
 separate reduced-limit instance and independent schedule/lease-check probes.
-[`sim/rtl/r06_integration_top.sv`](rtl/r06_integration_top.sv) instead instantiates
-actual [`reins_device_control`](../rtl/reins_device_control.sv) and retained OTP.
+[`rtl/test/r06_integration_top.sv`](../rtl/test/r06_integration_top.sv) instead instantiates
+actual [`reins_device_control`](../rtl/device/reins_device_control.sv) and retained OTP.
 That production component wires the committed lease internally to R05; no host
 lease input or software SHA bypass is introduced.
 
@@ -289,7 +296,7 @@ clock floors, metastability coverage, cell mapping or a silicon stop bound.
 ### R09 local grants and Merkle state
 
 The RTL Merkle engines store their working state in each instance of
-[`reins_merkle_pass`](../rtl/reins_merkle_pass.sv): fresh OTP/request/provenance
+[`reins_merkle_pass`](../rtl/device/reins_merkle_pass.sv): fresh OTP/request/provenance
 captures; configuration hash; constructed grant; leaf/current parent/sibling;
 index, level and stream/read positions; complementary metadata; physical SHA
 operation counts; and the held message/key evidence. There are two distinct
@@ -330,7 +337,7 @@ see the [R09 guide](../docs/R09_MERKLE.md) for interface/error codes and limits.
 
 ### R10c full RTL device state and operation
 
-`rtl/reins_device.sv` is the production top. Its inputs are platform technology,
+`rtl/device/reins_device.sv` is the production top. Its inputs are platform technology,
 commissioning and untrusted SPI pins. It connects actual R05 startup/time/entropy,
 R06 round/lease/quorum, R07 SPI/sealed SRAM, two complete cryptographic passes and
 R08 endpoint guards. No host Boolean, SHA result or stop acknowledgement can
@@ -393,8 +400,8 @@ cannot accumulate authorization.
 | [`r11_fault_tests.cc`](tests/r11_fault_tests.cc) | Three attempts each for persistent shared read corruption, repeated permissive comparison and sticky coherent identity glitches; records actual permit/votes/expiry |
 | [`reference_tests.cc`](tests/reference_tests.cc) | Expected violated-assumption example showing why predictable future nonces permit stockpiled valid grants |
 | [`fixtures/r11`](fixtures/r11) | Short hole, partial-BEGIN and stale-token traces |
-| [`sim/formal`](formal) | Actual-RTL arithmetic, seal and controller wrappers; `FORMAL` monitors add no hardware interface |
-| [`r11_reset_tb.sv`](rtl/r11_reset_tb.sv) | Separate Icarus four-state local guard/actuator reset, X/Z and static-rail checks |
+| [`rtl/test/formal`](../rtl/test/formal) | Actual-RTL arithmetic, seal and controller wrappers; `FORMAL` monitors add no hardware interface |
+| [`r11_reset_tb.sv`](../rtl/test/r11_reset_tb.sv) | Separate Icarus four-state local guard/actuator reset, X/Z and static-rail checks |
 | [`run_campaigns.py`](../tools/run_campaigns.py) | Finite budgets and Make builds/test groups through the normal timestamped result collector |
 | [`minimize_replay.py`](../tools/minimize_replay.py) | Reproduces the same failed assertion twice, deletes action chunks, verifies one-minimality and retains every candidate/log |
 | [`campaign_report.py`](../tools/campaign_report.py) | Actual execution/event/coverage results, source identity, budgets and requirement/state reports |
@@ -462,13 +469,13 @@ formula, source map, trust boundaries and complete test inventory.
 
 ### R10a SLH component state
 
-[`slh_message_hash`](../rtl/slh_message_hash.sv) captures the public key, R,
+[`slh_message_hash`](../rtl/device/slh_message_hash.sv) captures the public key, R,
 46-byte application message, production-gate fields and tag. Its complementary
 metadata, inner digest and mask stay local to that request. The actual pure
 framing is `00 || 00 || REINS-BATCH-v2 || batch_root`. A separate bounded MGF1
 entry exercises the algorithm without broadening the production protocol gate.
 
-[`slh_wots`](../rtl/slh_wots.sv) stores an immutable protected context, fresh
+[`slh_wots`](../rtl/device/slh_wots.sv) stores an immutable protected context, fresh
 public-seed compression state, current chain value/position, the 560-byte endpoint
 workspace, read position/sample and independently checked work counts. It reads
 only the canonical WOTS slice for the requested layer, checks row/column and
