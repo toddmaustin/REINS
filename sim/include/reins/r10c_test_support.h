@@ -3,6 +3,7 @@
 #include "Vr10c_test_top.h"
 #include "reins/verifier_test_oracle.h"
 #include "reins/fixture_io.h"
+#include "reins/fault_driver.h"
 namespace reins::sim::r10c_test {
 using namespace slh_test;
 using namespace r06_test;
@@ -22,13 +23,19 @@ public:
     VerilatedContext context;
     Vr10c_test_top dut{&context};
     Device reference{&std::cout};
-    Corpus& records;
+    Corpus* records;
+    Configuration configuration;
     std::uint64_t clocks=0,now=0,id=++evidence.models;
+    FaultDriver<Vr10c_test_top> faults{dut,evidence.events,id};
     VerificationInput input;
     bool strict=true, compare_model=true;
+    bool result_seen=false;
+    unsigned last_result_code=0;
     std::vector<unsigned> codes;
     // Initialize actual R06 at an abstract qualified-platform boundary using records' OTP and a deterministic fresh nonce.
-    explicit Bench(Corpus& fixtures=corpus()):records(fixtures) {
+    explicit Bench(Corpus& fixtures=corpus()):Bench(fixtures.config,test_nonce(1,17)) { records=&fixtures; }
+    // Provision public configuration with nonce, without generating any private key.
+    Bench(const Configuration& config,const Hash& nonce):records(nullptr),configuration(config) {
 #if VM_TRACE_FST
         context.traceEverOn(true);
         if (std::getenv("REINS_R10C_TRACE") && !evidence.traced) {
@@ -39,18 +46,18 @@ public:
         dut.por_ni=0; dut.clk_i=0; dut.reset_i=0; dut.cold_i=0; dut.cancel_i=0; dut.fault_i=0;
         dut.run_begin_i=0; dut.nonce_valid_i=0; dut.submit_i=0; dut.acquire_i=0; dut.release_i=0; dut.seal_i=0; dut.write_valid_i=0;
         dut.memory_token_i=1; dut.now_i=0; dut.tick_i=0; dut.slot_i=0; dut.total_i=7860;
-        pack(dut.configuration_i,records.config.otp); pack(dut.configuration_digest_i,bytes(records.config.digest));
-        dut.lease_i=records.config.timing.lease; dut.period_i=records.config.timing.period; dut.window_i=records.config.timing.window;
+        pack(dut.configuration_i,configuration.otp); pack(dut.configuration_digest_i,bytes(configuration.digest));
+        dut.lease_i=configuration.timing.lease; dut.period_i=configuration.timing.period; dut.window_i=configuration.timing.window;
         clocks_for(3); dut.por_ni=1; clocks_for(4); REQUIRE(dut.restart_ready_o);
-        REQUIRE(reference.program(records.config.otp,true,true)); REQUIRE(reference.close(true,true)); reference.reset(Reset::cold); REQUIRE(reference.startup(true));
+        REQUIRE(reference.program(configuration.otp,true,true)); REQUIRE(reference.close(true,true)); reference.reset(Reset::cold); REQUIRE(reference.startup(true));
         dut.run_begin_i=1; clocks_for(); dut.run_begin_i=0; running_=true;
-        const auto nonce=test_nonce(1,17); pack(dut.nonce_i,bytes(nonce)); dut.nonce_valid_i=1; clocks_for(); dut.nonce_valid_i=0; clocks_for();
+        pack(dut.nonce_i,bytes(nonce)); dut.nonce_valid_i=1; clocks_for(); dut.nonce_valid_i=0; clocks_for();
         REQUIRE(reference.entropy({reference.snapshot().generation,1,0,nonce,true})); REQUIRE(dut.request_valid_o);
     }
     // Retain real line coverage and finalize this model; no parameters.
     ~Bench() { if (owned_) ++evidence.canceled; dut.final(); context.coveragep()->write((evidence.directory/"coverage"/("unit-"+std::to_string(id)+".dat")).c_str()); }
     // Settle this model's combinational outputs without advancing trusted time; no parameters.
-    void settle() { Verilated::threadContextp(&context); dut.clk_i=0; dut.eval(); }
+    void settle() { Verilated::threadContextp(&context); dut.clk_i=0; dut.eval(); faults.observe(clocks); }
     // Advance count actual monitor clocks and independently inspect all six SHA datapaths and returned evidence.
     void clocks_for(unsigned count=1) {
         for (unsigned c=0;c<count;c++) {
@@ -101,6 +108,7 @@ public:
             if (trace_ && context.time()<200000) trace_->dump(context.time());
 #endif
             context.timeInc(1); dut.clk_i=1; dut.eval();
+            if (dut.result_valid_o) { result_seen=true; last_result_code=dut.result_code_o; }
 #if VM_TRACE_FST
             if (trace_ && context.time()<200000) trace_->dump(context.time());
 #endif
@@ -113,7 +121,7 @@ public:
     void inject(unsigned site) {
         evidence.events<<"{\"event\":\"fault\",\"bench\":"<<id<<",\"job\":"<<model_request_<<",\"site\":"<<site
             <<",\"clock\":"<<clocks<<",\"tick\":"<<now<<",\"bank\":"<<unsigned(dut.verifier_state_o)<<",\"lanes\":"<<dut.lane_state_o<<"}\n";
-        dut.fault_i=site;
+        faults.arm(site,clocks);
     }
     // Release a finished/cancelled receive buffer and advance its independent powered ownership token; no parameters.
     void release() {
@@ -121,12 +129,20 @@ public:
     }
     // Sign slot's actual local request at depth, optionally mutate signature/proof byte, then seal the sole actual SRAM and admit the real verifier.
     void start(unsigned slot=0,unsigned depth=0,std::optional<unsigned> mutation={}) {
-        dut.slot_i=slot; settle(); REQUIRE(dut.request_valid_o);
-        const auto request=unpack(dut.request_o,128); input={{1,1,static_cast<std::uint8_t>(slot)},records.config.otp,request,records.authorities[slot].depth_fixture(request,depth,now).reply};
+        REQUIRE(records!=nullptr); dut.slot_i=slot; settle(); REQUIRE(dut.request_valid_o);
+        const auto request=unpack(dut.request_o,128); input={{1,1,static_cast<std::uint8_t>(slot)},configuration.otp,request,records->authorities[slot].depth_fixture(request,depth,now).reply};
         if (mutation) input.reply.at(*mutation)^=1;
+        start_input(input);
+    }
+    // Seal and verify public job bytes; local OTP and freshly constructed request must match.
+    void start_input(const VerificationInput& supplied) {
+        input=supplied; dut.slot_i=input.tag.slot; settle();
+        REQUIRE(input.otp==configuration.otp);
+        REQUIRE(input.request==unpack(dut.request_o,128));
+        const auto request=input.request; const auto slot=input.tag.slot;
         diagnostic::write_input(std::cout,input,"R10c two independent real RTL passes","real sealed SRAM; independent expected blocks/stages; only two complete sparse codes can vote");
         if (compare_model) { reference.advance_to(now); REQUIRE(request==*reference.request(slot)); reference_token_=*reference.receive_begin(slot,input.reply.size()); }
-        ++model_request_; codes.clear(); reads_={}; starts_={}; ends_={}; stages_={}; completion_ticks_={};
+        ++model_request_; codes.clear(); reads_={}; starts_={}; ends_={}; stages_={}; completion_ticks_={}; result_seen=false;
         oracle_[0]=reconstruct_job(input); oracle_[1]=reconstruct_job(input);
         std::filesystem::create_directories(evidence.directory/"inputs");
         const auto prefix="unit-"+std::to_string(id)+"-job-"+std::to_string(model_request_);
@@ -149,10 +165,10 @@ public:
     }
     // Await actual result or fault, compare independently replayed semantic events, and return whether this job was accepted.
     bool finish(bool healthy=true) {
-        for (unsigned i=0;i<1000000 && !dut.result_valid_o && !dut.fault_o;i++) clocks_for();
-        REQUIRE((dut.result_valid_o || dut.fault_o)); const bool accepted=dut.result_valid_o && dut.result_code_o==0;
+        for (unsigned i=0;i<1000000 && !result_seen && !dut.fault_o;i++) clocks_for();
+        REQUIRE((result_seen || dut.fault_o)); const bool accepted=result_seen && last_result_code==0;
         std::cout<<"[R10C UNIT] state="<<unsigned(dut.controller_state_o)<<" verifier="<<unsigned(dut.verifier_state_o)<<" lanes="<<dut.lane_state_o<<" fault="<<unsigned(dut.fault_o)<<" memory="<<unsigned(dut.memory_fault_o)<<" starts="<<dut.starts_o<<" cycles="<<clocks-started_<<std::endl;
-        if (dut.result_valid_o && owned_) { ++evidence.completed; owned_=false; }
+        if (result_seen && owned_) { ++evidence.completed; owned_=false; }
         if (healthy) { CHECK_FALSE(dut.fault_o); REQUIRE(codes.size()==2); }
         if (healthy && compare_model) {
             REQUIRE(reference.receive_finish(reference_token_,{completion_ticks_[0]-finish_tick_,completion_ticks_[1]-completion_ticks_[0],false}));

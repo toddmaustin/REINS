@@ -1,5 +1,10 @@
 # Executable simulation strategy
 
+**R03 update:** protected storage, separate capture/update paths and the general
+fault catalog are now implemented. See [R03_PROTECTED_PRIMITIVES.md](R03_PROTECTED_PRIMITIVES.md).
+Earlier milestone descriptions below record their original bring-up boundaries;
+physical qualification and coverage outside the declared campaigns remain open.
+
 This implements the software infrastructure for section 2 of the
 [implementation plan](IMPLEMENTATION_PLAN.md). The currently executable mode is
 **reference**, using an event-driven C++ device model and the OpenSSL 3.5+ default
@@ -11,8 +16,7 @@ pin-level SPI master. See [R02_REFERENCE_MODEL.md](R02_REFERENCE_MODEL.md).
 R04 additionally supplies **rtl-sha256**: real iterative compression and
 message-framing/padding RTL, clocked by a C++ Verilator harness. The
 [RTL guide](../rtl/README.md) specifies interfaces, bounds, independent oracle
-checks and saved measurements. R03 protected primitives/internal fault injection
-are deferred; R04 exercises interface corruption without claiming their protections.
+checks and saved measurements. R03 now supplies protected primitives and internal fault injection; R04 exercises interface corruption without claiming their protections.
 R05 adds **rtl-r05** configuration, reset, timing and entropy control with real
 RTL SHA-256 instances. The [platform profile](R05_PLATFORM_PROFILE.md) records
 trusted technology interfaces, deterministic source settings, exact conditioner
@@ -162,7 +166,7 @@ independent Python outcomes anchor the C++ implementation.
 | RTL R07 memory | Isolated exact-production SRAM wrapper | Exhaustive single/double codeword errors, address/owner substitution and seal/control checks in declared digital fault domains |
 | Crypto control | Deferred until measurements justify a software SHA compression backend | Later: real sequencing with abstracted compression datapath |
 | Full RTL | R10c production device: pin-level SPI, sealed SRAM, two independent complete Merkle/SLH lanes, protected vote/lease acceptance and real endpoint guards | All-pair ARM/RENEW, withholding expiry, stalled/stale work, every SHA block/state/stage and actual job/whole-ARM latency under the declared profile |
-| RTL fault | Targeted R04–R10c instrumented component/integration tops; R03 general campaign framework deferred | Evidence for declared sequencer, memory, handoff, shared mux/data/capture, final join/commit and endpoint sites; no physical qualification |
+| RTL fault | Targeted R04–R10c instrumented component/integration tops; R03 general campaign framework implemented | Evidence for declared sequencer, memory, handoff, shared mux/data/capture, final join/commit and endpoint sites; no physical qualification |
 
 These new modes identify test-executable reports; the existing `reins-sim` CLI
 still accepts only its reference mode. Unavailable CLI modes fail with status 2.
@@ -249,5 +253,5 @@ inventory remain separate records. The CDC status is `manual_review_required`;
 neither that inventory nor Verilator proves metastability behavior. Bounded and
 inductive property scopes, schedule abstraction, a reachable commit witness,
 qualification gaps and all local commands are documented in
-[R11_LOCAL_RELEASE.md](R11_LOCAL_RELEASE.md). Deferred R03 protections, whole-device
+[R11_LOCAL_RELEASE.md](R11_LOCAL_RELEASE.md). Physical preservation of R03 protections, whole-device
 physical/netlist signoff and authority durability/admission/capacity stay explicit.

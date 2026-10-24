@@ -43,6 +43,7 @@ module reins_spi_control (
     input logic nonce_valid_i, // R05 conditioned result, with complete captured identity.
     output logic nonce_ready_o, // Accept only a fresh nonce tagged for the pending issue/run/round.
     input logic [255:0] nonce_i, // R05 conditioned 256-bit nonce, not a host-supplied response field.
+    input logic [255:0] nonce_audit_i, // Independent complemented R05 conditioner result.
     input logic [63:0] nonce_round_i, // Round tag captured by the R05 conditioner.
     input logic [63:0] nonce_issue_i, // Fixed issue tag captured before fresh-sample acquisition.
     input logic [63:0] nonce_generation_i, // Powered run tag captured by the R05 conditioner.
@@ -158,6 +159,7 @@ module reins_spi_control (
         .nonce_valid_i(nonce_valid_i),
         .nonce_ready_o(nonce_ready_o),
         .nonce_i(nonce_i),
+        .nonce_audit_i(nonce_audit_i),
         .nonce_round_i(nonce_round_i),
         .nonce_issue_i(nonce_issue_i),
         .nonce_generation_i(nonce_generation_i),

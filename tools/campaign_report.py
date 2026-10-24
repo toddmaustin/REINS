@@ -66,6 +66,7 @@ def generate(directory, output, profile, seeds, iterations):
     if failures:
         errors.append("Failed, interrupted or unrun groups: " + ", ".join(failures))
     names, states, fuzz, faults, legacy_fuzz, qualification = {}, {}, [], [], [], {}
+    applications = []
     for name,step in steps.items():
         if step.get("log") and Path(step["log"]).is_file():
             text = Path(step["log"]).read_text(errors="replace")
@@ -79,6 +80,8 @@ def generate(directory, output, profile, seeds, iterations):
                 fuzz.append(dict(event, group=name))
             elif kind == "campaign_fault":
                 faults.append(dict(event, group=name))
+            elif kind == "fault_applied":
+                applications.append(dict(event, group=name))
             elif kind in ["fuzz_summary", "fuzz_action", "exhaustive_ecc"]:
                 if kind == "fuzz_action":
                     if not legacy_fuzz or legacy_fuzz[-1].get("group")!=name or legacy_fuzz[-1].get("event")!=kind:
@@ -119,6 +122,12 @@ def generate(directory, output, profile, seeds, iterations):
             rows = [event for event in faults if event["campaign"]==campaign]
             if len(rows)!=3 or {event["attempt"] for event in rows}!={0,1,2} or any(event["dangerous"] or event["duration_clocks"]<=0 for event in rows):
                 errors.append(f"Fault budget/outcome incomplete or dangerous: {campaign}")
+        for exposure in faults:
+            matching = [event for event in applications if
+                (event["group"],event["bench"],event["site"],event["clock"]) ==
+                (exposure["group"],exposure.get("bench"),exposure["site"],exposure.get("activation_clock"))]
+            if len(matching)!=1 or not matching[0]["acknowledged"] or not matching[0]["effect"]:
+                errors.append(f"Fault attempt lacks actual application/effect evidence: {exposure['campaign']}")
     if profile in ["production", "release", "nightly"]:
         performance = directory / "production-full/performance.json"
         if not performance.is_file():
@@ -148,6 +157,9 @@ def generate(directory, output, profile, seeds, iterations):
         if strict and (missing or any(code!=0 for code in extra)):
             errors.append(f"Uncovered or unexplained safety states in {domain}: {missing}, {extra}")
     if strict:
+        protected=list((directory / "r03-protected/runs").glob("*/protected-report.json"))
+        if len(protected)!=1 or json.loads(protected[0].read_text()).get("status")!="passed":
+            errors.append("Protected-state campaign lacks a passing application/effect/release report.")
         missing = [name for name in manifest["required_groups"] if steps.get(name,{}).get("status")!="passed"]
         if missing:
             errors.append("Required release groups missing: " + ", ".join(missing))
@@ -159,20 +171,22 @@ def generate(directory, output, profile, seeds, iterations):
                 errors.append(f"{check} did not execute and pass; availability is not a skip-pass.")
     coverage = coverage_report(directory)
     (output / "coverage.json").write_text(json.dumps(coverage,indent=2)+"\n")
+    activation_keys={(row["group"],row.get("bench"),row["site"],row.get("activation_clock")) for row in faults}
+    actual_applications=[event for event in applications if (event["group"],event["bench"],event["site"],event["clock"]) in activation_keys and event["acknowledged"] and event["effect"]]
     report = dict(format_version=1, profile=profile, source_run=str(directory), source_digest=summary.get("source_digest"),
         manifest_sha256=hashlib.sha256(manifest_path.read_bytes()).hexdigest(),
         status="failed" if errors else "digital_release_checks_passed_with_declared_gaps" if strict else "selected_campaigns_passed",
         executions=summary["steps"], executed_tests=names, fuzz=dict(requested_seeds=seeds,requested_iterations_per_seed=iterations,
             requested_executed_iterations=sum(event["executed"] for event in budgeted_fuzz),
             budgeted_executions=budgeted_fuzz,suite_smoke_executions=smoke_fuzz,executions=fuzz,legacy_observations=legacy_fuzz),
-        faults=dict(planned_attempts=9,applied=len(faults),detected=sum(row["outcome"]=="detected" for row in faults),
+        faults=dict(planned_attempts=9,attempt_exposures=len(faults),applied=len(actual_applications),applications=actual_applications,detected=sum(row["outcome"]=="detected" for row in faults),
             safely_tolerated=sum(row["outcome"]=="safely_tolerated" for row in faults),dangerous=sum(row["dangerous"] for row in faults),executions=faults,
             uncovered="All sites, values, durations, combinations and physical domains outside the explicit inventories remain uncovered."),
         requirements=rows,safety_states=state_rows,qualification=qualification,known_gaps=manifest["known_gaps"],errors=errors)
     (output / "campaign.json").write_text(json.dumps(report,indent=2)+"\n")
     lines = ["# Local digital release evidence", "",f"Status: **{report['status']}**", "",f"Source run: `{directory}`", "",
         f"Fuzz: {len(budgeted_fuzz)} requested seed runs, {sum(event['executed'] for event in budgeted_fuzz)} requested iterations executed; "
-        f"{sum(event['executed'] for event in smoke_fuzz)} additional suite smoke iterations. Repeated/persistent faults: {len(faults)}/9 applied; {report['faults']['dangerous']} dangerous.", "",
+        f"{sum(event['executed'] for event in smoke_fuzz)} additional suite smoke iterations. Repeated/persistent faults: {len(faults)}/9 attempt exposures from {len(actual_applications)} confirmed activations; {report['faults']['dangerous']} dangerous.", "",
         "| Requirement | Digital evidence in this run | Remaining gap IDs |", "|---|---|---|"]
     lines += [f"| {row['id']} | {row['status']} | {', '.join(row['gaps'])} |" for row in rows]
     lines += ["",f"Coverage: {coverage['hit_points']}/{coverage['source_points']} source points from {coverage['raw_files']} raw files. No percentage threshold establishes acceptance.", ""]
@@ -182,7 +196,7 @@ def generate(directory, output, profile, seeds, iterations):
     lines += ["", "## Diagnostics", ""] + ([f"- {error}" for error in errors] or ["No failed or missing checks in the selected profile. This is not physical/platform qualification."])
     (output / "campaign.md").write_text("\n".join(lines)+"\n")
     print(f"Campaign report: {report['status']}; {output / 'campaign.md'}")
-    print(f"Executed requested fuzz iterations={sum(event['executed'] for event in budgeted_fuzz)}; suite smoke iterations={sum(event['executed'] for event in smoke_fuzz)}; repeated/persistent faults={len(faults)}/9; dangerous={report['faults']['dangerous']}")
+    print(f"Executed requested fuzz iterations={sum(event['executed'] for event in budgeted_fuzz)}; suite smoke iterations={sum(event['executed'] for event in smoke_fuzz)}; repeated/persistent attempts={len(faults)}/9; confirmed activations={len(actual_applications)}; dangerous={report['faults']['dangerous']}")
     for error in errors:
         print("FAIL: " + error)
     return errors

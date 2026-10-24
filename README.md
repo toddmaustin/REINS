@@ -30,14 +30,17 @@ RTL**: each pass independently constructs its local grant, hashes all public OTP
 reads the sealed proof and reconstructs its root with its own real SHA-256 core.
 Tests verify the actual RTL message/key using host SLH-DSA. **R10a adds real
 SLH-DSA components**: canonical addresses, pure/empty-context message hashing,
-MGF1 and WOTS+ reconstruction with independent intermediate checks. R03 protected primitives and general
-fault-injection infrastructure are deferred. **R10b completes single-pass signature
+MGF1 and WOTS+ reconstruction with independent intermediate checks. **R10b completes single-pass signature
 verification RTL**: FORS, all seven hypertree layers, exact parsing and reconstructed
 public-key root comparison using real SHA. **R10c integrates two complete independent
 passes and the full RTL device**: real SPI-to-lease authorization, six separate SHA
 datapaths, protected read/capture paths, dissimilar comparisons and redundant vote/commit
 checks. Physical qualification remains later work. These tests do not
 prove physical clock, randomness, isolation or fault-resistance properties.
+**R03 now adds protected state, independent capture/update paths and a general
+simulation fault catalog**, including confirmed applications, retained outcomes
+and public replay without private keys. See the [R03 guide](docs/R03_PROTECTED_PRIMITIVES.md).
+
 See the [RTL guide](rtl/README.md) for interfaces and hashing tests.
 The [R05 platform profile](docs/R05_PLATFORM_PROFILE.md) explains which digital
 checks are implemented and which timing/entropy inputs need physical evidence.
@@ -366,7 +369,7 @@ cannot pass. CDC inventory requires manual review; it is not signoff.
 The [R11 workflow guide](docs/R11_LOCAL_RELEASE.md) explains prerequisites, exact
 replay/minimization, CI and every report. The current authority model has no
 aggregate four-candidate rolling admission ledger; the requirement report keeps
-that gap explicit alongside deferred R03 and platform/service qualification.
+that gap explicit alongside bounded R03 fault coverage and platform/service qualification.
 The [5.008 validation record](docs/R11_VALIDATION.md) lists this implementation's
 executed counts, timings, investigated gaps and retained run IDs.
 
@@ -702,3 +705,23 @@ test-results/              Retained logs/reports; generated
 Use `.cc` and `.h` for first-party C++ files. Further conventions are in
 [AGENTS.md](AGENTS.md). The repository uses the
 [PolyForm Noncommercial License 1.0.0](LICENSE).
+
+## Protected state and fault replay
+
+```sh
+make r03-tests JOBS=2
+make fault-replay REPLAY=test-results/<run>/public-replays/<site-and-bench>/manifest.json
+```
+
+The first command tests actual platform/controller/verifier hardware with bit
+flips, register replacements, control glitches and persistent stuck values. It
+checks that each required fault triggers, changes its RTL target and is released;
+missed triggers and no-effect attempts are reported separately. Tests also check
+invalid state encodings, coherent lease corruption, two-pass root capture and
+recovery after fault removal.
+
+Each run prints its retained `test-results/<run>/` directory. Inspect
+`protected-report.json`, per-group logs/events and `public-replays/`. A public
+replay contains only OTP, request and signed reply bytes plus their hashes, so it
+does not need the original signing keys. See the [R03 guide](docs/R03_PROTECTED_PRIMITIVES.md)
+for operation semantics, supported replay contexts and physical qualification gaps.

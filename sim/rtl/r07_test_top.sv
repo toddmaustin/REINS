@@ -107,6 +107,7 @@ module r07_test_top (
     input logic [1:0] lifecycle_i, // Public lifecycle: 0 open, 1 closed, 2 invalid.
     input logic trusted_tick_i // Independent trusted time event, including while the run is inactive.
 );
+    wire [255:0] nonce_audit_i=~nonce_i; // Trusted abstract R05 model; production has independent conditioner rails.
     reins_spi_control device (.*);
 endmodule
 `default_nettype wire

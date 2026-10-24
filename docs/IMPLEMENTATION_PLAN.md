@@ -20,7 +20,8 @@ passes, protected acceptance and full production-top SPI/lease/guard tests. R07 
 an independent byte-level C++ oracle, actual memory-backed host verification and
 real R05/R06/R07 pin integration. R11 supplies campaign/replay/report/CI and local
 release workflows, with separate normal-build and qualification evidence.
-Deferred R03 and platform/service gaps remain explicit; software/Python validation
+R03 protected state and bounded general fault campaigns are now implemented.
+Platform/service and physical-fault gaps remain explicit; software/Python validation
 is not evidence of physical RTL qualification.
 
 Section 1 is established by [IMPLEMENTATION_SCOPE.md](IMPLEMENTATION_SCOPE.md),
@@ -39,8 +40,8 @@ Component RTL modes, real-cycle measurements and bounded FST now exist for R04/0
 Pin-level SPI, native receive timeouts and sealed-memory fault evidence now exist
 in R07. R08 now supplies digital endpoint enforcement and real-time clock/fault
 evidence. R10c now supplies full two-pass integration; physical authorization/
-enforcement qualification remains with its dependent milestones. R03 protected primitives/internal fault campaigns are
-deferred by the current development decision.
+enforcement qualification remains with its dependent milestones. R03 now supplies protected storage, independent capture/update paths and confirmed
+internal fault campaigns; see [R03_PROTECTED_PRIMITIVES.md](R03_PROTECTED_PRIMITIVES.md).
 
 ## 1. Fixed scope and source of truth
 
@@ -140,10 +141,9 @@ Use these modes, and identify the mode in every result:
 Each numbered item is a reviewable milestone. Split larger milestones further
 when needed, preserving this dependency order. Directed tests, fuzz corpora, fault
 sites, and requirement evidence grow with each component, starting in its own PR.
-R03 protected primitives and general fault-injection infrastructure are currently
-**deferred** by project decision. R04 hashing proceeds first; later milestones
-that require R03 protections still need that work before claiming protected
-acceptance or fault resistance.
+R03 was deferred during functional R04–R11 bring-up and has now resumed. Its
+digital mechanisms and bounded campaign framework are implemented; no milestone
+claims physical fault resistance without subsequent platform qualification.
 
 ### PR 01 — Build, fixtures, and verification foundation
 
@@ -196,8 +196,11 @@ Do not assume private keys for the existing signed fixtures are available.
 
 ### PR 03 — Protected primitives and fault-injection infrastructure
 
-**Status: deferred.** Its general internal-fault instrumentation and protected
-storage/control work are not prerequisites for R04 functional SHA bring-up.
+**Status: implemented for the digital research profile.** R03 resumed after R11.
+See [R03_PROTECTED_PRIMITIVES.md](R03_PROTECTED_PRIMITIVES.md) for the independent
+storage/capture/update design, source-derived HD>=4 inventory, stable fault sites,
+application/effect/release evidence and public replay workflow. Physical path
+preservation, exhaustive faults and platform qualification remain explicit gaps.
 
 **Deliver:** checked 64-bit arithmetic; dissimilar redundant storage/update paths;
 sparse state and accept-code handling; protected generations and counters; and
@@ -225,7 +228,7 @@ triggers from executed injections.
 iterative compression core accepts arbitrary input chaining states; its bounded
 message wrapper supplies RTL padding/chaining. `make tests` includes directed,
 seeded fuzz and interface-corruption cases, independent pin observations and
-retained actual cycle/throughput reports. R03 remains deferred; these results do
+retained actual cycle/throughput reports. R03 was deferred during this bring-up; these results do
 not establish internal fault protection or safe sharing across verification passes.
 
 **Deliver:** an iterative SHA-256 compression core, message framing/padding support,
@@ -249,7 +252,7 @@ are exercised on Verilator. Tests use predictable source bits, with no assessed
 entropy credit or physical timing claim. The lease input is a trusted internal
 boundary for R06; signed C++ reference-model quorums exercise its hold/expiry gate.
 Actual RTL vote/commit state, fixed round scheduling, enforcement and protected
-R03 primitives remain separate work.
+R03 now supplies the subsequent protected storage/control work.
 
 **Deliver:** the 272-byte public OTP schema, field/key distinctness checks,
 configuration hashing, open/closed/invalid lifecycle, physically enabled
@@ -278,8 +281,8 @@ pending/vote/lease state and connects internally to R05. Fast controller tests
 perform two real software verification passes and compare meaningful behavior
 against the C++ model; integration tests include real R05 SHA/time/source startup.
 Pending/job/context state has digital complemented checks and the FSM is sparse;
-R03 independent physical capture, protected fan-out/placement and general internal
-fault campaigns remain deferred. R07 receive memory/SPI and real verifier hardware
+R03 now adds independent digital capture/update paths and general internal
+fault campaigns; physical fan-out/placement qualification remains separate. R07 receive memory/SPI and real verifier hardware
 remain separate milestones.
 
 **Deliver:** the operational FSM, exact 128-byte slot requests, one protected pending
@@ -306,7 +309,7 @@ old results. Compare against the C++ model and add stateful fuzzing now.
 payload/protection storage, simulation profile, tests and limits. Pin-level tests
 use two real independent software signature verifications over fresh sealed-memory
 reads; no SPI command can supply a verdict. Full verifier hardware, SRAM-macro
-qualification and deferred R03 physical protections remain separate work.
+qualification and physical preservation of R03 protections remain separate work.
 
 **Deliver:** mode-0 SPI drivers and slave RTL; exact envelopes, result codes,
 atomic public reads, coherent request snapshots, and one 9,216-byte receive memory
@@ -419,7 +422,7 @@ independent exact work/read/stage observations. Sparse captures, dissimilar root
 comparisons and independent slot certificates protect the final vote/commit path.
 `make r10c-tests` runs directed/fault/fuzz tests and full SPI ARM/RENEW for all
 three pairs, withholding expiry and a stalled second pass with actual guards.
-R03 general campaigns and physical qualification remain deferred.
+R03 now supplies bounded general campaigns; physical qualification remains separate.
 
 **Deliver:** two complete independently sequenced passes, initially using separate
 SHA datapaths, dissimilar root comparisons, sparse accept codewords, protected
@@ -448,7 +451,7 @@ run directed regressions, exact byte replay/minimization, finite seeded campaign
 nine repeated/persistent attempts, normal non-instrumented SPI timing and separate
 formal/component synthesis/four-state/CDC records. Reports check actual execution,
 source identity, required test selection and sparse-state witnesses. A local
-release remains conditional on its explicit gaps, including deferred R03,
+release remains conditional on its explicit gaps, including bounded R03 fault coverage,
 platform signoff and the missing aggregate admission ledger in test authorities.
 
 **Deliver:** expanded deterministic regressions, minimized fuzz reproducers,
@@ -598,7 +601,7 @@ behavior; and measure environmental/fault coverage and the actual stop bound.
 Sharing SHA hardware or broadening N/Q is a later change requiring renewed
 performance, fault, and regression evidence.
 
-**Next development decision:** choose the scope of deferred R03 protections and
+**Next development decision:** qualify the implemented R03 protections and
 the target platform/service qualification. R11's local digital release reports
 preserve the known gaps rather than certifying them away. Production admission
 durability/capacity, full netlist/CDC/reset/timing work and physical entropy,

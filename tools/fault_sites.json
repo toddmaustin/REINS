@@ -1,0 +1,864 @@
+{
+  "format_version": 1,
+  "catalog_version": "r03-v1",
+  "payload_bits": 4096,
+  "contract": "Simulation-only logical site IDs; trigger, applied readback, initial effect and release are separate evidence. Physical independence remains qualified separately.",
+  "sites": [
+    {
+      "id": 1,
+      "target": "r10c",
+      "name": "bank.state",
+      "parts": [
+        {
+          "expression": "verifier.state_q",
+          "width": 8
+        }
+      ],
+      "trigger": "verifier.state_q==8'h55",
+      "legacy_value": "8'h00"
+    },
+    {
+      "id": 2,
+      "target": "r10c",
+      "name": "bank.token",
+      "parts": [
+        {
+          "expression": "verifier.context_q.token",
+          "width": 64
+        }
+      ],
+      "trigger": "verifier.state_q==8'h55",
+      "legacy_value": "64'd0"
+    },
+    {
+      "id": 3,
+      "target": "r10c",
+      "name": "read.address",
+      "parts": [
+        {
+          "expression": "verifier.read_address_o",
+          "width": 14
+        },
+        {
+          "expression": "verifier.read_address_inverse_o",
+          "width": 14
+        }
+      ],
+      "trigger": "read_valid_o && memory_valid && memory_address!=0",
+      "legacy_value": "{14'd0,~14'd0}"
+    },
+    {
+      "id": 4,
+      "target": "r10c",
+      "name": "bank.capture",
+      "parts": [
+        {
+          "expression": "verifier.capture_q",
+          "width": 8
+        },
+        {
+          "expression": "verifier.capture_inv_q",
+          "width": 8
+        }
+      ],
+      "trigger": "verifier.passes[0].engine.e.state==8'haa",
+      "legacy_value": "{8'h96,~8'h96}"
+    },
+    {
+      "id": 5,
+      "target": "r10c",
+      "name": "lane1.starts",
+      "parts": [
+        {
+          "expression": "verifier.passes[0].engine.e.starts",
+          "width": 16
+        }
+      ],
+      "trigger": "verifier.passes[0].engine.e.starts!=0",
+      "legacy_value": "16'd0"
+    },
+    {
+      "id": 6,
+      "target": "r10c",
+      "name": "lane2.steps",
+      "parts": [
+        {
+          "expression": "verifier.passes[1].engine.e.steps",
+          "width": 16
+        },
+        {
+          "expression": "verifier.passes[1].engine.ei.steps",
+          "width": 16
+        }
+      ],
+      "trigger": "verifier.passes[1].engine.e.state==8'haa && verifier.passes[1].engine.e.steps!=0",
+      "legacy_value": "{16'd0,~16'd0}"
+    },
+    {
+      "id": 7,
+      "target": "r10c",
+      "name": "lane1.chain_digit",
+      "parts": [
+        {
+          "expression": "verifier.passes[0].engine.chain_digit",
+          "width": 5
+        }
+      ],
+      "trigger": "verifier.passes[0].engine.chain_start",
+      "legacy_value": "5'd31"
+    },
+    {
+      "id": 8,
+      "target": "r10c",
+      "name": "lane1.stage_valid",
+      "parts": [
+        {
+          "expression": "verifier.passes[0].engine.stage_valid",
+          "width": 1
+        }
+      ],
+      "trigger": "verifier.passes[0].engine.stage_valid",
+      "legacy_value": "1'b0"
+    },
+    {
+      "id": 9,
+      "target": "r10c",
+      "name": "lane1.key",
+      "parts": [
+        {
+          "expression": "verifier.passes[0].engine.e.key",
+          "width": 256
+        }
+      ],
+      "trigger": "verifier.passes[0].engine.e.state==8'h96 && verifier.passes[0].engine.e.key!=0",
+      "legacy_value": "256'd0"
+    },
+    {
+      "id": 10,
+      "target": "r10c",
+      "name": "lane1.root_compare",
+      "parts": [
+        {
+          "expression": "verifier.passes[0].engine.root_equal",
+          "width": 1
+        }
+      ],
+      "trigger": "verifier.passes[0].engine.e.state==8'haa && !verifier.passes[0].engine.root_equal",
+      "legacy_value": "1'b1"
+    },
+    {
+      "id": 11,
+      "target": "r10c",
+      "name": "lane2.root_compare",
+      "parts": [
+        {
+          "expression": "verifier.passes[1].engine.root_equal",
+          "width": 1
+        }
+      ],
+      "trigger": "verifier.passes[1].engine.e.state==8'haa && !verifier.passes[1].engine.root_equal",
+      "legacy_value": "1'b1"
+    },
+    {
+      "id": 12,
+      "target": "r10c",
+      "name": "controller.pass1_success",
+      "parts": [
+        {
+          "expression": "controller.pass1_ok_q",
+          "width": 1
+        }
+      ],
+      "trigger": "job_active && !controller.pass1_ok_q",
+      "legacy_value": "1'b1"
+    },
+    {
+      "id": 13,
+      "target": "r10c",
+      "name": "controller.quorum",
+      "parts": [
+        {
+          "expression": "controller.voted",
+          "width": 3
+        }
+      ],
+      "trigger": "job_active && controller.voted!=3'b111",
+      "legacy_value": "3'b111"
+    },
+    {
+      "id": 14,
+      "target": "r10c",
+      "name": "controller.commit_check",
+      "parts": [
+        {
+          "expression": "controller.secondary_commit_ok",
+          "width": 1
+        }
+      ],
+      "trigger": "completion_valid_o && completion_pass_o==2 && controller.secondary_commit_ok",
+      "legacy_value": "1'b0"
+    },
+    {
+      "id": 15,
+      "target": "r10c",
+      "name": "lane1.sha_ready",
+      "parts": [
+        {
+          "expression": "verifier.passes[0].engine.slh.core.hash.backend.core.req_ready_o",
+          "width": 1
+        }
+      ],
+      "trigger": "job_active && verifier.passes[0].engine.slh.core.hash.backend.core.req_ready_o",
+      "legacy_value": "1'b0"
+    },
+    {
+      "id": 16,
+      "target": "r10c",
+      "name": "lane1.leaf_frame",
+      "parts": [
+        {
+          "expression": "verifier.passes[0].engine.merkle.leaf_frame",
+          "width": 1392
+        }
+      ],
+      "trigger": "verifier.passes[0].engine.merkle.state_q==8'h55 && verifier.passes[0].engine.merkle.stage_q==8'h96",
+      "legacy_value": "1392'd0"
+    },
+    {
+      "id": 17,
+      "target": "r10c",
+      "name": "lane2.merkle_handoff",
+      "parts": [
+        {
+          "expression": "verifier.passes[1].engine.merkle.handoff_q",
+          "width": 256
+        },
+        {
+          "expression": "verifier.passes[1].engine.merkle.handoff_inverse_q",
+          "width": 256
+        }
+      ],
+      "trigger": "verifier.passes[1].engine.merkle.state_q==8'haa && verifier.passes[1].engine.merkle.handoff_q!=0",
+      "legacy_value": "{256'd0,{256{1'b1}}}"
+    },
+    {
+      "id": 18,
+      "target": "r10c",
+      "name": "controller.completion_identity",
+      "parts": [
+        {
+          "expression": "controller.match_completion",
+          "width": 1
+        },
+        {
+          "expression": "completion_token",
+          "width": 64
+        }
+      ],
+      "trigger": "job_active && !controller.match_completion",
+      "legacy_value": "{1'b1,64'd0}"
+    },
+    {
+      "id": 19,
+      "target": "r10c",
+      "name": "lane1.batch_message",
+      "parts": [
+        {
+          "expression": "verifier.passes[0].engine.merkle_message",
+          "width": 368
+        }
+      ],
+      "trigger": "verifier.passes[0].engine.e.state==8'h69",
+      "legacy_value": "368'd0"
+    },
+    {
+      "id": 20,
+      "target": "r10c",
+      "name": "lane1.batch_root",
+      "parts": [
+        {
+          "expression": "verifier.passes[0].engine.e.batch_root",
+          "width": 256
+        },
+        {
+          "expression": "verifier.passes[0].engine.ei.batch_root",
+          "width": 256
+        }
+      ],
+      "trigger": "verifier.passes[0].engine.e.state==8'h96 && verifier.passes[0].engine.e.batch_root!=0",
+      "legacy_value": "{256'd0,{256{1'b1}}}"
+    },
+    {
+      "id": 21,
+      "target": "r10c",
+      "name": "controller.vote_copies",
+      "parts": [
+        {
+          "expression": "controller.votes_q",
+          "width": 3
+        },
+        {
+          "expression": "controller.votes_inv_q",
+          "width": 3
+        }
+      ],
+      "trigger": "job_active && controller.votes_q!=3'b011",
+      "legacy_value": "{3'b011,3'b100}"
+    },
+    {
+      "id": 22,
+      "target": "r10c",
+      "name": "read.data",
+      "parts": [
+        {
+          "expression": "memory.read_data_o",
+          "width": 8
+        }
+      ],
+      "trigger": "job_active && read_valid_o && memory_valid && read_data!=0",
+      "legacy_value": "8'd0"
+    },
+    {
+      "id": 23,
+      "target": "r10c",
+      "name": "bank.token_copies",
+      "parts": [
+        {
+          "expression": "verifier.context_q.token",
+          "width": 64
+        },
+        {
+          "expression": "verifier.context_inv_q.token",
+          "width": 64
+        }
+      ],
+      "trigger": "verifier.context_q.token!=0 && verifier.state_q!=8'h0f",
+      "legacy_value": "{64'd0,~64'd0}"
+    },
+    {
+      "id": 24,
+      "target": "r10c",
+      "name": "lane1.identity_copies",
+      "parts": [
+        {
+          "expression": "verifier.passes[0].engine.identity_q.token",
+          "width": 64
+        },
+        {
+          "expression": "verifier.passes[0].engine.identity_inv_q.token",
+          "width": 64
+        }
+      ],
+      "trigger": "verifier.passes[0].engine.e.state==8'h55 && verifier.passes[0].engine.identity_q.token!=0",
+      "legacy_value": "{64'd0,~64'd0}"
+    },
+    {
+      "id": 256,
+      "target": "r05",
+      "name": "config.phase",
+      "parts": [
+        {
+          "expression": "control.config_checker.phase_q",
+          "width": 8
+        }
+      ],
+      "trigger": "control.startup_complete_o"
+    },
+    {
+      "id": 257,
+      "target": "r05",
+      "name": "config.phase_inverse",
+      "parts": [
+        {
+          "expression": "control.config_checker.phase_inverse_q",
+          "width": 8
+        }
+      ],
+      "trigger": "control.startup_complete_o"
+    },
+    {
+      "id": 258,
+      "target": "r05",
+      "name": "config.cursor",
+      "parts": [
+        {
+          "expression": "control.config_checker.index_q",
+          "width": 9
+        }
+      ],
+      "trigger": "control.startup_complete_o"
+    },
+    {
+      "id": 259,
+      "target": "r05",
+      "name": "config.image",
+      "parts": [
+        {
+          "expression": "control.config_checker.image_o",
+          "width": 2176
+        }
+      ],
+      "trigger": "control.startup_complete_o"
+    },
+    {
+      "id": 260,
+      "target": "r05",
+      "name": "config.digest",
+      "parts": [
+        {
+          "expression": "control.config_checker.digest_o",
+          "width": 256
+        }
+      ],
+      "trigger": "control.startup_complete_o"
+    },
+    {
+      "id": 261,
+      "target": "r05",
+      "name": "time.now",
+      "parts": [
+        {
+          "expression": "control.timekeeper.now_o",
+          "width": 64
+        }
+      ],
+      "trigger": "control.startup_complete_o"
+    },
+    {
+      "id": 262,
+      "target": "r05",
+      "name": "time.now_inverse",
+      "parts": [
+        {
+          "expression": "control.timekeeper.now_inverse_q",
+          "width": 64
+        }
+      ],
+      "trigger": "control.startup_complete_o"
+    },
+    {
+      "id": 263,
+      "target": "r05",
+      "name": "platform.generation",
+      "parts": [
+        {
+          "expression": "control.generation_o",
+          "width": 64
+        }
+      ],
+      "trigger": "control.startup_complete_o"
+    },
+    {
+      "id": 264,
+      "target": "r05",
+      "name": "platform.generation_inverse",
+      "parts": [
+        {
+          "expression": "control.generation_inverse_q",
+          "width": 64
+        }
+      ],
+      "trigger": "control.startup_complete_o"
+    },
+    {
+      "id": 265,
+      "target": "r05",
+      "name": "platform.phase",
+      "parts": [
+        {
+          "expression": "control.phase_q",
+          "width": 8
+        }
+      ],
+      "trigger": "control.startup_complete_o"
+    },
+    {
+      "id": 266,
+      "target": "r05",
+      "name": "entropy.phase",
+      "parts": [
+        {
+          "expression": "control.entropy.phase_q",
+          "width": 8
+        }
+      ],
+      "trigger": "control.startup_complete_o"
+    },
+    {
+      "id": 267,
+      "target": "r05",
+      "name": "entropy.phase_inverse",
+      "parts": [
+        {
+          "expression": "control.entropy.phase_inverse_q",
+          "width": 8
+        }
+      ],
+      "trigger": "control.startup_complete_o"
+    },
+    {
+      "id": 268,
+      "target": "r05",
+      "name": "entropy.raw_a",
+      "parts": [
+        {
+          "expression": "control.entropy.raw_a_q",
+          "width": 384
+        }
+      ],
+      "trigger": "control.entropy.phase_q==8'h55 && control.entropy.a_count_o>0"
+    },
+    {
+      "id": 269,
+      "target": "r05",
+      "name": "entropy.raw_a_inverse",
+      "parts": [
+        {
+          "expression": "control.entropy.raw_a_inverse_q",
+          "width": 384
+        }
+      ],
+      "trigger": "control.entropy.phase_q==8'h55 && control.entropy.a_count_o>0"
+    },
+    {
+      "id": 270,
+      "target": "r05",
+      "name": "entropy.history",
+      "parts": [
+        {
+          "expression": "control.entropy.previous_q",
+          "width": 256
+        }
+      ],
+      "trigger": "control.startup_complete_o"
+    },
+    {
+      "id": 271,
+      "target": "r05",
+      "name": "entropy.history_inverse",
+      "parts": [
+        {
+          "expression": "control.entropy.previous_inverse_q",
+          "width": 256
+        }
+      ],
+      "trigger": "control.startup_complete_o"
+    },
+    {
+      "id": 272,
+      "target": "r05",
+      "name": "entropy.nonce",
+      "parts": [
+        {
+          "expression": "control.entropy.nonce_o",
+          "width": 256
+        }
+      ],
+      "trigger": "control.nonce_valid_o"
+    },
+    {
+      "id": 273,
+      "target": "r05",
+      "name": "entropy.audit_nonce",
+      "parts": [
+        {
+          "expression": "control.entropy.nonce_audit_o",
+          "width": 256
+        }
+      ],
+      "trigger": "control.nonce_valid_o"
+    },
+    {
+      "id": 274,
+      "target": "r05",
+      "name": "entropy.count_a",
+      "parts": [
+        {
+          "expression": "control.entropy.a_count_o",
+          "width": 9
+        }
+      ],
+      "trigger": "control.entropy.phase_q==8'h55 && control.entropy.a_count_o>0"
+    },
+    {
+      "id": 275,
+      "target": "r05",
+      "name": "entropy.count_a_inverse",
+      "parts": [
+        {
+          "expression": "control.entropy.a_count_inverse_q",
+          "width": 9
+        }
+      ],
+      "trigger": "control.entropy.phase_q==8'h55 && control.entropy.a_count_o>0"
+    },
+    {
+      "id": 276,
+      "target": "r05",
+      "name": "entropy.conditioner_result",
+      "parts": [
+        {
+          "expression": "control.entropy.conditioner.rsp_digest_o",
+          "width": 256
+        }
+      ],
+      "trigger": "control.entropy.phase_q==8'haa && control.entropy.sha_rsp_valid && control.entropy.audit_valid"
+    },
+    {
+      "id": 277,
+      "target": "r05",
+      "name": "entropy.audit_result",
+      "parts": [
+        {
+          "expression": "control.entropy.audit_conditioner.rsp_digest_o",
+          "width": 256
+        }
+      ],
+      "trigger": "control.entropy.phase_q==8'haa && control.entropy.sha_rsp_valid && control.entropy.audit_valid"
+    },
+    {
+      "id": 278,
+      "target": "r05",
+      "name": "entropy.valid",
+      "parts": [
+        {
+          "expression": "control.entropy.nonce_valid_q",
+          "width": 1
+        }
+      ],
+      "trigger": "control.nonce_valid_o"
+    },
+    {
+      "id": 279,
+      "target": "r05",
+      "name": "entropy.valid_output",
+      "parts": [
+        {
+          "expression": "control.entropy.nonce_valid_o",
+          "width": 1
+        }
+      ],
+      "trigger": "control.entropy.phase_q==8'h55 && control.entropy.a_count_o>0 && !control.entropy.nonce_valid_o"
+    },
+    {
+      "id": 280,
+      "target": "r05",
+      "name": "config.valid",
+      "parts": [
+        {
+          "expression": "control.config_checker.valid_q",
+          "width": 1
+        }
+      ],
+      "trigger": "control.startup_complete_o"
+    },
+    {
+      "id": 281,
+      "target": "r05",
+      "name": "config.schema_enable",
+      "parts": [
+        {
+          "expression": "control.config_checker.fields_valid",
+          "width": 1
+        }
+      ],
+      "trigger": "control.config_checker.phase_q==8'h55 && !control.config_checker.fields_valid"
+    },
+    {
+      "id": 512,
+      "target": "r10c",
+      "name": "controller.nonce",
+      "parts": [
+        {
+          "expression": "controller.context_q.nonce",
+          "width": 256
+        }
+      ],
+      "trigger": "request_valid_o"
+    },
+    {
+      "id": 513,
+      "target": "r10c",
+      "name": "controller.nonce_inverse",
+      "parts": [
+        {
+          "expression": "controller.context_inv_q.nonce",
+          "width": 256
+        }
+      ],
+      "trigger": "request_valid_o"
+    },
+    {
+      "id": 514,
+      "target": "r10c",
+      "name": "controller.token",
+      "parts": [
+        {
+          "expression": "controller.token_q",
+          "width": 64
+        }
+      ],
+      "trigger": "job_active"
+    },
+    {
+      "id": 515,
+      "target": "r10c",
+      "name": "controller.token_inverse",
+      "parts": [
+        {
+          "expression": "controller.token_inv_q",
+          "width": 64
+        }
+      ],
+      "trigger": "job_active"
+    },
+    {
+      "id": 516,
+      "target": "r10c",
+      "name": "controller.job_constructor",
+      "parts": [
+        {
+          "expression": "controller.proposed_job.request_body",
+          "width": 1024
+        }
+      ],
+      "trigger": "submit_i && controller.submit_ready_o"
+    },
+    {
+      "id": 517,
+      "target": "r10c",
+      "name": "controller.lease_certificate",
+      "parts": [
+        {
+          "expression": "controller.lease_certificate_q",
+          "width": 8
+        }
+      ],
+      "trigger": "permit_o"
+    },
+    {
+      "id": 518,
+      "target": "r10c",
+      "name": "controller.lease_data",
+      "parts": [
+        {
+          "expression": "controller.issue_q",
+          "width": 64
+        },
+        {
+          "expression": "controller.issue_inv_q",
+          "width": 64
+        },
+        {
+          "expression": "controller.expiry_q",
+          "width": 64
+        },
+        {
+          "expression": "controller.remaining_q",
+          "width": 64
+        },
+        {
+          "expression": "controller.remaining_inv_q",
+          "width": 64
+        }
+      ],
+      "trigger": "permit_o"
+    },
+    {
+      "id": 519,
+      "target": "r10c",
+      "name": "lane1.next",
+      "parts": [
+        {
+          "expression": "verifier.passes[0].engine.next_e",
+          "width": 1148
+        }
+      ],
+      "trigger": "verifier.passes[0].engine.e.state==8'h96"
+    },
+    {
+      "id": 520,
+      "target": "r10c",
+      "name": "lane1.audit_next",
+      "parts": [
+        {
+          "expression": "verifier.passes[0].engine.audit_next_e",
+          "width": 1148
+        }
+      ],
+      "trigger": "verifier.passes[0].engine.e.state==8'h96"
+    },
+    {
+      "id": 521,
+      "target": "r10c",
+      "name": "lane1.slh_next_node",
+      "parts": [
+        {
+          "expression": "verifier.passes[0].engine.slh.core.n.node",
+          "width": 128
+        }
+      ],
+      "trigger": "verifier.passes[0].engine.slh.core.w.state==8'haa"
+    },
+    {
+      "id": 522,
+      "target": "r10c",
+      "name": "lane1.root_payload",
+      "parts": [
+        {
+          "expression": "verifier.passes[0].engine.reconstructed_root",
+          "width": 128
+        }
+      ],
+      "trigger": "verifier.passes[0].engine.e.state==8'haa"
+    },
+    {
+      "id": 523,
+      "target": "r10c",
+      "name": "lane1.slh_context",
+      "parts": [
+        {
+          "expression": "verifier.passes[0].engine.slh.core.context_q.key",
+          "width": 256
+        }
+      ],
+      "trigger": "verifier.passes[0].engine.slh.core.w.state==8'h33"
+    },
+    {
+      "id": 524,
+      "target": "r10c",
+      "name": "bank.capture_enable",
+      "parts": [
+        {
+          "expression": "verifier.job_ready_o",
+          "width": 1
+        }
+      ],
+      "trigger": "job_active"
+    },
+    {
+      "id": 525,
+      "target": "r10c",
+      "name": "controller.primary_commit",
+      "parts": [
+        {
+          "expression": "controller.lease_q",
+          "width": 1
+        }
+      ],
+      "trigger": "job_active && !permit_o"
+    },
+    {
+      "id": 526,
+      "target": "r10c",
+      "name": "controller.audit_commit",
+      "parts": [
+        {
+          "expression": "controller.audit_commit",
+          "width": 1
+        }
+      ],
+      "trigger": "job_active"
+    }
+  ]
+}

@@ -31,7 +31,7 @@ def source_digest(cwd=ROOT):
     inventory = {}
     for name in sorted(set(paths)):
         path = Path(cwd) / name
-        first_party = name.startswith(("rtl/", "sim/", "tools/")) and path.suffix in [".sv", ".cc", ".h", ".py", ".mk", ".json", ".trace", ".bin"]
+        first_party = name.startswith(("rtl/", "sim/", "tools/")) and path.suffix in [".sv", ".svh", ".cc", ".h", ".py", ".mk", ".json", ".trace", ".bin"]
         if path.is_file() and (first_party or name.startswith(".github/") or name in ["Makefile", "docs/RELEASE_REQUIREMENTS.json", "third_party/verilator-tool.json"]):
             inventory[name] = hashlib.sha256(path.read_bytes()).hexdigest()
     return hashlib.sha256(json.dumps(inventory, sort_keys=True).encode()).hexdigest()

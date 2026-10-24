@@ -1,5 +1,10 @@
 # R05 digital platform profile and evidence
 
+**R03 update:** protected storage, separate capture/update paths and the general
+fault catalog are now implemented. See [R03_PROTECTED_PRIMITIVES.md](R03_PROTECTED_PRIMITIVES.md).
+Earlier milestone descriptions below record their original bring-up boundaries;
+physical qualification and coverage outside the declared campaigns remain open.
+
 This record describes the configuration, reset, trusted-time and entropy RTL
 implemented for **N=3, Q=2**, with simulation platform identifier **1**. The
 [v0.3 PDF](REINS-Hardware-Specification-v0.3.pdf), especially sections 5, 8, 11
@@ -318,9 +323,9 @@ in-flight SHA cancellation, simultaneous reset/fault and source/completion races
 both missing timing references, overflow and nonce/deadline boundaries.
 
 Coverage is execution evidence, not an assertion of full coverage or synthesis
-qualification. R03 protected encodings, replicas and internal fault campaigns
-remain deferred. R06+ must implement the lease/quorum controller, SPI, receive
-SRAM, actual signature verification, guard replication and physical stopping.
+qualification. R03 now adds protected encodings, replicas and internal fault
+campaigns; R06–R10c supply the controller, SPI, receive SRAM, full verification
+and modeled guards. Physical stopping remains a platform qualification item.
 The production modules are linted separately with assertions and `SYNTHESIS`;
 this is not post-synthesis, CDC, timing, area or fault-resistance evidence.
 
@@ -341,3 +346,23 @@ Both ownership balances passed. Its wall time was about 5.18 seconds, approximat
 coverage/logging. These are simulator measurements, not a silicon clock or an
 entropy estimate. Each run's actual versions, counts, inputs and timing remain
 in its retained result directory.
+
+### R03 conditioner and capture update
+
+The entropy controller now runs two dedicated SHA-256 message engines. The
+primary frame reads primary raw samples; the second independently builds the
+same 124-byte frame from complemented raw stores and its own cursor. This does
+not double the entropy credit: each source still contributes exactly 384 fresh
+samples to the same documented source profile. Both digests must agree.
+
+The first digest is captured before the audit digest, on separate monitor
+clocks. `nonce_audit_o` is the complemented independently captured result and
+flows internally to R06. Warm/cold history retention and actual-power-loss
+history loss are unchanged. Integrity corruption is a general alarm; a genuine
+source health/repeat failure remains entropy hold and preserves an existing
+healthy lease only to its original expiry. Deterministic sources demonstrate
+digital behavior and supply no physical entropy assessment.
+
+Configuration validation similarly rereads each OTP byte on a later edge,
+checks a separately decoded inverse-image schema and captures a held digest on
+a later clock. Startup takes additional monitor clocks before local issue zero.

@@ -1,5 +1,10 @@
 # R10c: independent two-pass acceptance and the full RTL device
 
+**R03 update:** protected storage, separate capture/update paths and the general
+fault catalog are now implemented. See [R03_PROTECTED_PRIMITIVES.md](R03_PROTECTED_PRIMITIVES.md).
+Earlier milestone descriptions below record their original bring-up boundaries;
+physical qualification and coverage outside the declared campaigns remain open.
+
 `rtl/reins_device.sv` is the production authorization top. A signed reply travels
 from SPI pins into the sole protected 9,216-byte receive SRAM, through two complete
 Merkle/SLH-DSA passes, and into the lease/quorum controller. Local endpoint guards

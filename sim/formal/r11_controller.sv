@@ -88,7 +88,7 @@ module r11_controller(input logic clk,por,reset,cold,fault,abort_job,begin_run,n
         .draw_issue_o(draw_issue_o),
         .nonce_valid_i(nonce_valid),
         .nonce_ready_o(nonce_ready_o),
-        .nonce_i(256'd1),
+        .nonce_i(256'd1),.nonce_audit_i(~256'd1),
         .nonce_round_i(round_o),
         .nonce_issue_i(issue_o),
         .nonce_generation_i(run_generation_o),

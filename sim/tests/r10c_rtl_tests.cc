@@ -29,8 +29,9 @@ TEST_CASE("R10c R FORS WOTS XMSS and proof mutations fail both full passes") {
 TEST_CASE("R10c either permissive root comparator alone still rejects") {
     for (unsigned fault:{10U,11U}) {
         Bench bench; bench.start(0,0,0); bench.strict=false; bench.inject(fault);
-        CHECK_FALSE(bench.finish()); CHECK_FALSE(bench.dut.permit_o); CHECK(bench.dut.votes_o==0);
-        CHECK(bench.codes==(fault==10 ? std::vector<unsigned>{0x96,0} : std::vector<unsigned>{0,0x69}));
+        CHECK_FALSE(bench.finish(false)); CHECK_FALSE(bench.dut.permit_o); CHECK(bench.dut.votes_o==0);
+        CHECK(bench.faults.executed()); CHECK(bench.dut.fault_o);
+        bench.inject(0); bench.clocks_for(3); CHECK(bench.dut.fault_clean_o); CHECK(bench.dut.fault_o);
     }
 }
 
@@ -45,18 +46,11 @@ TEST_CASE("R10c shared read data substitution across both passes cannot authoriz
 TEST_CASE("R10c sequencer read mux capture stage count and context fault domains fail off") {
     for (unsigned fault:{1U,2U,3U,4U,5U,6U,7U,8U,9U,16U,17U,19U,20U,23U,24U}) {
         CAPTURE(fault); Bench bench; bench.start(0,2,fault==4 ? std::optional<unsigned>(0) : std::nullopt);
-        // Select an owned semantic boundary; no hierarchical poking occurs in the production design.
-        for (unsigned i=0;i<900000;i++) {
-            const unsigned state=bench.dut.verifier_state_o, lane1=bench.dut.lane_state_o&255, lane2=bench.dut.lane_state_o>>8;
-            const auto work1=bench.dut.starts_o&65535,work2=bench.dut.starts_o>>16;
-            const bool ready=fault==3 ? bench.dut.read_valid_o : fault==4 ? lane1==0xaa :
-                fault==5 ? work1>0 : fault==6 ? state==0xaa && lane2==0xaa :
-                fault==7 || fault==8 || fault==9 || fault==20 ? lane1==0x96 : fault==16 || fault==19 ? work1>=5 : fault==17 ? work2>0 : state==0x55;
-            if (ready) break;
-            bench.clocks_for();
-        }
+        // The catalog waits for the site's owned semantic trigger. Finish has a
+        // finite budget; an unreached trigger cannot count as an executed fault.
         bench.strict=false; std::cout<<"[R10C FAULT] site="<<fault<<" bank="<<unsigned(bench.dut.verifier_state_o)<<" lanes="<<bench.dut.lane_state_o<<'\n';
         bench.inject(fault); bench.clocks_for(); CHECK_FALSE(bench.finish(false)); CHECK_FALSE(bench.dut.permit_o); CHECK(bench.dut.votes_o==0);
+        CHECK(bench.faults.executed()); bench.inject(0); bench.clocks_for(3); CHECK(bench.dut.fault_clean_o);
     }
 }
 

@@ -186,6 +186,16 @@
         "reference-report"
       ],
       "required_test": "*independent policy, real batching*"
+    },
+    {
+      "id": "PROTECT-01",
+      "goal": "Independent protected state/capture updates and confirmed general fault applications",
+      "groups": [
+        "r03-protected",
+        "r05-rtl",
+        "r10c-rtl"
+      ],
+      "required_test": "*independent controller capture and sequencer update faults*"
     }
   ],
   "required_groups": [
@@ -223,7 +233,8 @@
     "cdc",
     "r11-spi",
     "tool-versions",
-    "production-audit"
+    "production-audit",
+    "r03-protected"
   ],
   "safety_states": {
     "controller": {
@@ -287,8 +298,8 @@
         "FAULT-03",
         "RX-01"
       ],
-      "disposition": "deferred",
-      "detail": "R03 general protected primitives and exhaustive physical/shared-domain fault coverage remain deferred. Declared digital sites and durations are bounded campaigns, not fault completeness."
+      "disposition": "bounded_digital_coverage",
+      "detail": "R03 digital protections, catalog and confirmed applications are implemented. Sites/values/durations outside the declared campaigns, shared upstream/common physical faults and post-layout preservation remain unqualified."
     },
     {
       "id": "G-SIGNOFF",
@@ -336,7 +347,7 @@
   "required_case_counts": {
     "sim-directed": 33,
     "sha256-rtl": 9,
-    "r05-rtl": 18,
+    "r05-rtl": 23,
     "r06-rtl": 21,
     "r06-integration": 3,
     "r07-rtl": 30,
@@ -348,7 +359,7 @@
     "r09-integration": 2,
     "r10a-rtl": 12,
     "r10b-rtl": 9,
-    "r10c-rtl": 14,
+    "r10c-rtl": 18,
     "r10c-integration": 5,
     "r11-spi": 2,
     "production-full": 1

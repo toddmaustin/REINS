@@ -37,6 +37,7 @@ module reins_platform_control (
     output logic nonce_valid_o,               // Retained, timely conditioned nonce response.
     input logic nonce_ready_i,                // Trusted R06 consumer captures response.
     output logic [255:0] nonce_o,             // Actual dedicated-SHA result; never host supplied.
+    output logic [255:0] nonce_audit_o,       // Independent complemented conditioner result, for protected consumers.
     output logic [63:0] nonce_round_o, nonce_issue_o, nonce_generation_o, // Captured draw identity.
     output logic entropy_hold_o, cold_eligible_o, history_valid_o, // Hold, clearing policy, history.
     output logic checking_o, run_active_o, startup_complete_o, new_grants_o, // Startup/new-grant gates.
@@ -46,8 +47,11 @@ module reins_platform_control (
     input logic [63:0] lease_expiry_i, lease_generation_i, // Original committed expiry/context.
     output logic lease_permission_o            // R05 qualification/health/time gate on that lease.
 );
-    typedef enum logic [1:0] {STOPPED, CHECKING, RUN} phase_t;
+    typedef enum logic [7:0] {STOPPED=8'h0f, CHECKING=8'h33, RUN=8'h55} phase_t;
     phase_t phase_q;                           // Startup progress; not the future armed/quorum FSM.
+    (* keep="true", dont_touch="true" *) logic [7:0] phase_inverse_q;
+    (* keep="true", dont_touch="true" *) logic [63:0] generation_inverse_q;
+    logic protected_bad, entropy_integrity, config_integrity;
     logic fatal_q, first_nonce_q;              // Sticky general fault / first-round qualification.
     logic logic_reset_n, start_accepted, run_start, monitored, general_alarm;
     logic time_qualified, time_alarm, a_qualified, b_qualified, a_failed, b_failed;
@@ -60,7 +64,9 @@ module reins_platform_control (
     assign checking_o=phase_q==CHECKING;
     assign run_active_o=phase_q==RUN;
     assign monitored=checking_o || run_active_o;
-    assign general_alarm=!macro_integrity_i || (macro_lifecycle_i!=0 && macro_lifecycle_i!=3) ||
+    assign protected_bad=phase_q!=~phase_inverse_q || !(phase_q==STOPPED || phase_q==CHECKING || phase_q==RUN) ||
+        generation_o!=~generation_inverse_q;
+    assign general_alarm=protected_bad || entropy_integrity || config_integrity || !macro_integrity_i || (macro_lifecycle_i!=0 && macro_lifecycle_i!=3) ||
         (macro_lifecycle_i==3 && !macro_complete_i) || (monitored && macro_lifecycle_i!=3) ||
         !timing_healthy_i || !sensor_healthy_i || integrity_alarm_i || time_alarm;
     assign fatal_o=fatal_q || general_alarm;
@@ -87,7 +93,8 @@ module reins_platform_control (
         .macro_write_data_o(macro_write_data_o), .macro_read_data_i(macro_read_data_i),
         .macro_lifecycle_i(macro_lifecycle_i), .macro_complete_i(macro_complete_i), .macro_integrity_i(macro_integrity_i),
         .busy_o(config_busy_o), .done_o(config_done_o), .valid_o(config_valid_o), .error_o(config_error_o),
-        .image_o(configuration_o), .digest_o(configuration_digest_o), .lease_o(lease_length_o), .period_o(period_o), .window_o(window_o)
+        .image_o(configuration_o), .digest_o(configuration_digest_o), .lease_o(lease_length_o), .period_o(period_o), .window_o(window_o),
+        .integrity_fault_o(config_integrity)
     );
     reins_trusted_time timekeeper (
         .clk_i(clk_i), .rst_ni(logic_reset_n), .monitor_i(monitored), .restart_i(start_accepted),
@@ -119,10 +126,25 @@ module reins_platform_control (
         .a_count_o(source_a_count_o), .b_count_o(source_b_count_o),
         .hold_o(entropy_hold_o), .cold_eligible_o(cold_eligible_o), .nonce_valid_o(nonce_valid_o), .nonce_ready_i(nonce_ready_i),
         .startup_allowed_o(entropy_start_allowed),
-        .nonce_o(nonce_o), .nonce_round_o(nonce_round_o), .nonce_issue_o(nonce_issue_o), .nonce_generation_o(nonce_generation_o),
-        .history_valid_o(history_valid_o), .invalidate_o(entropy_invalidate)
+        .nonce_o(nonce_o), .nonce_audit_o(nonce_audit_o), .nonce_round_o(nonce_round_o), .nonce_issue_o(nonce_issue_o), .nonce_generation_o(nonce_generation_o),
+        .history_valid_o(history_valid_o), .invalidate_o(entropy_invalidate), .integrity_fault_o(entropy_integrity)
     );
 
+    // Separate inverse decode and decrementing generation path; cold/warm reset
+    // retains both powered-generation copies, while real power loss clears them.
+    always_ff @(posedge clk_i) begin
+        if (!por_ni) begin phase_inverse_q<=~STOPPED; generation_inverse_q<='1; end
+        else if (cold_reset_i || warm_reset_i || run_end_i || general_alarm ||
+            (phase_inverse_q==~CHECKING && config_done_o && !config_valid_o) ||
+            (phase_inverse_q==~CHECKING && generation_inverse_q==0)) phase_inverse_q<=~STOPPED;
+        else if (startup_i && phase_inverse_q==~STOPPED && macro_lifecycle_i==3 &&
+            !fatal_o && entropy_start_allowed && logic_reset_n) phase_inverse_q<=~CHECKING;
+        else if (phase_inverse_q==~CHECKING && entropy_hold_o && !cold_eligible_o) phase_inverse_q<=~STOPPED;
+        else if (phase_inverse_q==~CHECKING && config_valid_o && time_qualified && a_qualified && b_qualified &&
+            !fatal_o && (!entropy_hold_o || cold_eligible_o) && generation_inverse_q!=0) begin
+            phase_inverse_q<=~RUN; generation_inverse_q<=generation_inverse_q-64'd1;
+        end
+    end
     always_ff @(posedge clk_i) begin
         if (!por_ni) begin phase_q<=STOPPED; fatal_q<=1'b0; first_nonce_q<=1'b0; generation_o<='0; invalidate_o<=1'b1; end
         else begin

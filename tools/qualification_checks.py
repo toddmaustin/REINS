@@ -70,6 +70,7 @@ def main():
             if args.check == "formal":
                 cases = [
                     ("arithmetic", "r11_arithmetic", ["rtl/reins_round_schedule.sv", "rtl/reins_lease_check.sv", "sim/formal/r11_arithmetic.sv"], 1),
+                    ("protected-time", "r03_time", ["rtl/reins_trusted_time.sv", "sim/formal/r03_time.sv"], 12),
                     ("seal", "r11_seal", ["rtl/reins_receive_sram.sv", "sim/formal/r11_seal.sv"], 6),
                     ("controller", "r11_controller", ["rtl/reins_round_schedule.sv", "rtl/reins_lease_check.sv", "rtl/reins_controller.sv", "sim/formal/r11_controller.sv"], 16),
                     ("guard-a", "reins_permit_guard_a", ["rtl/reins_permit_guard_a.sv"], 8),

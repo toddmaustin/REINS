@@ -58,7 +58,12 @@ module reins_verifier_pass #(parameter int PASS_ID=1) (
     localparam logic [7:0] IDLE=8'h0f,START_MERKLE=8'h33,MERKLE=8'h55,START_SLH=8'h69,
         SLH=8'h96,CHECK=8'haa,RESULT=8'hcc;
     identity_t identity_q, identity_inv_q;
-    evidence_t e, ei, next_e;
+    (* keep="true", dont_touch="true" *) evidence_t e, ei;
+    evidence_t next_e, audit_e, audit_next_e;
+    identity_t audit_identity;
+    logic [15:0] audit_exact_work;
+    logic audit_handoff_good, audit_root_equal;
+    logic [4:0] audit_matches;
     logic failed_q, bad, live_same, merkle_ready, merkle_valid, merkle_fault, slh_ready, slh_valid, slh_fault;
     logic [1:0] merkle_error, slh_error, merkle_pass, merkle_slot;
     logic [63:0] merkle_run, merkle_round, merkle_token, merkle_epoch;
@@ -89,6 +94,26 @@ module reins_verifier_pass #(parameter int PASS_ID=1) (
         if (index<35) return 5'((check_value>>(4*(34-int'(index))))&15);
         return 31;
     endfunction
+    // Independently derive index's checksum by subtracting message digits from
+    // the maximum, rather than reusing the primary sum of digit complements.
+    function automatic logic [4:0] audit_expected_digit(input logic [127:0] message, input logic [5:0] index);
+        int checksum;
+        checksum=480;
+        for (int digit=31;digit>=0;digit--) checksum-=int'(message[digit*4 +: 4]);
+        if (index<32) return {1'b0,message[127-int'(index)*4 -: 4]};
+        if (index<35) return 5'((checksum/(1<<(4*(34-int'(index)))))%16);
+        return 31;
+    endfunction
+    assign audit_e=~ei;
+    assign audit_identity=~identity_inv_q;
+    assign audit_exact_work=16'd339+((16'(audit_identity.length)-16'd7860)>>5)*16'd2+audit_e.steps;
+    assign audit_handoff_good=merkle_valid && !(|(request_i ^ audit_identity.request_body)) && !(|({merkle_key,merkle_root,merkle_leaf,merkle_message} ^
+        {audit_e.key,audit_e.batch_root,audit_e.leaf,112'("REINS-BATCH-v2"),audit_e.batch_root}));
+    always_comb begin
+        audit_matches=0;
+        for (int octet=15;octet>=0;octet--) if (reconstructed_root[octet*8 +: 8]==audit_e.key[octet*8 +: 8]) audit_matches+=5'd1;
+    end
+    assign audit_root_equal=PASS_ID==1 ? audit_matches==16 : !(|(reconstructed_root ^ audit_e.key[127:0]));
     // Primary pass uses full equality; secondary counts equal bytes independently of the child's equality signal.
     always_comb begin
         matching_words=0;
@@ -100,7 +125,7 @@ module reins_verifier_pass #(parameter int PASS_ID=1) (
     assign live_same=identity_q=={run_i,round_i,token_i,epoch_i,slot_i,reply_length_i,request_i,configuration_digest_i};
     // Rebuild exact framing + chain-dependent work; 4100 appears only in the maximum bound below.
     assign exact_work=16'd339+((16'(identity_q.length)-16'd7860)>>5)*16'd2+e.steps;
-    assign bad=e!=~ei || identity_q!=~identity_inv_q ||
+    assign bad=e!=~ei || (e.state!=START_MERKLE && identity_q!=~identity_inv_q) ||
         (e.state!=IDLE && context_valid_i && !cancel_i && !live_same) ||
         !(e.state==IDLE || e.state==START_MERKLE || e.state==MERKLE || e.state==START_SLH || e.state==SLH || e.state==CHECK || e.state==RESULT) ||
         e.stages>29 || e.chain>34 || e.chains>245 || e.layer>7 || e.starts>4100 || e.ends>e.starts ||
@@ -199,18 +224,93 @@ module reins_verifier_pass #(parameter int PASS_ID=1) (
         default: begin end
         endcase
     end
+    // Independent encoded-rail observer: separate arithmetic, digit decode,
+    // handoff checks and root comparison; never consumes next_e.
+    always_comb begin
+        audit_next_e=audit_e;
+        // Independently detect overlap or activity under the wrong sequencer owner.
+        if (!cancel_i && context_valid_i &&
+            (((merkle_start || merkle_end) && audit_e.state!=MERKLE) ||
+             (((|sha_start) || (|sha_end)) && audit_e.state!=SLH) ||
+             (|(physical_start_o & (physical_start_o-3'd1))) ||
+             (|(physical_complete_o & (physical_complete_o-3'd1))))) audit_next_e.error=3;
+        if (merkle_start || slh_start) audit_next_e.starts=~(ei.starts-16'(16'(merkle_start)+16'(sha_start[0])+16'(sha_start[1])));
+        if (merkle_end || slh_end) audit_next_e.ends=~(ei.ends-16'(16'(merkle_end)+16'(sha_end[0])+16'(sha_end[1])));
+        if (audit_e.state==MERKLE && read_valid_o && read_valid_i) audit_next_e.merkle_reads=~(ei.merkle_reads-16'(1));
+        if (audit_e.state==SLH && read_valid_o && read_valid_i) begin audit_next_e.repeat_read=~audit_e.repeat_read; audit_next_e.reads=~(ei.reads-16'(1)); end
+        if (chain_start && audit_e.state==SLH) begin
+            if (audit_e.stages<15 || audit_e.chain!=chain_index || chain_digit!=audit_expected_digit(audit_e.wots_message,audit_e.chain) || stage_layer!=audit_e.layer || audit_e.chains>=245) audit_next_e.error=3;
+            else begin
+                audit_next_e.steps=~(ei.steps-16'(16'd15-{11'd0,chain_digit})); audit_next_e.chains=~(ei.chains-9'(1));
+                audit_next_e.chain=audit_e.chain==34 ? 6'd0 : 6'(~(ei.chain-6'd1));
+            end
+        end
+        if (stage_valid && audit_e.state==SLH) begin
+            if (audit_e.stages<14) begin
+                if (stage_phase!=8'haa || stage_forest!=4'(audit_e.stages) || stage_height!=11 || stage_layer!=0) audit_next_e.error=3;
+            end else if (audit_e.stages==14) begin
+                if (stage_phase!=8'hcc || stage_layer!=0) audit_next_e.error=3;
+                audit_next_e.wots_message=stage_value;
+            end else if ((audit_e.stages-6'd15)%2==0) begin
+                if (stage_phase!=8'hf0 || stage_layer!=audit_e.layer || audit_e.chain!=0 || audit_e.chains!=9'(35*(int'(audit_e.layer)+1))) audit_next_e.error=3;
+            end else begin
+                if (stage_phase!=8'h3c || stage_height!=8 || stage_layer!=audit_e.layer) audit_next_e.error=3;
+                audit_next_e.wots_message=stage_value; audit_next_e.layer=~(ei.layer-4'(1));
+            end
+            audit_next_e.stages=~(ei.stages-6'(1));
+        end
+        case (audit_e.state)
+        START_MERKLE: if (merkle_ready) audit_next_e.state=MERKLE;
+        MERKLE: if (merkle_valid) begin
+            if (merkle_error!=0) begin audit_next_e.error=merkle_error==2 ? 2'd3 : merkle_error; audit_next_e.state=RESULT; end
+            else if (merkle_pass!=2'(PASS_ID) || merkle_run!=audit_identity.run_id || merkle_round!=audit_identity.round_id || merkle_token!=audit_identity.token || merkle_epoch!=audit_identity.epoch || merkle_slot!=audit_identity.slot || merkle_config!=audit_identity.config_hash ||
+                merkle_starts!=16'd8+((16'(audit_identity.length)-16'd7860)>>5)*16'd2 || merkle_ends!=merkle_starts) audit_next_e.error=3;
+            else begin audit_next_e.key=merkle_key; audit_next_e.leaf=merkle_leaf; audit_next_e.batch_root=merkle_root; audit_next_e.state=START_SLH; end
+        end
+        START_SLH: if (!audit_handoff_good) audit_next_e.error=3; else if (slh_ready) audit_next_e.state=SLH;
+        SLH: if (slh_valid) audit_next_e.state=CHECK;
+        CHECK: begin
+            audit_next_e.state=RESULT; audit_next_e.root=reconstructed_root;
+            if (!slh_valid || slh_error!=0 || slh_tag!=32'(PASS_ID) || !merkle_valid || merkle_key!=audit_e.key || merkle_leaf!=audit_e.leaf || merkle_root!=audit_e.batch_root ||
+                audit_e.starts!=audit_exact_work || audit_e.ends!=audit_exact_work || audit_e.stages!=29 || audit_e.chains!=245 || audit_e.layer!=7 || audit_e.reads!=15712 || audit_e.merkle_reads!=((16'(audit_identity.length)-16'd7856)<<1) ||
+                slh_starts+merkle_starts!=audit_e.starts || slh_ends+merkle_ends!=audit_e.ends) audit_next_e.error=3;
+            else audit_next_e.code=audit_root_equal ? (PASS_ID==1 ? 8'h96 : 8'h69) : 8'd0;
+        end
+        default: begin end
+        endcase
+    end
+    // Audit capture and state updates have their own admission and retirement
+    // decodes. A permissive primary req_ready cannot enable both storage rails.
     always_ff @(posedge clk_i) begin
-        if (!rst_ni) begin e<='0; e.state<=IDLE; ei<='1; ei.state<=~IDLE; identity_q<='0; identity_inv_q<='1; failed_q<=0; end
+        if (!rst_ni) begin ei<='1; ei.state<=~IDLE; identity_inv_q<='1; end
+        else if (cancel_i || !context_valid_i ||
+            (ei.state!=~IDLE && ei.state!=~START_MERKLE && audit_identity!={run_i,round_i,token_i,epoch_i,slot_i,reply_length_i,request_i,configuration_digest_i}) ||
+            (ei.state==~RESULT && rsp_ready_i && !fault_o)) begin
+            ei<='1; ei.state<=~IDLE; identity_inv_q<='1;
+        end else if (bad || merkle_fault || slh_fault || next_e.error==3 || audit_next_e.error==3) begin
+            ei.code<='1; ei.state<=~RESULT; ei.error<=~2'd3;
+        end else if (req_valid_i && ei.state==~IDLE && !failed_q && !cancel_i) ei.state<=~START_MERKLE;
+        else begin
+            ei<=~audit_next_e;
+            if (ei.state==~START_MERKLE)
+                identity_inv_q<=~{run_i,round_i,token_i,epoch_i,slot_i,reply_length_i,request_i,configuration_digest_i};
+        end
+    end
+    always_ff @(posedge clk_i) begin
+        if (!rst_ni) begin e<='0; e.state<=IDLE; identity_q<='0; failed_q<=0; end
         else if (cancel_i || !context_valid_i || (e.state!=IDLE && !live_same) || (rsp_valid_o && rsp_ready_i)) begin
-            e<='0; e.state<=IDLE; ei<='1; ei.state<=~IDLE; identity_q<='0; identity_inv_q<='1;
+            e<='0; e.state<=IDLE; identity_q<='0;
             failed_q<=failed_q || bad || merkle_fault || slh_fault;
-        end else if (bad || merkle_fault || slh_fault || next_e.error==3) begin
-            failed_q<=1; e.code<=0; ei.code<='1; e.state<=RESULT; ei.state<=~RESULT; e.error<=3; ei.error<=~2'd3;
+        end else if (bad || merkle_fault || slh_fault || next_e.error==3 || audit_next_e.error==3) begin
+            failed_q<=1; e.code<=0; e.state<=RESULT; e.error<=3;
         end else if (req_valid_i && req_ready_o) begin
-            e.state<=START_MERKLE; ei.state<=~START_MERKLE;
+            e.state<=START_MERKLE;
             identity_q<={run_i,round_i,token_i,epoch_i,slot_i,reply_length_i,request_i,configuration_digest_i};
-            identity_inv_q<=~{run_i,round_i,token_i,epoch_i,slot_i,reply_length_i,request_i,configuration_digest_i};
-        end else begin e<=next_e; ei<=~next_e; end
+
+        end else begin
+            e<=next_e;
+
+        end
     end
 endmodule
 `default_nettype wire

@@ -36,7 +36,7 @@ module r10c_test_top (
     output logic [1:0] stage_valid_o,
     output logic [127:0] stage_value_o [0:1],
     output logic [7:0] stage_phase_o [0:1],
-    input logic [7:0] fault_i
+    `include "fault_ports.svh"
 );
     logic job_valid, job_ready, job_active, completion_ready, memory_valid, cancel_valid;
     logic [63:0] job_run, job_round, job_epoch, job_token, unused_cancel_token, completion_run, completion_round, completion_epoch, completion_token;
@@ -64,7 +64,7 @@ module r10c_test_top (
         .pending_o(unused_pending),.request_valid_o(request_valid_o),.request_slot_i(slot_i),.request_o(request_o),
         .issue_o(unused_issue),.deadline_o(unused_deadline),.proposed_expiry_o(unused_proposed),.votes_o(votes_o),
         .draw_valid_o(unused_draw),.draw_ready_i(1'b1),.draw_round_o(unused_draw_round),.draw_issue_o(unused_draw_issue),
-        .nonce_valid_i(nonce_valid_i),.nonce_ready_o(unused_nonce_ready),.nonce_i(nonce_i),.nonce_round_i(round_o),.nonce_issue_i(unused_issue),.nonce_generation_i(run_o),
+        .nonce_valid_i(nonce_valid_i),.nonce_ready_o(unused_nonce_ready),.nonce_i(nonce_i),.nonce_audit_i(~nonce_i),.nonce_round_i(round_o),.nonce_issue_i(unused_issue),.nonce_generation_i(run_o),
         .submit_valid_i(submit_i),.submit_ready_o(unused_submit_ready),.submit_slot_i(slot_i),.abort_valid_i(cancel_i),.abort_token_i(job_token),
         .job_valid_o(job_valid),.job_ready_i(job_ready),.job_active_o(job_active),.job_token_o(job_token),.job_run_o(job_run),.job_round_o(job_round),.job_epoch_o(job_epoch),.job_slot_o(job_slot),
         .job_request_o(job_request),.job_configuration_o(unused_job_configuration),.job_config_digest_o(job_config),
@@ -120,65 +120,6 @@ assign core_state_o[5]=verifier.passes[1].engine.slh.core.wots.hash.backend.core
 assign stage_valid_o[1]=verifier.passes[1].engine.stage_valid;
 assign stage_value_o[1]=verifier.passes[1].engine.stage_value;
 assign stage_phase_o[1]=verifier.passes[1].engine.stage_phase;
-logic [7:0] previous_fault;
-always @(posedge clk_i) begin
-if (fault_i!=previous_fault) begin
-case(previous_fault)
-8'd1: begin release verifier.state_q; end
-8'd2: begin release verifier.context_q.token; end
-8'd3: begin release verifier.read_address_o; release verifier.read_address_inverse_o; end
-8'd4: begin release verifier.capture_q; release verifier.capture_inv_q; end
-8'd5: begin release verifier.passes[0].engine.e.starts; end
-8'd6: begin release verifier.passes[1].engine.e.steps; release verifier.passes[1].engine.ei.steps; end
-8'd7: begin release verifier.passes[0].engine.chain_digit; end
-8'd8: begin release verifier.passes[0].engine.stage_valid; end
-8'd9: begin release verifier.passes[0].engine.e.key; end
-8'd10: begin release verifier.passes[0].engine.root_equal; end
-8'd11: begin release verifier.passes[1].engine.root_equal; end
-8'd12: begin release controller.pass1_ok_q; end
-8'd13: begin release controller.voted; end
-8'd14: begin release controller.secondary_commit_ok; end
-8'd15: begin release verifier.passes[0].engine.slh.core.hash.backend.core.req_ready_o; end
-8'd16: begin release verifier.passes[0].engine.merkle.leaf_frame; end
-8'd17: begin release verifier.passes[1].engine.merkle.handoff_q; release verifier.passes[1].engine.merkle.handoff_inverse_q; end
-8'd18: begin release controller.match_completion; release completion_token; end
-8'd19: begin release verifier.passes[0].engine.merkle_message; end
-8'd20: begin release verifier.passes[0].engine.e.batch_root; release verifier.passes[0].engine.ei.batch_root; end
-8'd21: begin release controller.votes_q; release controller.votes_inv_q; end
-8'd22: begin release memory.read_data_o; end
-8'd23: begin release verifier.context_q.token; release verifier.context_inv_q.token; end
-8'd24: begin release verifier.passes[0].engine.identity_q.token; release verifier.passes[0].engine.identity_inv_q.token; end
-default: begin end
-endcase
-case(fault_i)
-8'd1: begin force verifier.state_q=8'h00; end
-8'd2: begin force verifier.context_q.token=64'd0; end
-8'd3: begin force verifier.read_address_o=14'd0; force verifier.read_address_inverse_o=~14'd0; end
-8'd4: begin force verifier.capture_q=8'h96; force verifier.capture_inv_q=~8'h96; end
-8'd5: begin force verifier.passes[0].engine.e.starts=16'd0; end
-8'd6: begin force verifier.passes[1].engine.e.steps=16'd0; force verifier.passes[1].engine.ei.steps=~16'd0; end
-8'd7: begin force verifier.passes[0].engine.chain_digit=5'd31; end
-8'd8: begin force verifier.passes[0].engine.stage_valid=1'b0; end
-8'd9: begin force verifier.passes[0].engine.e.key=256'd0; end
-8'd10: begin force verifier.passes[0].engine.root_equal=1'b1; end
-8'd11: begin force verifier.passes[1].engine.root_equal=1'b1; end
-8'd12: begin force controller.pass1_ok_q=1'b1; end
-8'd13: begin force controller.voted=3'b111; end
-8'd14: begin force controller.secondary_commit_ok=1'b0; end
-8'd15: begin force verifier.passes[0].engine.slh.core.hash.backend.core.req_ready_o=1'b0; end
-8'd16: begin force verifier.passes[0].engine.merkle.leaf_frame=1392'd0; end
-8'd17: begin force verifier.passes[1].engine.merkle.handoff_q=256'd0; force verifier.passes[1].engine.merkle.handoff_inverse_q='1; end
-8'd18: begin force controller.match_completion=1'b1; force completion_token=64'd0; end
-8'd19: begin force verifier.passes[0].engine.merkle_message=368'd0; end
-8'd20: begin force verifier.passes[0].engine.e.batch_root=256'd0; force verifier.passes[0].engine.ei.batch_root='1; end
-8'd21: begin force controller.votes_q=3'b011; force controller.votes_inv_q=3'b100; end
-8'd22: begin force memory.read_data_o=8'd0; end
-8'd23: begin force verifier.context_q.token=64'd0; force verifier.context_inv_q.token=~64'd0; end
-8'd24: begin force verifier.passes[0].engine.identity_q.token=64'd0; force verifier.passes[0].engine.identity_inv_q.token=~64'd0; end
-default: begin end
-endcase
-end
-previous_fault<=fault_i;
-end
+    `include "r10c_fault_sites.svh"
 endmodule
 `default_nettype wire

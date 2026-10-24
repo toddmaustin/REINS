@@ -23,28 +23,57 @@ module slh_sha256_stream #(
     output logic compression_start_o, compression_complete_o
 );
     localparam logic [255:0] IV=256'h6a09e667bb67ae853c6ef372a54ff53a510e527f9b05688c1f83d9ab5be0cd19;
-    typedef enum logic [2:0] {IDLE,LOAD,PAD,SUBMIT,WAIT_RESULT,REPLY} state_t;
+    typedef enum logic [7:0] {IDLE=8'h0f, LOAD=8'h33, PAD=8'h55, SUBMIT=8'h69, WAIT_RESULT=8'h96, REPLY=8'haa} state_t;
     state_t state_q;
+    (* keep="true", dont_touch="true" *) logic [7:0] state_inverse_q;
+    logic [7:0] inverse_next; // Separate complemented transition decode protects a corrupted primary next state.
+    logic control_bad, failed_q; // Invalid/mismatched code; sticky cancellation-local failure.
     logic [511:0] block_q;
     logic [255:0] chain_q, core_digest;
     logic [31:0] remaining_q, stall_q, unused_core_tag;
     logic [63:0] bits_q;
     logic [5:0] position_q;
     logic final_q, length_only_q, raw_q, core_ready, core_valid;
-    assign req_ready_o=rst_ni && !cancel_i && state_q==IDLE;
-    assign byte_ready_o=rst_ni && !cancel_i && state_q==LOAD;
-    assign rsp_valid_o=rst_ni && !cancel_i && state_q==REPLY;
+    assign control_bad=state_q!=~state_inverse_q || !(state_q==IDLE || state_q==LOAD || state_q==PAD ||
+        state_q==SUBMIT || state_q==WAIT_RESULT || state_q==REPLY);
+    assign req_ready_o=rst_ni && !cancel_i && state_q==IDLE && !control_bad && !failed_q;
+    assign byte_ready_o=rst_ni && !cancel_i && state_q==LOAD && !control_bad && !failed_q;
+    assign rsp_valid_o=rst_ni && !cancel_i && state_q==REPLY && !control_bad;
     sha256_compress core (
-        .clk_i(clk_i),.rst_ni(rst_ni && !cancel_i),.req_valid_i(state_q==SUBMIT),.req_ready_o(core_ready),
+        .clk_i(clk_i),.rst_ni(rst_ni && !cancel_i && !control_bad && !failed_q),.req_valid_i(state_q==SUBMIT && !control_bad && !failed_q),.req_ready_o(core_ready),
         .req_state_i(chain_q),.req_block_i(block_q),.req_tag_i(rsp_tag_o),.rsp_valid_o(core_valid),
         .rsp_ready_i(state_q==WAIT_RESULT),.rsp_state_o(core_digest),.rsp_tag_o(unused_core_tag),
         .start_o(compression_start_o),.complete_o(compression_complete_o)
     );
+    // Derive the inverse transition directly from inverse state and source handshakes.
+    always_comb begin
+        inverse_next=state_inverse_q;
+        case (state_inverse_q)
+        ~IDLE: if (req_valid_i && req_ready_o) inverse_next=req_mode_i>2 || req_length_i>MAX_BYTES ||
+            (req_mode_i==2 && req_length_i!=64) ? ~REPLY : req_length_i==0 ? ~PAD : ~LOAD;
+        ~LOAD: if (byte_valid_i && byte_ready_o) begin
+            if (position_q==63) inverse_next=~SUBMIT;
+            else if (remaining_q==1) inverse_next=~PAD;
+        end else if (stall_q>=MAX_STALL-1) inverse_next=~REPLY;
+        ~PAD: inverse_next=~SUBMIT;
+        ~SUBMIT: if (core_ready) inverse_next=~WAIT_RESULT;
+        ~WAIT_RESULT: if (core_valid) inverse_next=final_q ? ~REPLY : remaining_q!=0 ? ~LOAD : ~PAD;
+        ~REPLY: if (rsp_ready_i && !failed_q) inverse_next=~IDLE;
+        default: inverse_next=~REPLY;
+        endcase
+    end
+    always_ff @(posedge clk_i) begin
+        if (!rst_ni || cancel_i) begin state_inverse_q<=~IDLE; failed_q<=0; end
+        else if (control_bad || failed_q) begin state_inverse_q<=~REPLY; failed_q<=1; end
+        else state_inverse_q<=inverse_next;
+    end
     always_ff @(posedge clk_i) begin
         if (!rst_ni || cancel_i) begin
             state_q<=IDLE; block_q<=0; chain_q<=IV; remaining_q<=0; stall_q<=0; bits_q<=0;
             position_q<=0; final_q<=0; length_only_q<=0; raw_q<=0;
             rsp_digest_o<=0; rsp_tag_o<=0; rsp_error_o<=0;
+        end else if (control_bad || failed_q) begin
+            state_q<=REPLY; rsp_error_o<=3; rsp_digest_o<=0; block_q<=0; chain_q<=IV;
         end else case (state_q)
         IDLE: if (req_valid_i && req_ready_o) begin
             block_q<=0; chain_q<=req_mode_i==1 ? req_state_i : IV; remaining_q<=req_length_i;

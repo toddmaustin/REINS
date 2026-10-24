@@ -1,5 +1,10 @@
 # R06 lease, round, request and quorum controller
 
+**R03 update:** protected storage, separate capture/update paths and the general
+fault catalog are now implemented. See [R03_PROTECTED_PRIMITIVES.md](R03_PROTECTED_PRIMITIVES.md).
+Earlier milestone descriptions below record their original bring-up boundaries;
+physical qualification and coverage outside the declared campaigns remain open.
+
 R06 implements the digital operational controller for fixed **N=3, Q=2**. The
 [v0.3 PDF](REINS-Hardware-Specification-v0.3.pdf), especially sections 8–12,
 remains normative. No wire, SPI or OTP encoding changes are introduced. Internal
@@ -257,8 +262,8 @@ Failed runs remain inspectable; only explicit clean targets delete results.
 ## Evidence limits and subsequent work
 
 Sparse state codes, complemented copies, full-context comparisons and independent
-age/remaining arithmetic provide executable digital checks. **R03 remains
-explicitly deferred.** Shared capture/update fan-out, comparator/enable separation,
+age/remaining arithmetic provide executable digital checks. R03 now adds digital
+capture/update and comparator/enable separation. Physical shared fan-out,
 synthesis-preserved independent replicas, physical placement, SRAM protection and
 internal register/fan-out fault coverage are not established here. The pending
 context is digitally mirrored, not a claim that FAULT-02/03 physical protections
@@ -269,7 +274,7 @@ No physical entropy, absolute clock floor, sensor/OTP qualification, four-state
 startup, CDC, synthesis timing/area or physical stopping evidence is claimed.
 R07 now supplies [receive/SPI integration](R07_SPI_RECEIVE.md). Proceed to R08
 endpoint enforcement and subsequent real verifier hardware, and
-resume R03 before claiming protected hardware acceptance or fault resistance.
+qualify the R03 implementation before claiming physical hardware fault resistance.
 
 ## Validation record, 2026-10-21
 
@@ -291,3 +296,17 @@ performance claims. The final sanitizer build took approximately 315 seconds;
 the ten-minute build timeout accommodates initial instrumented compilation.
 Exact inputs, executed counts, versions, times and statuses remain in each run's
 retained result directory.
+
+### R03 controller changes
+
+Nonce handoff now has a later audit capture: the primary nonce is captured first;
+`nonce_audit_i` is captured on the next monitor edge, and only then is the pending
+request published. R05 supplies this input from its second dedicated conditioner.
+Component tops explicitly model the qualified R05 boundary. The controller also
+checks a per-run repeat history; R05 retains the powered history across resets.
+
+A separate schedule instance reads encoded timing/round stores, audit requests
+are serialized from encoded context/configuration, and a separately updated sparse
+lease ledger records the independently admitted issue/expiry. A primary coherent
+lease substitution or a permissive commit in either path is denied. The existing
+high-priority fault, cancellation, expiry and stop behavior is retained.
