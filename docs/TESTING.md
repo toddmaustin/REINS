@@ -215,6 +215,12 @@ logs and `qualification.json` give exact tool commands, bounds and assumptions.
 Select optional tools with `YOSYS`, `IVERILOG` and `VVP` (and the tool's data path
 where needed). They are independent of the single Verilator baseline.
 
+For a separate production-only sizing exercise, use `make setup-area-tools`
+followed by `make area-report`. This maps the complete device hierarchy into a
+pinned public reference library, reports SRAM separately, and compares row
+protection against an analysis-only unprotected receive store. It is not a
+release acceptance or physical-signoff check; see [area estimation](AREA_ESTIMATION.md).
+
 ## Results, coverage and CI
 
 Every invocation retains `runner.log`, `summary.json`, `junit.xml`, build logs and

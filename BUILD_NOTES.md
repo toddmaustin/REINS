@@ -11,6 +11,98 @@ and [docs/REMAINING_WORK.md](docs/REMAINING_WORK.md) for outstanding work.
 Historical passing results establish only the source/version named in that record.
 Old test-result directories and pinned input bytes have not been rewritten.
 
+## Device area measurement — October 25, 2026
+
+The production `reins_device` hierarchy at RTL baseline `edb48ec` was converted
+with sv2v v0.0.12 and synthesized with Yosys 0.52, ABC 1.01 and the public
+Nangate45 typical library. No production RTL was changed. The manifest supplies
+41 device source files and no test RTL. The aggregate SHA-256 of the sorted
+production-source hash dictionary is
+`4a7ffbf3720517f4491913b1f8da04f5455532401b7ddad583d10b4172637639`.
+The [sizing guide](docs/AREA_ESTIMATION.md) documents the reproducible workflow,
+library pins, frontend adaptations, inference rules and limits.
+
+| Measured quantity | Protected receive memory | Without receive-row ECC/owner/address tags |
+|---|---:|---:|
+| Nangate45 standard-cell area, excluding SRAM | 2,180,055.136 µm² | 2,174,608.254 µm² |
+| Logic kGE, normalized to 0.798 µm² NAND2_X1 | 2,731.899 | 2,725.073 |
+| Instantiated standard cells | 1,637,614 | 1,632,625 |
+| Sequential cells, included in logic kGE | 135,954 | 135,954 |
+| Inferred receive memory | 2,304 × 116 bits | 2,304 × 32 bits |
+| SRAM backing bits / KiB | 267,264 / 32.625 | 73,728 / 9 |
+| Logical receive payload | 9,216 bytes | 9,216 bytes |
+
+Both cases retain sealing, token and address-control checks, complementary
+control/register state and two complete verification passes. The unprotected
+store is an analysis-only generated input, not a production option. Row
+protection costs 6.826 kGE (0.250% of logic) and 23.625 KiB of backing storage.
+The sequential cells represent about 16.596 KiB of register state in addition to
+the SRAM. The hierarchy includes nine SHA-256 compression instances.
+
+| Protected subsystem, including descendants once | Logic kGE |
+|---|---:|
+| Two-pass verification, grant/Merkle and cryptography | 2,031.06 |
+| Configuration, entropy and trusted time | 274.58 |
+| Lease/round/quorum controller | 174.98 |
+| Integration and enforcement-profile checks | 117.09 |
+| SPI transport and mailbox | 88.72 |
+| Local enforcement, queues and representative producers | 36.11 |
+| Receive-memory control and row protection | 9.35 |
+
+The current top includes three representative workload producers; it does not
+include a protected application processor. Those producer/interface gates are
+inside the endpoint subtotal. External OTP, physical entropy, timing references,
+sensors and pads are outside this measurement boundary.
+
+**Illustrative TSMC 3 nm planning, not foundry characterization:** assuming
+0.012–0.024 µm²/NAND2-equivalent and 0.020–0.025 µm²/SRAM bit gives the following.
+Macro factors are 1.5–3× bitcell area with row protection and 1.3–2.5× without.
+Core sizing adds 15–35% logic implementation allowance, uses 55–70% standard-cell
+utilization and adds estimated SRAM macro area separately.
+
+| N3 scenario | Protected | Without receive-row protection |
+|---|---:|---:|
+| Logic cell footprint | 0.0328–0.0656 mm² | 0.0327–0.0654 mm² |
+| SRAM bitcell floor | 0.00535–0.00668 mm² | 0.00147–0.00184 mm² |
+| Assumed SRAM macro footprint | 0.0080–0.0200 mm² | 0.0019–0.0046 mm² |
+| Provisional digital core, logic + SRAM | 0.062–0.181 mm² | 0.056–0.165 mm² |
+
+These ranges are assumed scenarios, not statistical confidence intervals or a
+signoff bound. The protected portable array has two asynchronous read ports and
+one write port; the raw array infers one read port and byte-enabled writes.
+Using a dense synchronous SRAM needs explicit macro/port/latency integration.
+Multiport arrays and bank/width rounding can exceed the assumed overhead.
+Technology macros, pad ring, clock trees and security-preserving implementation
+constraints can change or dominate whole-chip area. No `(3/45)²` scaling was used.
+
+Complete staged RTL conversion, generic synthesis and ABC `-fast` mapping logs,
+scripts and netlists are retained in
+`test-results/20261025T153912Z-area-exploration/`. Both variants passed Yosys
+`check -assert`. The report was regenerated through `make area-report` with
+`AREA_NETLISTS` pointing at those checksum-recorded inputs, rechecking current
+RTL/library hashes, hierarchy and connectivity. Its passing run is
+`test-results/20261025T161044.023554Z-area-measure-reference-xdc1cru6/`;
+`area-measure/area.md`, `area.json` and per-instance CSVs contain the detailed
+measurements, source/library/tool hashes and scenario calculations. The Python
+area sum independently matches Yosys's 2,180,055.136 µm² hierarchy total.
+
+The new `make setup-area-tools` passed with verified cache inputs. Baseline
+source/documentation checks and 63 Python regressions passed, including repeated
+instance/memory accounting, unknown-block rejection and stale-cache/path/hash
+guards. No functional RTL regression was rerun because production RTL did not
+change. This measurement does not establish release acceptance or physical signoff.
+
+Exploratory native parsing failed on unsupported SystemVerilog; converted
+functions needed the documented unused-input workaround. A clock-isolation
+wrapper needed a binary-logic combined-reset model for Yosys sizing. The first
+unprotected check lacked library port declarations; importing the Liberty cells
+resolved its apparent undriven wires. A staged synthesis-label error was corrected
+before the final mapping. Slower default-ABC and duplicate one-shot synthesis
+trials were intentionally interrupted when selecting the fast flow; those raw
+records remain on disk and are not passing evidence. The final report reuses
+the completed staged fast mapping; it is not a claim that the subsequently added
+cold one-shot `area-report` flow was separately executed to completion.
+
 ## Test name migration
 
 The current names identify the unit under test. The test bodies, corpus and

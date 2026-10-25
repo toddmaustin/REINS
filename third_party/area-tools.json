@@ -1,0 +1,17 @@
+{
+  "sv2v": {
+    "version": "v0.0.12",
+    "url": "https://github.com/zachjs/sv2v/releases/download/v0.0.12/sv2v-Linux.zip",
+    "sha256": "ff8c9eea5bc029b372fb4953427625cddb7cf7e58c1240623ac9f260818d5a00",
+    "license": "BSD-3-Clause; preserve the upstream LICENSE and NOTICE"
+  },
+  "liberty": {
+    "name": "NangateOpenCellLibrary_typical.lib",
+    "repository_commit": "64939f3717ad7c694199ba04cb98924b98022868",
+    "url": "https://raw.githubusercontent.com/The-OpenROAD-Project/OpenROAD-flow-scripts/64939f3717ad7c694199ba04cb98924b98022868/flow/platforms/nangate45/lib/NangateOpenCellLibrary_typical.lib",
+    "sha256": "8d540a4d4cf6d09d27c87ad067857a9c0c2eeb023ab7a56e058cd3113db4e9b1",
+    "license": "Upstream Nangate notices; OpenROAD platform LICENSE is downloaded alongside it",
+    "license_url": "https://raw.githubusercontent.com/The-OpenROAD-Project/OpenROAD-flow-scripts/64939f3717ad7c694199ba04cb98924b98022868/flow/platforms/nangate45/LICENSE",
+    "license_sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594"
+  }
+}
