@@ -1,10 +1,14 @@
 # REINS
 
 **Revocable Execution through Independent Networked Supervision** lets protected
-computation run while **two of three independent authorities** approve a current
-lease. When two authorities withhold approval, the lease expires and local
-hardware stops the protected endpoints. Requests and grants cannot extend the
-fixed expiry of an already issued lease.
+computation run under a time-limited execution lease, granted when a **quorum of
+independent authorities** approves it. Without renewed quorum approval, the lease
+expires and local hardware stops the protected endpoints. Each round has a fixed
+lease expiry that traffic, partial approvals and verification delays cannot move.
+
+**This implementation uses a two-of-three quorum:** any two of the three
+authorities can authorize a lease, and two withholding authorities prevent
+renewal.
 
 **Learn more:** Read the **[REINS Hardware Specification v0.3](https://github.com/toddmaustin/REINS/blob/main/docs/REINS-Hardware-Specification-v0.3.pdf "REINS-Hardware-Specification-v0.3.pdf")**
 for the design and its motivation, including the protocol and hardware requirements.
