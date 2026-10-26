@@ -90,6 +90,50 @@ copying the figures into `docs/figures/`. It checks that component areas sum to
 the measured total, rectangles have the stated areas, and top-level regions do
 not overlap. Saved failed/earlier runs remain until an explicit clean target.
 
+## One-compressor architectural proposal
+
+![Proposed REINS digital core with one globally shared SHA-256 compressor](figures/reins-device-floorplan-single-compressor.png)
+
+This comparison uses **one physical SHA-256 compressor for the entire device**:
+both verification passes, configuration hashing, and both entropy-conditioning
+calculations. The two verification sequencers and their local context, framing,
+scratch and checking logic remain, as does the protected receive SRAM. This is
+an architectural area study; the production RTL still has nine compressors.
+
+The retained Yosys instance report measures each bare compressor at
+**21.0167 kGE**. Removing eight gives this arithmetic comparison under the same
+N3 planning assumptions:
+
+| Quantity | Current nine-compressor device | One-compressor proposal, before sharing overhead |
+|---|---:|---:|
+| Logic | 2,731.90 kGE | 2,563.77 kGE |
+| Protected receive SRAM | 32.625 KiB | 32.625 KiB |
+| Digital core | 0.11188 mm² | 0.10583 mm² |
+| Square core side | 334.5 µm | 325.3 µm |
+
+The subtraction saves **168.13 kGE (6.15% of logic)** and **5.41% of modeled
+core area**. New arbitration, ownership/tag protection, context clearing,
+routing, and any additional fault detection have **no assigned incremental
+area**. Existing caller framing and protection remain in the estimate; their
+possible redesign or consolidation is not priced. This is not a synthesized
+one-core result or a guaranteed final area.
+
+A shared compressor creates a common persistent-fault domain for both
+verification passes and both entropy checks. Repeating computations on it does
+not establish independent protection against that fault. A usable implementation
+would require a revised fault argument and campaigns, protected arbitration and
+handoffs, and renewed timing checks. The 64-round compressor latency alone does
+not establish whole-job or response-window latency after sharing.
+
+Download the proposal as [PNG](figures/reins-device-floorplan-single-compressor.png),
+[SVG](figures/reins-device-floorplan-single-compressor.svg), or
+[PDF](figures/reins-device-floorplan-single-compressor.pdf). Regenerate it with
+`make area-layout-single-compressor`. The run retains its source data, geometry,
+assumptions and logs in `test-results/`, checks the current baseline RTL identity,
+and checks area conservation and non-overlap. It leaves the two baseline figures
+unchanged. The same exclusions for physical macros, OTP, pads and the protected
+application processor apply.
+
 ## Run the measurement
 
 Install Yosys and ABC. On Ubuntu/Debian, `sudo apt-get install yosys` normally

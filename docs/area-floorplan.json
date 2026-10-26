@@ -111,6 +111,16 @@
     "unprotected_sram_bits": 73728,
     "receive_kge_unprotected": 2.523666666666657
   },
+  "compressor_measurement": {
+    "module": "sha256_compress",
+    "instances": 9,
+    "kge": 21.016666666668627,
+    "area_um2": 16771.3,
+    "sequential_cells": 1322,
+    "source_csv": "test-results/20261025T161044.023554Z-area-measure-reference-xdc1cru6/area-measure/protected-instances.csv",
+    "source_csv_sha256": "0ee6485ab2716a0c3523aa396f38e46bf076f4a5ce1f6f0273355e0faf57f8d0",
+    "scope": "Bare compressor only; excludes caller framing, scratch and protection logic. All nine instances have identical measured area."
+  },
   "nominal": {
     "nand2_area_um2": 0.018,
     "sram_bitcell_area_um2": 0.0225,
