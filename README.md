@@ -176,6 +176,7 @@ Normal builds never regenerate the committed corpus. Explicit replacement uses
 | `make fault` | Repeated and persistent fault campaigns |
 | `make production-tests` | Uninstrumented production build and real SPI ARM/RENEW |
 | `make release-check` | Complete local digital release workflow and evidence report |
+| `make area-report` | Optional production-only reference-library logic/SRAM sizing; see [area estimation](docs/AREA_ESTIMATION.md) |
 | `make sanitize-tests` | C++ address/undefined-behavior sanitizer regression |
 
 `JOBS=2` limits build concurrency. To select a case, use an individual suite:

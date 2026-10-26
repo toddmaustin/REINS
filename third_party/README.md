@@ -37,6 +37,15 @@ target. An existing local 5.008 installation can be used directly. Setup retains
 its log, binary hash and whether it built the pinned source or reused an existing
 version-checked tool. There is no second-version CI job or automatic fallback.
 
+Optional production sizing uses `make setup-area-tools` and `make area-report`.
+[area-tools.json](area-tools.json) pins sv2v v0.0.12 and the public Nangate45
+typical Liberty file distributed in OpenROAD-flow-scripts. The cache preserves
+sv2v's BSD license/dependency notices, the platform license and embedded Nangate
+notices; those materials are not relicensed under REINS's license. Yosys and ABC
+remain separately installed tools. No N3 foundry library, PDK or SRAM compiler
+is supplied. See [area estimation](../docs/AREA_ESTIMATION.md) for the distinction
+between measured reference-library area and an assumed process projection.
+
 `tools/fetch_doctest.py` downloads the official GitHub archive with TLS and checksum
 verification and extracts only the header and license. Their individual SHA-256
 hashes are pinned too. The header/license live in `.deps/doctest-2.4.12/`; the
