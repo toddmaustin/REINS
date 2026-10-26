@@ -26,6 +26,41 @@ build/lint consume `device/files.f`; simulation models and fault injectors are
 excluded. Baseline/lint checks audit the source split and coverage counts only
 `rtl/device/` points.
 
+## Top-level port groups
+
+[`reins_device.sv`](device/reins_device.sv) labels its port sections by external
+role. The existing port names, widths, directions and declaration order are
+preserved. These labels describe how to connect or observe the current device:
+
+| Label | Role | Examples |
+|---|---|---|
+| `DEVICE` | Functional platform, commissioning, management and enforcement connections | Always-on clocks/resets, physical configuration controls, OTP macro bus, raw entropy acquisition, SPI pins, local guard clocks and dynamic permit rails |
+| `HEALTH` | Actual protection inputs and alarms used during operation | `timing_healthy_i`, `sensor_healthy_i`, `integrity_alarm_i`, `macro_integrity_i`, `fault_o`, `receive_integrity_o`, `enforcement_fault_o`, `verifier_fault_o` |
+| `STATUS` | Integration/status mirrors of checked internal state | Configuration validity, entropy hold, startup qualification, requests/jobs, committed lease timing and trusted stop completion |
+| `OBSERVE` | Detailed outputs for scoreboards, debug and measurement | Parallel request/context snapshots, SPI byte/frame taps, checked memory reads, vote/commit events, verifier states and operation counts |
+| `DEMO` | Effects of the three representative protected workloads | Outbound valid/data bundles and useful-work counters for CPU=0, accelerator=1 and DMA/bus master=2 |
+
+Some sections have more than one label. An exported status or observation can
+also carry functional feedback between modules inside the top. Optional external
+observation ports may be left unconnected; their internal handshake and safety
+connections remain in place. The parallel request/job outputs expose observations;
+the untrusted management host exchanges protocol data through SPI.
+
+There are **no simulation fault-injection inputs** on the production top.
+Health/sensor inputs are real platform interfaces even when tests drive them to
+model failures. The separate [test wrapper](test/device_integration_top.sv)
+supplies test-only `fault_i`, OTP preloading through `factory_image_i`, and
+additional passive core taps. No software-verdict input or host stop-ACK input
+is accepted by `reins_device`.
+
+`permit_o` is the active-high qualified execution-lease status; `run_active_o`
+only identifies the platform run phase. `permit_a_o` and `permit_b_o` are the
+dynamic enforcement rails, normally transitioning every 500 trusted ticks.
+Withdrawal holds their last levels. Local guards require continuing correctly
+spaced transitions, then drive separate serial clock/transaction cuts. The
+`open_a_o`/`open_b_o` and closure/queue observations describe actual local state;
+`stop_complete_o` is the internally derived completed-stop certificate.
+
 ## Data and control flow
 
 ```mermaid
