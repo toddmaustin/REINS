@@ -6,6 +6,9 @@ lease. When two authorities withhold approval, the lease expires and local
 hardware stops the protected endpoints. Requests and grants cannot extend the
 fixed expiry of an already issued lease.
 
+**Learn more:** Read the **[REINS Hardware Specification v0.3](https://github.com/toddmaustin/REINS/blob/main/docs/REINS-Hardware-Specification-v0.3.pdf "REINS-Hardware-Specification-v0.3.pdf")**
+for the design and its motivation, including the protocol and hardware requirements.
+
 The repository contains a SystemVerilog device, an independent C++ reference
 model, and C++ tests using Verilator. The complete device performs both signature
 verification passes in RTL, including real SHA-256. Host software signs authority
