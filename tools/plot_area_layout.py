@@ -218,6 +218,10 @@ def draw_layout(data, layout, destination):
     stem="reins-device-floorplan" if protected else "reins-device-floorplan-without-row-protection"
     date=datetime(2026,10,25,tzinfo=timezone.utc)
     fig.savefig(destination/(stem+".svg"),metadata={"Date":"2026-10-25","Creator":"REINS quantitative planning figure","Rights":"Copyright (c) 2026 Todd Austin; PolyForm-Noncommercial-1.0.0"})
+    # Matplotlib leaves spaces at wrapped path-data line endings; normalize them
+    # without changing XML/path semantics so generated sources pass diff checks.
+    svg=destination/(stem+".svg")
+    svg.write_text("\n".join(line.rstrip() for line in svg.read_text().splitlines())+"\n")
     fig.savefig(destination/(stem+".png"),dpi=180,metadata={"Copyright":"Copyright (c) 2026 Todd Austin","Description":"Illustrative N3 digital core; not placed/routed or a foundry area measurement"})
     fig.savefig(destination/(stem+".pdf"),metadata={"Title":"REINS first-cut digital core floorplan","Author":"Todd Austin","CreationDate":date,"ModDate":date})
     plt.close(fig)
