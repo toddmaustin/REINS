@@ -1,0 +1,237 @@
+{
+  "format_version": 1,
+  "copyright": "Copyright (c) 2026 Todd Austin.",
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "measurement": {
+    "rtl_commit": "edb48ec",
+    "date": "2026-10-25",
+    "report_path": "test-results/20261025T161044.023554Z-area-measure-reference-xdc1cru6/area-measure/area.json",
+    "report_sha256": "f9d2ccbd4415609a54cea0324900b90ed2fc609be7bcd89ff719f98e7a89ab00",
+    "tools": "Yosys 0.52, ABC 1.01 (-fast), sv2v v0.0.12",
+    "library": "Nangate45 typical",
+    "nand2_reference_area_um2": 0.798,
+    "source_sha256": {
+      "rtl/device/reins_clock_isolation.sv": "f9acf3afcb5cf425b98081acc1855ba0989dbb42df730865e480552cc1656fb2",
+      "rtl/device/reins_config.sv": "1b57be3c26e3e59b868bfc6082376edb10fdd920890e26efb499834b39b5d2b9",
+      "rtl/device/reins_controller.sv": "ab6d3e8f3d565dc5e5c1a52e4d589b8a4937df22af24b2c2ecd60ebf3a66b03d",
+      "rtl/device/reins_device.sv": "0669a0dfb7e4e56182db0e453bb27e743d56b3ad8fcf4d7f5019200493c120bf",
+      "rtl/device/reins_device_control.sv": "81311c7f7a5dca4dc5dca9ef25ef2633a1c3b7b2c0a33e0db5c7e6be9d788847",
+      "rtl/device/reins_device_enforced.sv": "6aa4e7149a7abfff1c4b726035fe03ef105b6774185e1f3d2c1125bae13fd537",
+      "rtl/device/reins_device_spi.sv": "c65f08b1f6557a4fa4180f44f8fe63ff62f5a67850a0c6c0337c19fd7aeaa018",
+      "rtl/device/reins_endpoint_actuator.sv": "810dc17bc6b1ef674dc6a155e9cf9b8c6ace5d279d9dd0d213945f06a07a5878",
+      "rtl/device/reins_endpoint_queue.sv": "10765ee8a2f933c668ac1724bd80751631a2289fa8eb947358c0fba5bcf476ef",
+      "rtl/device/reins_enforcement_bank.sv": "6c1e918530ac6ced57e13aa8049ab43625ed33ccfd34048c890f314e894b2f6a",
+      "rtl/device/reins_enforcement_profile.sv": "145939aea383c86ef1d58d6324f78c247c5fa8fec0c47c101fa6c23edc86e759",
+      "rtl/device/reins_entropy.sv": "0852ebcd6d821bc4c374a495e34eedf0dcf2289154d9553fe5da9f2dbbd66849",
+      "rtl/device/reins_expected_grant.sv": "a550642020b0f52c26b7d6cc104991e563f765ac3b95d69924054d10f2c8d96a",
+      "rtl/device/reins_lease_check.sv": "f56c79a9a609e19c69fb302677165ca014a68d1f56f27be250c56d241cdc52f9",
+      "rtl/device/reins_merkle_pair.sv": "2d813c293df4ab2a140ba3330afefdde1d809aaee7a834d6feac116522d96b62",
+      "rtl/device/reins_merkle_pass.sv": "a20cae68669d5277be8e32d36a31801585fb35fa555b6c85a4571194c0db4018",
+      "rtl/device/reins_permit_guard_a.sv": "9e6edbf4e7679b173e50fb153d4adbc34c707062b99d34713a228b1576b05640",
+      "rtl/device/reins_permit_guard_b.sv": "f2bc7a0fcc4d32c2378b7bebc9f82611062917b62046280961e4c5c9c3013c29",
+      "rtl/device/reins_permit_source.sv": "2827411e11585ff85f54f7ac6fd0ba4f5014847639048d8626a5b361b3df124f",
+      "rtl/device/reins_platform_control.sv": "19bed519b70c9e9d50396267a0bac4a47f8a30ad8778084444fcd250b54dbb15",
+      "rtl/device/reins_protected_endpoint.sv": "79cbc05da8c7bf96e8c61647b05d539f642ace2193c662af35ef378ea2219396",
+      "rtl/device/reins_receive_sram.sv": "3e415cc6ca98ef066d1060dbb77fc8756922099bcdc3a15e114e5febeeb1b11d",
+      "rtl/device/reins_round_schedule.sv": "27ffe361b3e5dbefcb086aeba2df0658035e7183bc24813fcba02291b43fa904",
+      "rtl/device/reins_source_health.sv": "e61a3c1d086bb37f3e14beced46c3d930365da3f813be5be3848c882f5b7f310",
+      "rtl/device/reins_spi_control.sv": "9705176e73548f705e129a01a01593cd4176dcc66066d8f0bec092ce89e58547",
+      "rtl/device/reins_spi_mailbox.sv": "b6103d85c0295e2f537cfb766b49e6fcbd4d6fa088d9af1bb47324bd3f43d135",
+      "rtl/device/reins_spi_slave.sv": "7a37b1bbaa1de1deab002f70b447aea9abfbee052ef8e1120809ec225e69be55",
+      "rtl/device/reins_transaction_isolation.sv": "52056a43546b43b9d916255dd13d951d901b54e8970189e631819a42c20c9d05",
+      "rtl/device/reins_trusted_time.sv": "ad8688980d691ac2f0e5da9ff4b5fefa93691d52d53f23064236e33244f062d0",
+      "rtl/device/reins_verifier.sv": "0c57432d84366370174e96676447de4628ea824316018f2b0346facf0130dcf4",
+      "rtl/device/reins_verifier_pass.sv": "4a0a4ee126def7164b02ebc65ecd875670d6c743c072aaba656f2704cae3bc6f",
+      "rtl/device/sha256_compress.sv": "71df726f4adc23dd181f05829cf9d49fa8bddabd580870d24158e52221ebc3e4",
+      "rtl/device/sha256_message.sv": "8b224a9bb841363665329e057e59b8abd5877c485c153c5989867d45184ab3a6",
+      "rtl/device/slh_address.sv": "5b925598bcfadbc66a51895d9a89de192b401b151972018616325070037fc474",
+      "rtl/device/slh_hash_transaction.sv": "a4863c22ace525ec0733143e1af64a84082692f6b3ecd1276217260f44c5ff17",
+      "rtl/device/slh_message_hash.sv": "5660c773411c7133455ac7d04d6348c159fcb40afface58356f1f9a1c9af18e0",
+      "rtl/device/slh_sha256_stream.sv": "3961e9a2e59684a57bec83f990f900fe3c8a7fac98dac9af5b2b7a3697195a36",
+      "rtl/device/slh_verify.sv": "e3a94e75cc0719b6a7dc264e1034d28eb9bac61d6fbbfb1eb91b67a2a7d3e984",
+      "rtl/device/slh_verify_reins.sv": "4c83f225361d45e2b442dcda954a9951e11fe33f485728086f5da4e5c23311c9",
+      "rtl/device/slh_wots.sv": "0c333c96abc63caf10584dd5cbf2d22929f87ebc73f7f27a4edc42dfb64db3ce",
+      "rtl/device/slh_wots_digits.sv": "359ceb0431f65d92e7cf9801df5d6142286c9e6c71f5a32bcd63570bc5be304a"
+    },
+    "rtl_token_sha256": {
+      "rtl/device/reins_clock_isolation.sv": "f2551606c4156d5ab53057bd884b9df7dd2190a56292299740ce2a8f91c2a473",
+      "rtl/device/reins_config.sv": "2ac38e0e447684b18042333b4d449e675171290fc2636e5c7e68df92337ae6bd",
+      "rtl/device/reins_controller.sv": "79e76ef776a54d7474f69e5ba96037f9f7c73e1d0b00d99aa9a65d84d94eb6dd",
+      "rtl/device/reins_device.sv": "085c432adb6b6cf4cc915acee51ee5c5713220629521f0ca244ef4d5a93e8108",
+      "rtl/device/reins_device_control.sv": "091eba4e49c4cf1247bee4b136eb859521c873df5d3856b25c255b916038e11a",
+      "rtl/device/reins_device_enforced.sv": "859de58628e60aab185f420b93ef5a428cdafab72fcb2e066da4c45be659316f",
+      "rtl/device/reins_device_spi.sv": "cb16ecc67eb73aa42521f5ca94dbc1b2b1d723203221eb7da3689c7b7cdc9d25",
+      "rtl/device/reins_endpoint_actuator.sv": "c34d186cc96b10ca3a466391a30dcd937f2965d84f6aed73097b78e60777a542",
+      "rtl/device/reins_endpoint_queue.sv": "3744aa84a7fc746a3834fb756b9d528840c7cd943cd3ee976e9e6e72e49ef0d2",
+      "rtl/device/reins_enforcement_bank.sv": "d6dcb3bd57ac8fff1c6f69badc45e0f0cb4cba0a0690be1a053bced7ca00f8bf",
+      "rtl/device/reins_enforcement_profile.sv": "bc62157f5ea8939b7c4d6c3f65cdb613adbdd197868754225a24e57a128ba1c7",
+      "rtl/device/reins_entropy.sv": "2293f44a0ef18fc2ca333a41db23dbbd62c40701178748793cfa927aff80d954",
+      "rtl/device/reins_expected_grant.sv": "def6be362f1eaa835cf7ec10d63ebed3976fcf962ae0f5cb6c3c9cbf4cd7d2b0",
+      "rtl/device/reins_lease_check.sv": "8487b6e21acdf8cb8d60ccc4dc15ac76fdbd2d305d39a978854bd561f221c946",
+      "rtl/device/reins_merkle_pair.sv": "d865d97d0c5955fb65a3e5a933151c809c4f2b70bcbf7e7fe8944fd228896e27",
+      "rtl/device/reins_merkle_pass.sv": "feaef34347c046e9c7fd02361642b39a44034a37f1c4a9efab122ec3074d10f9",
+      "rtl/device/reins_permit_guard_a.sv": "dc64f9e84de16cafd09d6c248b0b736951f1ed70698ead10e649d8fb0f736e40",
+      "rtl/device/reins_permit_guard_b.sv": "b6d3cd19bcbde763a23c4300546fbfc3f2bff6ff627cad503c25553c9394c973",
+      "rtl/device/reins_permit_source.sv": "1cd9687cade2c195abb4c8a59306ddb9b80ae548a1676afdea8e9aba032dcd6c",
+      "rtl/device/reins_platform_control.sv": "004b93f983f6535e24b4d3b9daf0680a4d923863df3ed1a46723af1dd0cac4d6",
+      "rtl/device/reins_protected_endpoint.sv": "98b5663ce4f8c5c4c9802ad3dfbdb8764e123a17e87e856a1253225c7e697de5",
+      "rtl/device/reins_receive_sram.sv": "9b9a3ea46d8113a1bb4610e3c2c43eb48db72ee23873f31ab7398877ddc1ead8",
+      "rtl/device/reins_round_schedule.sv": "4fde2fe097af8fc545fc382aacb08d461132fc6dfb9c3e439e2c9eefc7397646",
+      "rtl/device/reins_source_health.sv": "97a4f89d20461634f0789ef2259c9e3ce0a5002e454a1401da63aeeed0bab35a",
+      "rtl/device/reins_spi_control.sv": "eab185e1b0c427e7703935c606d05ec48e91b935f221c4f2409a6d6331a9ca44",
+      "rtl/device/reins_spi_mailbox.sv": "0dc313b3e4eb325712b54d9167c8e778bfc65905575adfbad73d3165518c9fa9",
+      "rtl/device/reins_spi_slave.sv": "0a57faeb351a0587fd4036140e0e298372f6cd6ff94cabd905be1c6a98cab9ca",
+      "rtl/device/reins_transaction_isolation.sv": "c7e6cd9a3718700b57d2c5eb645abedcae58e8f7937caf68327e5fa50365558a",
+      "rtl/device/reins_trusted_time.sv": "8a2304114644a2429a920c3f3675adf5b73d4d131484ff478fff4c579da39f93",
+      "rtl/device/reins_verifier.sv": "2618481a188d09021a5cdb898530905d4570d97f2afc0995bb2a59dd45d94f12",
+      "rtl/device/reins_verifier_pass.sv": "0053a3534c921d2abca499e3a9356fa825ef59ddff912f53a24bd24ac19cb80e",
+      "rtl/device/sha256_compress.sv": "1452d912f173ae4a82d70632e01fce7acd085e9eb375fa4427a21cb8de8c5c56",
+      "rtl/device/sha256_message.sv": "0619afe1c1829690167acd62c1e5fd573526aad59211f1cf39b0505b91f87012",
+      "rtl/device/slh_address.sv": "4b44586e826a93457dd49d9ebe44cce760e36e439ce6994a0984431105afed71",
+      "rtl/device/slh_hash_transaction.sv": "3bc2685a299f8415e48d388b05010d3476cb250f2b1b5832e7b82f374e7ca2a7",
+      "rtl/device/slh_message_hash.sv": "9ba5061335ed34e077c62d083240824a3d90f7d610f0749e10deecc0a25cb8cc",
+      "rtl/device/slh_sha256_stream.sv": "13cf9bb52f680178bb35d1ea320621a359326a3f96951c3abb4346f2aace9406",
+      "rtl/device/slh_verify.sv": "adc5b476410d11959217e9b6f3842497d7a50ffbcb1a047291a182fa24321b2f",
+      "rtl/device/slh_verify_reins.sv": "cfeb6cc7dbbecb0fbfca175631a4658401db7791d43b974027ea4749c807a663",
+      "rtl/device/slh_wots.sv": "85fbc1b13623334249daec0002c59b0920882614c8911c7a8a111f938d7bd520",
+      "rtl/device/slh_wots_digits.sv": "b1b4a0c139728d3460cc0e03a14c58f8df5429ef2c3b6639640a7316d59d68df"
+    },
+    "current_rtl_checked_at": "63af047a974295dcc052f93ce8a38ca0e0349985",
+    "manifest_sha256": "a2eb217e05bfec5bebc7742566b3e90a64be20810ccde4140097022ad679d505"
+  },
+  "totals": {
+    "protected_kge": 2731.8986666691726,
+    "unprotected_kge": 2725.0730000025055,
+    "standard_cells": 1637614,
+    "unprotected_standard_cells": 1632625,
+    "sequential_cells": 135954,
+    "sha256_cores": 9,
+    "payload_bytes": 9216,
+    "protected_sram_bits": 267264,
+    "unprotected_sram_bits": 73728,
+    "receive_kge_unprotected": 2.523666666666657
+  },
+  "nominal": {
+    "nand2_area_um2": 0.018,
+    "sram_bitcell_area_um2": 0.0225,
+    "logic_implementation_factor": 1.25,
+    "cell_utilization": 0.625,
+    "protected_sram_macro_factor": 2.25,
+    "unprotected_sram_macro_factor": 1.9
+  },
+  "range": {
+    "protected_core_mm2": [
+      0.06187535085719225,
+      0.18097846690923852
+    ],
+    "unprotected_core_mm2": [
+      0.05563979571433511,
+      0.1651395730910567
+    ],
+    "nand2_area_um2": [
+      0.012,
+      0.024
+    ],
+    "sram_bitcell_area_um2": [
+      0.02,
+      0.025
+    ],
+    "logic_implementation_factor": [
+      1.15,
+      1.35
+    ],
+    "cell_utilization": [
+      0.55,
+      0.7
+    ],
+    "protected_sram_macro_factor": [
+      1.5,
+      3.0
+    ],
+    "unprotected_sram_macro_factor": [
+      1.3,
+      2.5
+    ]
+  },
+  "components": [
+    {
+      "id": "pass_a",
+      "label": "Verification pass 1",
+      "kge": 992.9390000007209,
+      "children": [
+        {
+          "id": "merkle",
+          "label": "Expected grant + Merkle",
+          "kge": 246.66299999986742
+        },
+        {
+          "id": "signature",
+          "label": "SLH-DSA signature verification",
+          "kge": 643.0590000008575
+        },
+        {
+          "id": "sequencer",
+          "label": "Context / sequencer / checks",
+          "kge": 103.21699999999589
+        }
+      ]
+    },
+    {
+      "id": "pass_b",
+      "label": "Verification pass 2",
+      "kge": 990.8416666673903,
+      "children": [
+        {
+          "id": "merkle",
+          "label": "Expected grant + Merkle",
+          "kge": 246.66299999986742
+        },
+        {
+          "id": "signature",
+          "label": "SLH-DSA signature verification",
+          "kge": 643.0590000008575
+        },
+        {
+          "id": "sequencer",
+          "label": "Context / sequencer / checks",
+          "kge": 101.11966666666535
+        }
+      ]
+    },
+    {
+      "id": "join",
+      "label": "Protected pass join",
+      "kge": 47.27966666665907
+    },
+    {
+      "id": "platform",
+      "label": "Configuration, entropy + time",
+      "kge": 274.5783333333098
+    },
+    {
+      "id": "controller",
+      "label": "Lease / round / quorum",
+      "kge": 174.98133333323938
+    },
+    {
+      "id": "integration",
+      "label": "Integration + profile checks",
+      "kge": 117.09266666664064
+    },
+    {
+      "id": "spi",
+      "label": "SPI transport + mailbox",
+      "kge": 88.72333333330678
+    },
+    {
+      "id": "enforcement",
+      "label": "Endpoint guards + demo queues",
+      "kge": 36.113333333333195
+    },
+    {
+      "id": "receive",
+      "label": "Receive integrity + ownership",
+      "kge": 9.349333333333643
+    }
+  ]
+}

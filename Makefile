@@ -406,6 +406,7 @@ help:
 	@echo 'make production-tests               Bare production build and full-RTL SPI ARM/RENEW'
 	@echo 'make formal-checks / synthesis-checks / reset-checks / cdc-review'
 	@echo 'make setup-area-tools / area-report  Optional production-only reference-library sizing'
+	@echo 'make area-layout                    Draw estimated core floorplans from saved measured areas'
 	@echo 'make replay REPLAY=path / minimize REPLAY=path FINGERPRINT="CHECK( expression )"'
 	@echo 'make campaign-report RESULTS=test-results/run / sanitize-tests / rtl-lint'
 	@echo 'make clean / clean-results / clean-deps  Explicitly remove builds/results/dependency cache'
@@ -426,10 +427,12 @@ fault-replay:
 	+$(PYTHON) -E -s -B tools/fault_replay.py --manifest '$(REPLAY)' --build-dir $(BUILD_DIR)
 
 # Optional reference-library sizing; deliberately separate from release acceptance.
-.PHONY: setup-area-tools area-report
+.PHONY: setup-area-tools area-report area-layout
 setup-area-tools:
 	+$(PYTHON) -E -s -B tools/measure_area.py --setup
 area-report:
 	+$(PYTHON) -E -s -B tools/measure_area.py
+area-layout:
+	+$(PYTHON) -E -s -B tools/plot_area_layout.py
 
 .PHONY: sha256-unit-build platform-unit-build controller-unit-build controller-integration-build spi-unit-build spi-integration-build receive-memory-unit-build enforcement-unit-build enforcement-integration-build merkle-unit-build merkle-integration-build slh-components-unit-build slh-verify-unit-build verifier-unit-build device-integration-build spi-build enforcement-build merkle-build verification-build

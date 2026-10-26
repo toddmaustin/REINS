@@ -1,0 +1,589 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="1152pt" height="720pt" viewBox="0 0 1152 720" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-10-25</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>REINS quantitative planning figure</dc:title>
+     </cc:Agent>
+    </dc:creator>
+    <dc:rights>
+     <cc:Agent>
+      <dc:title>Copyright (c) 2026 Todd Austin; PolyForm-Noncommercial-1.0.0</dc:title>
+     </cc:Agent>
+    </dc:rights>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 720 
+L 1152 720 
+L 1152 0 
+L 0 0 
+z
+" style="fill: #fafbfd"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 128.259586 258.25256 
+L 263.7988 258.25256 
+L 263.7988 162.877316 
+L 128.259586 162.877316 
+z
+" clip-path="url(#pb7b9736ebe)" style="fill: #97bbd4; stroke: #ffffff; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 128.259586 506.899133 
+L 263.7988 506.899133 
+L 263.7988 258.25256 
+L 128.259586 258.25256 
+z
+" clip-path="url(#pb7b9736ebe)" style="fill: #5f96bd; stroke: #ffffff; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 128.259586 546.809239 
+L 263.7988 546.809239 
+L 263.7988 506.899133 
+L 128.259586 506.899133 
+z
+" clip-path="url(#pb7b9736ebe)" style="fill: #bbd2e3; stroke: #ffffff; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 128.259586 546.809239 
+L 263.7988 546.809239 
+L 263.7988 162.877316 
+L 128.259586 162.877316 
+L 128.259586 546.809239 
+z
+" clip-path="url(#pb7b9736ebe)" style="fill: none; stroke: #263c55; stroke-width: 1.1; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 376.938589 258.454443 
+L 512.19151 258.454443 
+L 512.19151 162.877316 
+L 376.938589 162.877316 
+z
+" clip-path="url(#pb7b9736ebe)" style="fill: #8ec1b8; stroke: #ffffff; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 376.938589 507.62733 
+L 512.19151 507.62733 
+L 512.19151 258.454443 
+L 376.938589 258.454443 
+z
+" clip-path="url(#pb7b9736ebe)" style="fill: #519f92; stroke: #ffffff; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_8">
+    <path d="M 376.938589 546.809239 
+L 512.19151 546.809239 
+L 512.19151 507.62733 
+L 376.938589 507.62733 
+z
+" clip-path="url(#pb7b9736ebe)" style="fill: #b5d6d1; stroke: #ffffff; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_9">
+    <path d="M 376.938589 546.809239 
+L 512.19151 546.809239 
+L 512.19151 162.877316 
+L 376.938589 162.877316 
+L 376.938589 546.809239 
+z
+" clip-path="url(#pb7b9736ebe)" style="fill: none; stroke: #263c55; stroke-width: 1.1; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_10">
+    <path d="M 263.7988 203.432588 
+L 376.938589 203.432588 
+L 376.938589 162.877316 
+L 263.7988 162.877316 
+z
+" clip-path="url(#pb7b9736ebe)" style="fill: #e5bd5d; stroke: #ffffff; stroke-width: 1.1; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_11">
+    <path d="M 263.7988 204.601585 
+L 376.938589 204.601585 
+L 376.938589 203.432588 
+L 263.7988 203.432588 
+z
+" clip-path="url(#pb7b9736ebe)" style="fill: #c77e77; stroke: #ffffff; stroke-width: 1.1; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_12">
+    <path d="M 263.7988 226.502167 
+L 376.938589 226.502167 
+L 376.938589 204.601585 
+L 263.7988 204.601585 
+z
+" clip-path="url(#pb7b9736ebe)" style="fill: #927aa8; stroke: #ffffff; stroke-width: 1.1; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_13">
+    <path d="M 263.7988 353.69057 
+L 376.938589 353.69057 
+L 376.938589 226.502167 
+L 263.7988 226.502167 
+z
+" clip-path="url(#pb7b9736ebe)" style="fill: #7ca9be; stroke: #ffffff; stroke-width: 1.1; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_14">
+    <path d="M 263.7988 434.744295 
+L 376.938589 434.744295 
+L 376.938589 353.69057 
+L 263.7988 353.69057 
+z
+" clip-path="url(#pb7b9736ebe)" style="fill: #b3c5a0; stroke: #ffffff; stroke-width: 1.1; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_15">
+    <path d="M 263.7988 488.983204 
+L 376.938589 488.983204 
+L 376.938589 434.744295 
+L 263.7988 434.744295 
+z
+" clip-path="url(#pb7b9736ebe)" style="fill: #c0c7d0; stroke: #ffffff; stroke-width: 1.1; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_16">
+    <path d="M 263.7988 530.081054 
+L 376.938589 530.081054 
+L 376.938589 488.983204 
+L 263.7988 488.983204 
+z
+" clip-path="url(#pb7b9736ebe)" style="fill: #c5ab83; stroke: #ffffff; stroke-width: 1.1; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_17">
+    <path d="M 263.7988 546.809239 
+L 376.938589 546.809239 
+L 376.938589 530.081054 
+L 263.7988 530.081054 
+z
+" clip-path="url(#pb7b9736ebe)" style="fill: #9eafb3; stroke: #ffffff; stroke-width: 1.1; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_18">
+    <path d="M 128.259586 546.809239 
+L 512.19151 546.809239 
+L 512.19151 162.877316 
+L 128.259586 162.877316 
+L 128.259586 546.809239 
+z
+" clip-path="url(#pb7b9736ebe)" style="fill: none; stroke: #172b4d; stroke-width: 1.2; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_19">
+    <path d="M 130.260208 562.494452 
+Q 320.224933 562.494452 510.189658 562.494452 
+" clip-path="url(#pb7b9736ebe)" style="fill: none; stroke: #526172; stroke-width: 0.9; stroke-linecap: round"/>
+    <path d="M 130.260208 558.494452 
+L 130.260208 558.494452 
+L 130.260208 566.494452 
+L 130.260208 566.494452 
+" clip-path="url(#pb7b9736ebe)" style="fill: none; stroke: #526172; stroke-width: 0.9; stroke-linecap: round"/>
+    <path d="M 510.189658 566.494452 
+L 510.189658 566.494452 
+L 510.189658 558.494452 
+L 510.189658 558.494452 
+" clip-path="url(#pb7b9736ebe)" style="fill: none; stroke: #526172; stroke-width: 0.9; stroke-linecap: round"/>
+   </g>
+   <g id="patch_20">
+    <path d="M 112.574374 544.808617 
+Q 112.574374 354.843893 112.574374 164.879168 
+" clip-path="url(#pb7b9736ebe)" style="fill: none; stroke: #526172; stroke-width: 0.9; stroke-linecap: round"/>
+    <path d="M 108.574374 544.808617 
+L 108.574374 544.808617 
+L 116.574374 544.808617 
+L 116.574374 544.808617 
+" clip-path="url(#pb7b9736ebe)" style="fill: none; stroke: #526172; stroke-width: 0.9; stroke-linecap: round"/>
+    <path d="M 116.574374 164.879168 
+L 116.574374 164.879168 
+L 108.574374 164.879168 
+L 108.574374 164.879168 
+" clip-path="url(#pb7b9736ebe)" style="fill: none; stroke: #526172; stroke-width: 0.9; stroke-linecap: round"/>
+   </g>
+   <g id="text_1">
+    <text style="font-weight: 700; font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #172b4d" x="196.029193" y="152.018322" transform="rotate(-0 196.029193 152.018322)">01  PASS 1</text>
+   </g>
+   <g id="text_2">
+    <text style="font-size: 9.8px; font-family: 'DejaVu Sans'; fill: #172b4d" transform="translate(151.668881 192.34046)">EXPECTED GRANT</text>
+    <text style="font-size: 9.8px; font-family: 'DejaVu Sans'; fill: #172b4d" transform="translate(170.597427 206.292904)">+ MERKLE</text>
+    <text style="font-size: 9.8px; font-family: 'DejaVu Sans'; fill: #172b4d" transform="translate(142.111584 220.245347)">1 × SHA-256 included</text>
+    <text style="font-size: 9.8px; font-family: 'DejaVu Sans'; fill: #172b4d" transform="translate(162.698474 234.197791)">0.00888 mm²</text>
+   </g>
+   <g id="text_3">
+    <text style="font-size: 9.8px; font-family: 'DejaVu Sans'; fill: #172b4d" transform="translate(155.74124 357.375146)">SLH-DSA VERIFY</text>
+    <text style="font-size: 9.8px; font-family: 'DejaVu Sans'; fill: #172b4d" transform="translate(159.254693 371.32759)">FORS · WOTS+</text>
+    <text style="font-size: 9.8px; font-family: 'DejaVu Sans'; fill: #172b4d" transform="translate(172.028381 385.280034)">hypertree</text>
+    <text style="font-size: 9.8px; font-family: 'DejaVu Sans'; fill: #172b4d" transform="translate(142.111584 399.232478)">2 × SHA-256 included</text>
+    <text style="font-size: 9.8px; font-family: 'DejaVu Sans'; fill: #172b4d" transform="translate(162.698474 413.184921)">0.02315 mm²</text>
+   </g>
+   <g id="text_4">
+    <text style="font-size: 8.463224px; font-family: 'DejaVu Sans'; fill: #172b4d" transform="translate(151.129145 517.140256)">CONTEXT / CONTROL</text>
+    <text style="font-size: 8.463224px; font-family: 'DejaVu Sans'; fill: #172b4d" transform="translate(163.714223 529.189507)">LOCAL CHECKS</text>
+    <text style="font-size: 8.463224px; font-family: 'DejaVu Sans'; fill: #172b4d" transform="translate(167.244975 541.238758)">0.00372 mm²</text>
+   </g>
+   <g id="text_5">
+    <text style="font-weight: 700; font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #172b4d" x="444.565049" y="152.018322" transform="rotate(-0 444.565049 152.018322)">02  PASS 2</text>
+   </g>
+   <g id="text_6">
+    <text style="font-size: 9.8px; font-family: 'DejaVu Sans'; fill: #172b4d" transform="translate(400.204737 192.441401)">EXPECTED GRANT</text>
+    <text style="font-size: 9.8px; font-family: 'DejaVu Sans'; fill: #172b4d" transform="translate(419.133284 206.393845)">+ MERKLE</text>
+    <text style="font-size: 9.8px; font-family: 'DejaVu Sans'; fill: #172b4d" transform="translate(390.64744 220.346289)">1 × SHA-256 included</text>
+    <text style="font-size: 9.8px; font-family: 'DejaVu Sans'; fill: #172b4d" transform="translate(411.234331 234.298732)">0.00888 mm²</text>
+   </g>
+   <g id="text_7">
+    <text style="font-size: 9.8px; font-family: 'DejaVu Sans'; fill: #172b4d" transform="translate(404.277096 357.840186)">SLH-DSA VERIFY</text>
+    <text style="font-size: 9.8px; font-family: 'DejaVu Sans'; fill: #172b4d" transform="translate(407.790549 371.79263)">FORS · WOTS+</text>
+    <text style="font-size: 9.8px; font-family: 'DejaVu Sans'; fill: #172b4d" transform="translate(420.564237 385.745074)">hypertree</text>
+    <text style="font-size: 9.8px; font-family: 'DejaVu Sans'; fill: #172b4d" transform="translate(390.64744 399.697518)">2 × SHA-256 included</text>
+    <text style="font-size: 9.8px; font-family: 'DejaVu Sans'; fill: #172b4d" transform="translate(411.234331 413.649961)">0.02315 mm²</text>
+   </g>
+   <g id="text_8">
+    <text style="font-size: 8.308805px; font-family: 'DejaVu Sans'; fill: #172b4d" transform="translate(400.484245 517.681595)">CONTEXT / CONTROL</text>
+    <text style="font-size: 8.308805px; font-family: 'DejaVu Sans'; fill: #172b4d" transform="translate(412.839697 529.510995)">LOCAL CHECKS</text>
+    <text style="font-size: 8.308805px; font-family: 'DejaVu Sans'; fill: #172b4d" transform="translate(416.306026 541.340396)">0.00364 mm²</text>
+   </g>
+   <g id="text_9">
+    <text style="font-weight: 700; font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #172b4d" x="320.368694" y="152.018322" transform="rotate(-0 320.368694 152.018322)">SHARED SERVICES</text>
+   </g>
+   <g id="text_10">
+    <text style="font-size: 9.6px; font-family: 'DejaVu Sans'; fill: #172b4d" transform="translate(275.583194 173.230427)">03  RECEIVE SRAM</text>
+    <text style="font-size: 9.6px; font-family: 'DejaVu Sans'; fill: #172b4d" transform="translate(287.658944 185.803952)">9 KiB backing</text>
+    <text style="font-size: 9.6px; font-family: 'DejaVu Sans'; fill: #172b4d" transform="translate(287.718194 198.377477)">0.00315 mm²</text>
+   </g>
+   <g id="text_11">
+    <text style="font-size: 8.7px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #172b4d" x="320.368694" y="217.952532" transform="rotate(-0 320.368694 217.952532)">05  PASS JOIN</text>
+   </g>
+   <g id="text_12">
+    <text style="font-size: 8.728604px; font-family: 'DejaVu Sans'; fill: #172b4d" transform="translate(268.327119 275.356586)">06  CONFIG + ENTROPY</text>
+    <text style="font-size: 8.728604px; font-family: 'DejaVu Sans'; fill: #172b4d" transform="translate(283.01436 286.788807)">+ TRUSTED TIME</text>
+    <text style="font-size: 8.728604px; font-family: 'DejaVu Sans'; fill: #172b4d" transform="translate(272.345687 298.221029)">3 × SHA-256 included</text>
+    <text style="font-size: 8.728604px; font-family: 'DejaVu Sans'; fill: #172b4d" transform="translate(290.681893 309.65325)">0.00988 mm²</text>
+   </g>
+   <g id="text_13">
+    <text style="font-size: 8.946644px; font-family: 'DejaVu Sans'; fill: #172b4d" transform="translate(276.742624 384.968351)">07  LEASE / ROUND</text>
+    <text style="font-size: 8.946644px; font-family: 'DejaVu Sans'; fill: #172b4d" transform="translate(268.115403 396.686147)">QUORUM CONTROLLER</text>
+    <text style="font-size: 8.946644px; font-family: 'DejaVu Sans'; fill: #172b4d" transform="translate(289.940321 408.403943)">0.00630 mm²</text>
+   </g>
+   <g id="text_14">
+    <text style="font-size: 9.6px; font-family: 'DejaVu Sans'; fill: #172b4d" transform="translate(278.746694 451.939224)">08  INTEGRATION</text>
+    <text style="font-size: 9.6px; font-family: 'DejaVu Sans'; fill: #172b4d" transform="translate(279.409694 464.512749)">PROFILE CHECKS</text>
+    <text style="font-size: 9.6px; font-family: 'DejaVu Sans'; fill: #172b4d" transform="translate(287.718194 477.086274)">0.00422 mm²</text>
+   </g>
+   <g id="text_15">
+    <text style="font-size: 9.6px; font-family: 'DejaVu Sans'; fill: #172b4d" transform="translate(277.698944 505.894366)">09  SPI / MAILBOX</text>
+    <text style="font-size: 9.6px; font-family: 'DejaVu Sans'; fill: #172b4d" transform="translate(287.718194 518.467891)">0.00319 mm²</text>
+   </g>
+   <g id="text_16">
+    <text style="font-size: 8.7px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #172b4d" x="320.368694" y="540.845803" transform="rotate(-0 320.368694 540.845803)">10  ENDPOINTS</text>
+   </g>
+   <g id="text_17">
+    <text style="font-size: 10px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #526172" x="320.225548" y="574.906265" transform="rotate(-0 320.225548 574.906265)">318.2 µm</text>
+   </g>
+   <g id="text_18">
+    <text style="font-size: 10px; font-family: 'DejaVu Sans'; fill: #526172" transform="translate(105.68131 378.797965) rotate(-90)">318.2 µm</text>
+   </g>
+  </g>
+  <g id="patch_21">
+   <path d="M 51.84 117.36 
+L 299.52 117.36 
+L 299.52 71.28 
+L 51.84 71.28 
+z
+" style="fill: #ffffff; stroke: #d8e0e8; stroke-width: 0.8; stroke-linejoin: miter"/>
+  </g>
+  <g id="patch_22">
+   <path d="M 322.56 117.36 
+L 570.24 117.36 
+L 570.24 71.28 
+L 322.56 71.28 
+z
+" style="fill: #ffffff; stroke: #d8e0e8; stroke-width: 0.8; stroke-linejoin: miter"/>
+  </g>
+  <g id="patch_23">
+   <path d="M 593.28 117.36 
+L 840.96 117.36 
+L 840.96 71.28 
+L 593.28 71.28 
+z
+" style="fill: #ffffff; stroke: #d8e0e8; stroke-width: 0.8; stroke-linejoin: miter"/>
+  </g>
+  <g id="patch_24">
+   <path d="M 864 117.36 
+L 1111.68 117.36 
+L 1111.68 71.28 
+L 864 71.28 
+z
+" style="fill: #ffffff; stroke: #d8e0e8; stroke-width: 0.8; stroke-linejoin: miter"/>
+  </g>
+  <g id="patch_25">
+   <path d="M 599.04 228.96 
+L 610.56 228.96 
+L 610.56 220.32 
+L 599.04 220.32 
+z
+" style="fill: #377cad"/>
+  </g>
+  <g id="patch_26">
+   <path d="M 599.04 251.64 
+L 610.56 251.64 
+L 610.56 243 
+L 599.04 243 
+z
+" style="fill: #268777"/>
+  </g>
+  <g id="patch_27">
+   <path d="M 599.04 274.32 
+L 610.56 274.32 
+L 610.56 265.68 
+L 599.04 265.68 
+z
+" style="fill: #e5bd5d"/>
+  </g>
+  <g id="patch_28">
+   <path d="M 599.04 297 
+L 610.56 297 
+L 610.56 288.36 
+L 599.04 288.36 
+z
+" style="fill: #c77e77"/>
+  </g>
+  <g id="patch_29">
+   <path d="M 599.04 319.68 
+L 610.56 319.68 
+L 610.56 311.04 
+L 599.04 311.04 
+z
+" style="fill: #927aa8"/>
+  </g>
+  <g id="patch_30">
+   <path d="M 599.04 342.36 
+L 610.56 342.36 
+L 610.56 333.72 
+L 599.04 333.72 
+z
+" style="fill: #7ca9be"/>
+  </g>
+  <g id="patch_31">
+   <path d="M 599.04 365.04 
+L 610.56 365.04 
+L 610.56 356.4 
+L 599.04 356.4 
+z
+" style="fill: #b3c5a0"/>
+  </g>
+  <g id="patch_32">
+   <path d="M 599.04 387.72 
+L 610.56 387.72 
+L 610.56 379.08 
+L 599.04 379.08 
+z
+" style="fill: #c0c7d0"/>
+  </g>
+  <g id="patch_33">
+   <path d="M 599.04 410.4 
+L 610.56 410.4 
+L 610.56 401.76 
+L 599.04 401.76 
+z
+" style="fill: #c5ab83"/>
+  </g>
+  <g id="patch_34">
+   <path d="M 599.04 433.08 
+L 610.56 433.08 
+L 610.56 424.44 
+L 599.04 424.44 
+z
+" style="fill: #9eafb3"/>
+  </g>
+  <g id="patch_35">
+   <path d="M 599.04 556.56 
+L 1100.16 556.56 
+L 1100.16 488.16 
+L 599.04 488.16 
+z
+" style="fill: #eaf0f5"/>
+  </g>
+  <g id="text_19">
+   <text style="font-weight: 700; font-size: 24px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #172b4d" x="51.84" y="30.24" transform="rotate(-0 51.84 30.24)">REINS  |  first-cut digital core floorplan</text>
+  </g>
+  <g id="text_20">
+   <text style="font-size: 12px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #526172" x="51.84" y="56.16" transform="rotate(-0 51.84 56.16)">N3 planning scenario · area-proportional regions · not a placed or routed chip</text>
+  </g>
+  <g id="text_21">
+   <text style="font-weight: 700; font-size: 10px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #95631b" x="1100.16" y="28.08" transform="rotate(-0 1100.16 28.08)">UNPROTECTED ROW EXPERIMENT</text>
+  </g>
+  <g id="text_22">
+   <text style="font-weight: 700; font-size: 16px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #172b4d" x="65.664" y="92.16" transform="rotate(-0 65.664 92.16)">2,725 kGE</text>
+  </g>
+  <g id="text_23">
+   <text style="font-size: 9.4px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #526172" x="65.664" y="109.44" transform="rotate(-0 65.664 109.44)">Nangate45 reference logic</text>
+  </g>
+  <g id="text_24">
+   <text style="font-weight: 700; font-size: 16px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #172b4d" x="336.384" y="92.16" transform="rotate(-0 336.384 92.16)">9 KiB SRAM</text>
+  </g>
+  <g id="text_25">
+   <text style="font-size: 9.4px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #526172" x="336.384" y="109.44" transform="rotate(-0 336.384 109.44)">9 KiB payload; backing bits shown</text>
+  </g>
+  <g id="text_26">
+   <text style="font-weight: 700; font-size: 16px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #172b4d" x="607.104" y="92.16" transform="rotate(-0 607.104 92.16)">135,954 state bits</text>
+  </g>
+  <g id="text_27">
+   <text style="font-size: 9.4px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #526172" x="607.104" y="109.44" transform="rotate(-0 607.104 109.44)">Registers included in logic kGE</text>
+  </g>
+  <g id="text_28">
+   <text style="font-weight: 700; font-size: 16px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #172b4d" x="877.824" y="92.16" transform="rotate(-0 877.824 92.16)">0.101 mm²</text>
+  </g>
+  <g id="text_29">
+   <text style="font-size: 9.4px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #526172" x="877.824" y="109.44" transform="rotate(-0 877.824 109.44)">≈ 318 × 318 µm core</text>
+  </g>
+  <g id="text_30">
+   <text style="font-weight: 700; font-size: 15px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #172b4d" x="599.04" y="151.2" transform="rotate(-0 599.04 151.2)">Estimated region areas</text>
+  </g>
+  <g id="text_31">
+   <text style="font-size: 10px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #526172" x="599.04" y="172.8" transform="rotate(-0 599.04 172.8)">Logic regions include placement/routing allowance; SRAM is separate.</text>
+  </g>
+  <g id="text_32">
+   <text style="font-weight: 700; font-size: 10px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #526172" x="599.04" y="201.6" transform="rotate(-0 599.04 201.6)">REGION</text>
+  </g>
+  <g id="text_33">
+   <text style="font-weight: 700; font-size: 10px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #526172" x="996.48" y="201.6" transform="rotate(-0 996.48 201.6)">kGE</text>
+  </g>
+  <g id="text_34">
+   <text style="font-weight: 700; font-size: 10px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #526172" x="1100.16" y="201.6" transform="rotate(-0 1100.16 201.6)">mm²</text>
+  </g>
+  <g id="text_35">
+   <text style="font-size: 10.8px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #172b4d" x="620.928" y="226.8" transform="rotate(-0 620.928 226.8)">01  Verification pass 1</text>
+  </g>
+  <g id="text_36">
+   <text style="font-size: 10.8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #172b4d" x="996.48" y="226.8" transform="rotate(-0 996.48 226.8)">992.94</text>
+  </g>
+  <g id="text_37">
+   <text style="font-size: 10.8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #172b4d" x="1100.16" y="226.8" transform="rotate(-0 1100.16 226.8)">0.03575</text>
+  </g>
+  <g id="text_38">
+   <text style="font-size: 10.8px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #172b4d" x="620.928" y="249.48" transform="rotate(-0 620.928 249.48)">02  Verification pass 2</text>
+  </g>
+  <g id="text_39">
+   <text style="font-size: 10.8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #172b4d" x="996.48" y="249.48" transform="rotate(-0 996.48 249.48)">990.84</text>
+  </g>
+  <g id="text_40">
+   <text style="font-size: 10.8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #172b4d" x="1100.16" y="249.48" transform="rotate(-0 1100.16 249.48)">0.03567</text>
+  </g>
+  <g id="text_41">
+   <text style="font-size: 10.8px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #172b4d" x="620.928" y="272.16" transform="rotate(-0 620.928 272.16)">03  Receive SRAM macro</text>
+  </g>
+  <g id="text_42">
+   <text style="font-size: 10.8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #172b4d" x="996.48" y="272.16" transform="rotate(-0 996.48 272.16)">—</text>
+  </g>
+  <g id="text_43">
+   <text style="font-size: 10.8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #172b4d" x="1100.16" y="272.16" transform="rotate(-0 1100.16 272.16)">0.00315</text>
+  </g>
+  <g id="text_44">
+   <text style="font-size: 10.8px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #172b4d" x="620.928" y="294.84" transform="rotate(-0 620.928 294.84)">04  RX checks / ownership</text>
+  </g>
+  <g id="text_45">
+   <text style="font-size: 10.8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #172b4d" x="996.48" y="294.84" transform="rotate(-0 996.48 294.84)">2.52</text>
+  </g>
+  <g id="text_46">
+   <text style="font-size: 10.8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #172b4d" x="1100.16" y="294.84" transform="rotate(-0 1100.16 294.84)">0.00009</text>
+  </g>
+  <g id="text_47">
+   <text style="font-size: 10.8px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #172b4d" x="620.928" y="317.52" transform="rotate(-0 620.928 317.52)">05  Protected pass join</text>
+  </g>
+  <g id="text_48">
+   <text style="font-size: 10.8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #172b4d" x="996.48" y="317.52" transform="rotate(-0 996.48 317.52)">47.28</text>
+  </g>
+  <g id="text_49">
+   <text style="font-size: 10.8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #172b4d" x="1100.16" y="317.52" transform="rotate(-0 1100.16 317.52)">0.00170</text>
+  </g>
+  <g id="text_50">
+   <text style="font-size: 10.8px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #172b4d" x="620.928" y="340.2" transform="rotate(-0 620.928 340.2)">06  Config / entropy / time</text>
+  </g>
+  <g id="text_51">
+   <text style="font-size: 10.8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #172b4d" x="996.48" y="340.2" transform="rotate(-0 996.48 340.2)">274.58</text>
+  </g>
+  <g id="text_52">
+   <text style="font-size: 10.8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #172b4d" x="1100.16" y="340.2" transform="rotate(-0 1100.16 340.2)">0.00988</text>
+  </g>
+  <g id="text_53">
+   <text style="font-size: 10.8px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #172b4d" x="620.928" y="362.88" transform="rotate(-0 620.928 362.88)">07  Lease / round / quorum</text>
+  </g>
+  <g id="text_54">
+   <text style="font-size: 10.8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #172b4d" x="996.48" y="362.88" transform="rotate(-0 996.48 362.88)">174.98</text>
+  </g>
+  <g id="text_55">
+   <text style="font-size: 10.8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #172b4d" x="1100.16" y="362.88" transform="rotate(-0 1100.16 362.88)">0.00630</text>
+  </g>
+  <g id="text_56">
+   <text style="font-size: 10.8px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #172b4d" x="620.928" y="385.56" transform="rotate(-0 620.928 385.56)">08  Integration / profile</text>
+  </g>
+  <g id="text_57">
+   <text style="font-size: 10.8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #172b4d" x="996.48" y="385.56" transform="rotate(-0 996.48 385.56)">117.09</text>
+  </g>
+  <g id="text_58">
+   <text style="font-size: 10.8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #172b4d" x="1100.16" y="385.56" transform="rotate(-0 1100.16 385.56)">0.00422</text>
+  </g>
+  <g id="text_59">
+   <text style="font-size: 10.8px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #172b4d" x="620.928" y="408.24" transform="rotate(-0 620.928 408.24)">09  SPI / mailbox</text>
+  </g>
+  <g id="text_60">
+   <text style="font-size: 10.8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #172b4d" x="996.48" y="408.24" transform="rotate(-0 996.48 408.24)">88.72</text>
+  </g>
+  <g id="text_61">
+   <text style="font-size: 10.8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #172b4d" x="1100.16" y="408.24" transform="rotate(-0 1100.16 408.24)">0.00319</text>
+  </g>
+  <g id="text_62">
+   <text style="font-size: 10.8px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #172b4d" x="620.928" y="430.92" transform="rotate(-0 620.928 430.92)">10  Endpoint guards / demo</text>
+  </g>
+  <g id="text_63">
+   <text style="font-size: 10.8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #172b4d" x="996.48" y="430.92" transform="rotate(-0 996.48 430.92)">36.11</text>
+  </g>
+  <g id="text_64">
+   <text style="font-size: 10.8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #172b4d" x="1100.16" y="430.92" transform="rotate(-0 1100.16 430.92)">0.00130</text>
+  </g>
+  <g id="text_65">
+   <text style="font-weight: 700; font-size: 11.4px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #172b4d" x="620.928" y="462.96" transform="rotate(-0 620.928 462.96)">TOTAL DIGITAL CORE</text>
+  </g>
+  <g id="text_66">
+   <text style="font-weight: 700; font-size: 11.4px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #172b4d" x="996.48" y="462.96" transform="rotate(-0 996.48 462.96)">2,725.07</text>
+  </g>
+  <g id="text_67">
+   <text style="font-weight: 700; font-size: 11.4px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #172b4d" x="1100.16" y="462.96" transform="rotate(-0 1100.16 462.96)">0.10125</text>
+  </g>
+  <g id="text_68">
+   <text style="font-weight: 700; font-size: 13px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #172b4d" x="616.32" y="509.76" transform="rotate(-0 616.32 509.76)">Planning envelope: 0.056–0.165 mm²</text>
+  </g>
+  <g id="text_69">
+   <text style="font-size: 9.8px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #526172" x="616.32" y="527.76" transform="rotate(-0 616.32 527.76)">Density and macro assumptions; not a foundry estimate or signoff bound.</text>
+  </g>
+  <g id="text_70">
+   <text style="font-size: 9.8px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #526172" x="616.32" y="544.32" transform="rotate(-0 616.32 544.32)">Pass regions are illustrative. Physical independence is not established.</text>
+  </g>
+  <g id="text_71">
+   <text style="font-size: 10.1px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #526172" x="69.12" y="600.48" transform="rotate(-0 69.12 600.48)">Planning point: 0.018 µm²/GE · 0.0225 µm²/SRAM bit · logic ×1.25 / 62.5% utilization</text>
+  </g>
+  <g id="text_72">
+   <text style="font-size: 10.1px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #526172" x="69.12" y="617.04" transform="rotate(-0 69.12 617.04)">SRAM macro = bitcell floor ×1.90. No test RTL included; three representative endpoint workloads are included. Nine SHA cores total.</text>
+  </g>
+  <g id="text_73">
+   <text style="font-size: 10.1px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #172b4d" x="69.12" y="641.52" transform="rotate(-0 69.12 641.52)">NOT SIZED: OTP (272 bytes), physical entropy sources, timing references/sensors, pads/ESD, power/DFT, and the protected application processor.</text>
+  </g>
+  <g id="text_74">
+   <text style="font-size: 10.1px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #172b4d" x="69.12" y="658.08" transform="rotate(-0 69.12 658.08)">Endpoint subtotal is an accounting region; actual guards belong at their physical isolation endpoints. This is a core sketch, not a die outline.</text>
+  </g>
+  <g id="text_75">
+   <text style="font-size: 8.8px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #526172" x="69.12" y="689.04" transform="rotate(-0 69.12 689.04)">Source: measured production RTL at edb48ec · Yosys 0.52 / ABC-fast / Nangate45 · current non-comment RTL checked against that baseline</text>
+  </g>
+  <g id="text_76">
+   <text style="font-size: 8.1px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #526172" x="1100.16" y="702.72" transform="rotate(-0 1100.16 702.72)">Copyright © 2026 Todd Austin · PolyForm Noncommercial 1.0.0</text>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="pb7b9736ebe">
+   <rect x="98.095716" y="133.92" width="420.128568" height="440.64"/>
+  </clipPath>
+ </defs>
+</svg>

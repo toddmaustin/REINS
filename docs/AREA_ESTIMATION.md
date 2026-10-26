@@ -10,6 +10,86 @@ and an illustrative TSMC 3 nm planning scenario. The reference-library measureme
 is reproducible. The N3 conversion is an assumption-based estimate, not a
 measurement with TSMC libraries, a memory compiler, or a placed design.
 
+## First-cut core floorplan
+
+![REINS protected digital core, with area-proportional regions and component budgets](figures/reins-device-floorplan.png)
+
+The latest measured production logic remains **2,731.90 kGE**, or
+**2.1801 mm² of Nangate45 cell footprint**, excluding SRAM. The **135,954
+single-bit sequential cells** are included in that logic area and represent
+about 16.6 KiB of additional register state. The receive store needs **267,264
+backing bits (32.625 KiB)** for a **9 KiB payload**. The design contains **nine
+SHA-256 compression instances**, already included in the subsystem counts.
+
+The figure uses one explicit N3 planning point: **0.018 µm²/GE**,
+**0.0225 µm²/SRAM bit**, **25% logic implementation allowance**, **62.5% cell
+utilization**, and **2.25× SRAM bitcell area for macro/peripheral allowance**.
+This gives **0.11188 mm²**, drawn as a **334.5 × 334.5 µm digital core**. The
+previous broader scenario range remains **0.062–0.181 mm²**; the center drawing
+is not a measured TSMC implementation or a guaranteed upper bound.
+
+| Major region | Measured logic kGE | N3 region budget at this planning point |
+|---|---:|---:|
+| Verification pass 1, including its SHA engines | 992.94 | 0.03575 mm² |
+| Verification pass 2, including its SHA engines | 990.84 | 0.03567 mm² |
+| Protected pass join / bank control | 47.28 | 0.00170 mm² |
+| Configuration, entropy and trusted time | 274.58 | 0.00988 mm² |
+| Lease / round / quorum controller | 174.98 | 0.00630 mm² |
+| Device integration and profile checks | 117.09 | 0.00422 mm² |
+| SPI transport and mailbox | 88.72 | 0.00319 mm² |
+| Endpoint guards, queues and representative producers | 36.11 | 0.00130 mm² |
+| Receive integrity / ownership logic | 9.35 | 0.00034 mm² |
+| Protected receive SRAM macro estimate | Separate from kGE | 0.01353 mm² |
+| **Total** | **2,731.90** | **0.11188 mm²** |
+
+Each verification pass is subdivided into expected-grant/Merkle reconstruction,
+SLH-DSA verification and local context/control checks. Pass 1 and pass 2 each
+include three SHA cores; platform configuration/entropy contains the other
+three. Do not add their areas again. Region budgets already contain the stated
+logic placement allowance; they are not just raw cell footprints. The two pass
+regions are a placement suggestion, not evidence of independent fault domains.
+
+The shared service column makes the shared receive, capture/join and control
+domains explicit. The endpoint region is an accounting subtotal: guards must
+ultimately be distributed at the real isolation endpoints. The outline is a
+**digital core**, not a complete die. Physical OTP (272 bytes plus wrapper/locks),
+entropy sources, reference clocks/sensors, pads/ESD, power/DFT, and the protected
+application processor have no assigned area in this drawing. A standalone die
+may be pad-limited.
+
+Download the protected figure as [SVG](figures/reins-device-floorplan.svg),
+[PDF](figures/reins-device-floorplan.pdf), or [PNG](figures/reins-device-floorplan.png).
+The analysis-only unprotected-row comparison is available as
+[SVG](figures/reins-device-floorplan-without-row-protection.svg),
+[PDF](figures/reins-device-floorplan-without-row-protection.pdf), or
+[PNG](figures/reins-device-floorplan-without-row-protection.png). With the same
+logic assumptions and a 1.90× raw SRAM macro allowance, it totals **2,725.07 kGE**,
+**9 KiB SRAM**, and **0.10125 mm²** (a **318.2 µm square**). Its broader scenario
+range remains **0.056–0.165 mm²**. That variant retains all protection other than
+the receive-row ECC/owner/address mechanism.
+
+Recreate both figures with Python and Matplotlib, without rerunning synthesis:
+
+```sh
+# Optional plotting dependency on Ubuntu/Debian:
+sudo apt-get install python3-matplotlib
+make area-layout
+```
+
+The reviewed [area snapshot](area-floorplan.json) records the original report
+hash, measured baseline, component counts and all planning assumptions. The
+generator verifies that the production manifest and non-comment RTL tokens
+still match the measured implementation; current differences are comments only.
+It rejects code changes that would make the snapshot stale. This token check is
+not a formal equivalence or physical implementation proof. Obtain a new reviewed
+area measurement before updating the snapshot after functional changes.
+
+Each invocation retains fresh SVG/PDF/PNG files, numeric `floorplan.json`,
+per-region geometry/area CSV and the input snapshot under `test-results/` before
+copying the figures into `docs/figures/`. It checks that component areas sum to
+the measured total, rectangles have the stated areas, and top-level regions do
+not overlap. Saved failed/earlier runs remain until an explicit clean target.
+
 ## Run the measurement
 
 Install Yosys and ABC. On Ubuntu/Debian, `sudo apt-get install yosys` normally

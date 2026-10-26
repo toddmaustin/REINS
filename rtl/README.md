@@ -10,6 +10,9 @@ The fixed profile is **N=3, Q=2**, wire/SPI/schema version 2,
 **SLH-DSA-SHA2-128s, pure mode, empty context**. The
 [normative PDF](../docs/REINS-Hardware-Specification-v0.3.pdf) defines the protocol.
 
+See [area estimation and the first-cut core floorplan](../docs/AREA_ESTIMATION.md#first-cut-core-floorplan)
+for measured reference-library logic/SRAM requirements and an illustrative N3 layout budget.
+
 ## Source organization
 
 | Directory/file | Role |
